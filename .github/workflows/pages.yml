@@ -29,6 +29,10 @@ jobs:
           mkdir -p src
           unzip -q -o first_fire_alpha01_web_ready.zip -d src
           test -f src/first_fire_alpha01_web_ready/project.godot
+          # Godot 4.7.1 rejects Web presets that request ETC2/ASTC mobile
+          # VRAM compression unless that import format is enabled project-wide.
+          # First Fire uses ordinary PNG UI textures, so this is unnecessary.
+          sed -i 's#vram_texture_compression/for_mobile=true#vram_texture_compression/for_mobile=false#' src/first_fire_alpha01_web_ready/export_presets.cfg
 
       - name: Install Godot 4.7.1 and export templates
         shell: bash
