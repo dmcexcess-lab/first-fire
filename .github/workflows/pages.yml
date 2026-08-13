@@ -38,10 +38,13 @@ jobs:
           (
             cd src/first_fire_alpha01_web_ready
             patch -p0 --batch < /tmp/first_fire_alpha01.patch
+            patch -p0 --batch < "$GITHUB_WORKSPACE/.deploy/balance_pass.patch"
           )
           grep -q 'injured_stranger_return_after' src/first_fire_alpha01_web_ready/scripts/Game.gd
-          grep -q '"Cooked Food": 2' src/first_fire_alpha01_web_ready/scripts/FFData.gd
-          grep -q '_on_exit_pressed' src/first_fire_alpha01_web_ready/scripts/Main.gd
+          grep -q 'const DAY_SECONDS := 120.0' src/first_fire_alpha01_web_ready/scripts/Game.gd
+          grep -q 'func _loot_item_target' src/first_fire_alpha01_web_ready/scripts/Game.gd
+          grep -q 'Idle — recovering fatigue and stress automatically.' src/first_fire_alpha01_web_ready/scripts/Main.gd
+          grep -q '"Dirty Water": 30, "Raw Food": 24' src/first_fire_alpha01_web_ready/scripts/FFData.gd
 
           sed -i 's#vram_texture_compression/for_mobile=true#vram_texture_compression/for_mobile=false#' src/first_fire_alpha01_web_ready/export_presets.cfg
 
