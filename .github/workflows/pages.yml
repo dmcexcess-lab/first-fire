@@ -35,16 +35,25 @@ jobs:
               .deploy/alpha01_patch_02.part \
               .deploy/alpha01_patch_03.part \
               .deploy/alpha01_patch_04.part > /tmp/first_fire_alpha01.patch
+          base64 -d < .deploy/combat/combat_integration.patch.gz.b64 | gzip -dc > /tmp/combat_integration.patch
+          base64 -d < .deploy/combat/FFCombat.gd.gz.b64 | gzip -dc > /tmp/FFCombat.gd
           (
             cd src/first_fire_alpha01_web_ready
             patch -p0 --batch < /tmp/first_fire_alpha01.patch
             patch -p0 --batch < "$GITHUB_WORKSPACE/.deploy/balance_pass.patch"
             patch -p0 --batch < "$GITHUB_WORKSPACE/.deploy/save_schema_reset.patch"
+            patch -p0 --batch < /tmp/combat_integration.patch
+            cp /tmp/FFCombat.gd scripts/FFCombat.gd
           )
           grep -q 'injured_stranger_return_after' src/first_fire_alpha01_web_ready/scripts/Game.gd
           grep -q 'const DAY_SECONDS := 120.0' src/first_fire_alpha01_web_ready/scripts/Game.gd
           grep -q 'func _loot_item_target' src/first_fire_alpha01_web_ready/scripts/Game.gd
-          grep -q 'const SAVE_SCHEMA_VERSION := 2' src/first_fire_alpha01_web_ready/scripts/Game.gd
+          grep -q 'const SAVE_SCHEMA_VERSION := 3' src/first_fire_alpha01_web_ready/scripts/Game.gd
+          grep -q 'var current_combat := {}' src/first_fire_alpha01_web_ready/scripts/Game.gd
+          grep -q 'func resolve_combat' src/first_fire_alpha01_web_ready/scripts/Game.gd
+          grep -q 'FFCombat.gd' src/first_fire_alpha01_web_ready/scripts/Main.gd
+          grep -q 'signal encounter_finished' src/first_fire_alpha01_web_ready/scripts/FFCombat.gd
+          grep -q 'pointing/emulate_mouse_from_touch=false' src/first_fire_alpha01_web_ready/project.godot
           grep -q '"save_schema": SAVE_SCHEMA_VERSION' src/first_fire_alpha01_web_ready/scripts/Game.gd
           if grep -q 'func _normalize_loaded_state' src/first_fire_alpha01_web_ready/scripts/Game.gd; then exit 1; fi
           grep -q 'Idle — recovering fatigue and stress automatically.' src/first_fire_alpha01_web_ready/scripts/Main.gd
