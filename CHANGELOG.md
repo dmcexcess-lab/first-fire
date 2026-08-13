@@ -2,6 +2,15 @@
 
 This file tracks player-facing changes to the playable Alpha builds.
 
+## Alpha 0.1 — Hard Save Reset Policy — 2026-08-12
+
+### Saves
+- Alpha saves now carry an explicit **save schema version**.
+- Saves from an older schema are **invalidated instead of migrated forward**.
+- Stale save data is deleted and the game starts fresh rather than maintaining repair/upgrade compatibility code during Alpha development.
+- The previous legacy `Resting` save-state compatibility paths and broad loaded-save normalization/repair routine were removed.
+- For now, future Alpha changes that alter the save structure may intentionally require a fresh start.
+
 ## Alpha 0.1 — Loot / Recovery / Clock Pass — 2026-08-12
 
 ### Scavenging & Loot
@@ -18,7 +27,6 @@ This file tracks player-facing changes to the playable Alpha builds.
 - Survivors now **recover fatigue and stress automatically whenever they are Available and doing nothing**.
 - Idle recovery does not make survivors unavailable; they can be assigned to work or expeditions immediately.
 - The manual **REST / STOP REST** action has been removed.
-- Old saves with survivors marked Resting automatically normalize them back to Available.
 - Hurt/Wounded natural recovery now progresses while the survivor is idle and Available.
 - Treatment completion returns survivors to Available rather than leaving them in a Resting state.
 - The camp event option to give someone time to rest now grants an immediate fatigue/stress reduction instead of locking them into Resting.
@@ -52,10 +60,6 @@ This file tracks player-facing changes to the playable Alpha builds.
 ### Web / UI
 - On the Web build, **EXIT** now saves and leaves the game page instead of freezing on a dead Godot canvas.
 - Desktop builds still use a normal application quit.
-
-### Compatibility
-- Save filename remains unchanged.
-- New encounter state is additive so existing Alpha saves should remain usable.
 
 ## Alpha 0.1 — First Playable Build
 
