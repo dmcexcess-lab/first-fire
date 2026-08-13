@@ -1,0 +1,252 @@
++                    _queue_field_result(event, "Not Worth the Gun", "You cannot find a clean route to the rack, but a loose round under the driver's seat is reachable through the broken seal.")
+                 else:
+-                    lead["stress"] += 4
+-            _finish_event_expedition(event, true)
++                    lead["stress"] = min(100.0, float(lead["stress"]) + 3.0)
++                    _queue_field_result(event, "Too Many Unknowns", "You cannot tell whether the car is trapped, occupied, or simply jammed. You leave it alone.")
++
++        # Legacy Alpha 0.1 save compatibility. Smoke is no longer in the
++        # new random pool, but an already-saved pending smoke event can still resolve.
+         "smoke_investigate":
+-            if rng.randf() < 0.45 and population() < shelter_capacity() + 1:
+-                _add_recruit("", ids)
+-            elif rng.randf() < 0.50:
++            var sr = rng.randf()
++            if sr < 0.40:
++                _queue_recruit_offer(event, "A Small Fire", "The smoke belongs to a lone survivor cooking behind a wall. They are wary, but willing to talk.", "smoke_survivor")
++            elif sr < 0.75:
+                 resources["Cooked Food"] += 2
+-            elif lead != null:
+-                _apply_injury(lead, "Hurt")
+-            _finish_event_expedition(event, true)
++                _queue_field_result(event, "Abandoned Fire", "Whoever made the smoke is gone. Two cooked meals were left behind in the rush.")
++            else:
++                if lead != null: _apply_injury(lead, "Hurt")
++                _queue_field_result(event, "Someone Was Watching the Smoke", "The fire was bait or bad luck. The party breaks contact after a brief violent encounter.")
+         "smoke_mark":
+             flags["smoke_marked"] = true
+             if lead != null: add_skill_xp(lead, "Survival", 2)
+-            _finish_event_expedition(event, true)
++            zone_pressure[zone] = max(0, int(zone_pressure.get(zone, 0)) - 2)
++            _queue_field_result(event, "Marked and Avoided", "You mark the smoke and use it to map where other people are moving without approaching them.")
++
+         "barricade_talk":
+             if lead != null:
+                 var r8 = skill_check(lead, "Social", 12)
+                 add_skill_xp(lead, "Social", 8)
+-                if r8 >= 0:
+-                    resources["Cooked Food"] += 1
++                if r8 >= 1:
+                     flags["met_barricade_group"] = true
++                    _queue_event(_event_base("barricade_trade", "Terms", "They are not raiders. They are protecting a route and willing to do limited business.", [
++                        _choice("Trade 1 Clean Water for 2 Cooked Food", "barricade_trade_food", int(resources.get("Clean Water", 0)) < 1, "NEEDS 1 CLEAN WATER"),
++                        _choice("Ask what is still worth searching", "barricade_trade_info"),
++                        _choice("Thank them and leave", "resume")
++                    ], event.get("context", {})))
++                elif r8 == 0:
++                    lead["stress"] = min(100.0, float(lead["stress"]) + 3.0)
++                    _queue_field_result(event, "No Deal", "The conversation never becomes friendly, but it never becomes a fight either. They let you back away.")
+                 else:
+-                    lead["stress"] += 8
+-            _finish_event_expedition(event, true)
++                    lead["stress"] = min(100.0, float(lead["stress"]) + 8.0)
++                    _queue_field_result(event, "Wrong Tone", "One of them shoulders a weapon and the other tells you to leave. You do.")
++        "barricade_trade_food":
++            resources["Clean Water"] -= 1
++            resources["Cooked Food"] += 2
++            _queue_field_result(event, "Trade", "A sealed bottle of clean water buys two meals. Nobody gets cheated and nobody gets shot.", "First Fire made a small trade with the barricade group.")
++        "barricade_trade_info":
++            var bs = _discover_site_from_zone(zone)
++            if bs != "":
++                _queue_field_result(event, "Local Knowledge", "They mark %s and warn you which approach makes the least noise." % bs, "The barricade group revealed %s." % bs)
++            else:
++                zone_pressure[zone] = max(0, int(zone_pressure.get(zone, 0)) - 5)
++                _queue_field_result(event, "A Better Route", "You already know their named locations, but they give you a quieter route through the zone. It opens up a little more scavenging ground.")
+         "barricade_stand":
+             if lead != null:
+                 var r9 = skill_check(lead, "Combat", 13, _equipment_combat_bonus(lead))
+                 add_skill_xp(lead, "Combat", 8)
+-                if r9 < 0: _apply_injury(lead, "Wounded")
+-                elif r9 == 0: _apply_injury(lead, "Hurt")
+-                else: resources["Ammo"] += 2
+-            _finish_event_expedition(event, true)
++                if r9 < 0:
++                    _apply_injury(lead, "Wounded")
++                    _queue_field_result(event, "A Point Nobody Needed Proved", "The standoff becomes a real fight. The party escapes, but the cost is far worse than simply walking away.", "A confrontation at a barricade left a survivor wounded.")
++                elif r9 == 0:
++                    _apply_injury(lead, "Hurt")
++                    _queue_field_result(event, "Mutual Bad Decision", "Nobody wins. A short violent exchange ends with both sides breaking contact.")
++                else:
++                    resources["Ammo"] += 2
++                    resources["Cooked Food"] += 1
++                    _queue_field_result(event, "They Back Down", "Your side looks harder to rob than they expected. They retreat behind the barricade, leaving a small pouch behind in the scramble.")
++
+         "site_market_careful":
+-            resources["Cooked Food"] += rng.randi_range(4, 7)
+-            resources["Raw Food"] += rng.randi_range(1, 2)
+-            if rng.randf() < 0.30 and population() < shelter_capacity() + 1:
+-                _add_recruit("Cook", ids)
+-            _clear_site(event, true)
+-        "site_market_force":
++            var mk = event.get("context", {}).get("market_kind", "zombie")
+             resources["Cooked Food"] += rng.randi_range(5, 8)
+-            if lead != null and rng.randf() < 0.35: _apply_injury(lead, "Hurt")
++            resources["Raw Food"] += rng.randi_range(2, 3)
++            if mk == "survivor":
++                _clear_site(event, true)
++                _queue_recruit_offer(event, "Someone Was Trapped Back There", "The scratching stops when you speak. A dehydrated survivor answers from behind the shelving. They have been trapped in the stockroom, not hiding from you.", "market_survivor", "Cook")
++            elif mk == "zombie":
++                var mr = skill_check(lead, "Combat", 10, _equipment_combat_bonus(lead)) if lead != null else -1
++                if mr < 0 and lead != null: _apply_injury(lead, "Hurt")
++                _clear_site(event, true)
++                _queue_closed_result(event, "Stockroom Cleared", "The scratching was infected. Moving slowly keeps the fight controlled, and the stockroom food is still mostly usable.", "Miller Street Market was cleared for food.")
++            else:
++                _clear_site(event, true)
++                _queue_closed_result(event, "Just an Animal", "A trapped animal bolts out when you shift the shelving. The stockroom itself is a small jackpot of shelf-stable food.", "Miller Street Market was cleared for food.")
++        "site_market_force":
++            resources["Cooked Food"] += rng.randi_range(6, 9)
++            resources["Raw Food"] += 1
++            var mk2 = event.get("context", {}).get("market_kind", "zombie")
++            var force_body = "The stockroom opens fast and the food comes out faster."
++            if mk2 == "zombie":
++                if lead != null and rng.randf() < 0.45:
++                    _apply_injury(lead, "Hurt")
++                    force_body = "The shelving comes down on top of an infected occupant. The party gets the food, but the close fight leaves a mark."
++                else:
++                    force_body = "An infected occupant comes out with the shelving. The party is ready enough to put it down and strip the food."
++            elif mk2 == "survivor":
++                if lead != null: lead["stress"] = min(100.0, float(lead["stress"]) + 4.0)
++                force_body = "A terrified survivor was trapped behind the shelving. The violent entry sends them fleeing through the rear exit before anyone can talk. You keep the food, but lose the chance to make contact."
++            else:
++                force_body = "A trapped animal explodes out through the opening and disappears. The stockroom itself is full of usable food."
+             _clear_site(event, true)
++            _queue_closed_result(event, "Forced Open", force_body, "Miller Street Market was forced open and stripped for food.")
++
+         "site_clinic_search":
+-            var med = 1
++            var med = 2
+             if lead != null:
+                 med = 2 + int(lead["skills"]["Medical"] >= 3) + int(lead["skills"]["Medical"] >= 5)
+                 add_skill_xp(lead, "Medical", 10)
+             resources["Medicine"] += med
+-            if rng.randf() < 0.25: inventory_gear.append("First Aid Kit")
+-            _clear_site(event, true)
++            if rng.randf() < 0.35: inventory_gear.append("First Aid Kit")
++            special_sites["Neighborhood Clinic"]["cabinets_looted"] = true
++            _finish_special_site_without_clear(event)
++            _queue_closed_result(event, "Cabinets Stripped", "You take the accessible medicine and leave rather than open the noisy storage room today. The clinic remains marked; the storage room is still unresolved.", "The party stripped the accessible medical cabinets at Neighborhood Clinic.")
+         "site_clinic_call":
+-            if population() < shelter_capacity() + 1 and rng.randf() < 0.65:
+-                _add_recruit("Nursing Assistant", ids)
++            var ck = event.get("context", {}).get("clinic_kind", "empty")
++            if ck == "survivor":
++                _clear_site(event, true)
++                _queue_recruit_offer(event, "A Caregiver Answers", "A survivor emerges with a makeshift medical bag. They have been using the clinic as a shelter and know exactly what is left in it.", "clinic_survivor", "Nursing Assistant")
++            elif ck == "zombie":
++                var cr = skill_check(lead, "Combat", 9, _equipment_combat_bonus(lead)) if lead != null else -1
++                if cr < 0 and lead != null: _apply_injury(lead, "Hurt")
++                resources["Medicine"] += 2
++                _clear_site(event, true)
++                _queue_closed_result(event, "The Sound Answers", "An infected former patient lurches from storage. Once it is dealt with, two useful medical items remain.", "Neighborhood Clinic was cleared after contact with an infected occupant.")
+             else:
+                 resources["Medicine"] += 2
+-            _clear_site(event, true)
++                _clear_site(event, true)
++                _queue_closed_result(event, "Nobody There", "The sound was loose equipment shifting against a vent. The storage room still contains two useful medical items.")
++
++        # Legacy special-site choice from the first playable Alpha.
+         "site_hardware_open":
+             resources["Hardware"] += rng.randi_range(3, 6)
+             resources["Scrap Metal"] += rng.randi_range(2, 4)
+             if rng.randf() < 0.30: inventory_gear.append("Toolbox")
+             _clear_site(event, true)
++            _queue_closed_result(event, "Cage Open", "The contractor cage gives up a useful load of hardware and scrap.", "The Hardware Cage was cleared.")
++
++        "site_hardware_cut":
++            resources["Hardware"] += rng.randi_range(5, 7)
++            resources["Scrap Metal"] += rng.randi_range(2, 4)
++            if rng.randf() < 0.40: inventory_gear.append("Toolbox")
++            _clear_site(event, true)
++            _queue_closed_result(event, "Exactly the Right Tool", "Bolt cutters make the cage almost trivial. The contractor stock inside is worth the trip.", "The Hardware Cage was opened with bolt cutters.")
++        "site_hardware_pry":
++            resources["Hardware"] += rng.randi_range(4, 6)
++            resources["Scrap Metal"] += rng.randi_range(2, 3)
++            _clear_site(event, true)
++            _queue_closed_result(event, "Latch Defeated", "The pry tool bends the latch enough to get a hand through and release the cage from inside.", "The Hardware Cage was pried open.")
++        "site_hardware_technical":
++            var ht = skill_check(lead, "Technical", 12) if lead != null else -1
++            if lead != null: add_skill_xp(lead, "Technical", 9)
++            if ht >= 0:
++                resources["Hardware"] += rng.randi_range(3, 6)
++                resources["Scrap Metal"] += 2
++                if ht == 2: inventory_gear.append("Toolbox")
++                _clear_site(event, true)
++                _queue_closed_result(event, "Lock Open", "Patience beats force. The cage opens and the hardware comes out cleanly.", "The Hardware Cage was opened without brute force.")
++            else:
++                _finish_special_site_without_clear(event)
++                _queue_closed_result(event, "Lock Wins This Time", "You cannot get the lock to cooperate. The party heads home; the cage remains marked for another dedicated attempt.")
++
+         "site_construction_loot":
+             resources["Wood"] += 4
+             resources["Hardware"] += 3
+             resources["Scrap Metal"] += 2
+-            _clear_site(event, true)
+-        "site_construction_room":
+-            if population() < shelter_capacity() + 1 and rng.randf() < 0.40:
+-                _add_recruit("Construction Worker", ids)
++            special_sites["Construction Trailer"]["shelves_looted"] = true
++            _finish_special_site_without_clear(event)
++            _queue_closed_result(event, "Open Shelves Stripped", "You take the obvious building materials and leave the locked back room alone. The trailer stays marked because there is still something behind that interior door.", "The party stripped the open shelves at the Construction Trailer.")
++        "site_construction_pry":
++            inventory_gear.append("Toolbox")
++            resources["Hardware"] += 3
++            resources["Wood"] += 3
++            if rng.randf() < 0.45 and _has_room_for_recruit():
++                _clear_site(event, true)
++                _queue_recruit_offer(event, "Someone Behind the Door", "The back room was locked because someone was sleeping behind it. A construction worker lowers a hammer when they see you are not here to rob them.", "construction_survivor", "Construction Worker")
+             else:
+-                inventory_gear.append("Toolbox")
++                _clear_site(event, true)
++                _queue_closed_result(event, "Back Room Open", "The back room holds a toolbox, hardware and framing lumber. Nobody is inside.", "The Construction Trailer back room was breached.")
++        "site_construction_room":
++            var ct = skill_check(lead, "Technical", 11) if lead != null else -1
++            if lead != null: add_skill_xp(lead, "Technical", 8)
++            if ct >= 1:
++                if rng.randf() < 0.45 and _has_room_for_recruit():
++                    _clear_site(event, true)
++                    _queue_recruit_offer(event, "The Lock Was Keeping Others Out", "A construction worker has been sheltering in the back room. They appreciate that you opened the door without destroying it.", "construction_survivor", "Construction Worker")
++                else:
++                    inventory_gear.append("Toolbox")
++                    resources["Hardware"] += 3
++                    _clear_site(event, true)
++                    _queue_closed_result(event, "Back Room Open", "The lock clicks. Inside is a toolbox and contractor hardware.")
++            elif ct == 0:
+                 resources["Hardware"] += 2
+-            _clear_site(event, true)
+-        "site_office_talk":
+-            if population() < shelter_capacity() + 1:
+-                _add_recruit("Mechanic", ids)
++                _clear_site(event, true)
++                _queue_closed_result(event, "Good Enough", "The lock is damaged beyond reuse, but it opens. You salvage hardware from the room and leave.")
+             else:
+-                resources["Hardware"] += 2
+-            _clear_site(event, true)
++                _finish_special_site_without_clear(event)
++                _queue_closed_result(event, "Not Today", "The lock refuses every improvised technique. The party heads home and leaves the trailer marked for another attempt.")
++
++        "site_office_talk":
++            if lead != null:
++                var ot = skill_check(lead, "Social", 10)
++                add_skill_xp(lead, "Social", 9)
++                if ot >= 0:
++                    _clear_site(event, true)
++                    _queue_recruit_offer(event, "The Barricade Opens", "A mechanically minded survivor finally cracks the door. They have tools, but almost no food, and are ready to discuss leaving with you.", "office_survivor", "Mechanic")
++                else:
++                    resources["Hardware"] += 1
++                    _clear_site(event, true)
++                    _queue_closed_result(event, "They Will Not Come Out", "They refuse to open the door, but slide a piece of hardware under it in exchange for you leaving quietly. You respect the boundary.")
+         "site_office_force":
+             if lead != null:
+                 var rr = skill_check(lead, "Combat", 12, _equipment_combat_bonus(lead))
++                add_skill_xp(lead, "Combat", 7)
+                 if rr < 0: _apply_injury(lead, "Hurt")

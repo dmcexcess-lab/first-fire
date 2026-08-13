@@ -1,0 +1,246 @@
+         return _discovery_event("Locked Industrial Office", "An office inside the industrial complex has been barricaded from the inside.", context)
++
+     if key == "patrol_car":
+-        return _event_base(key, "Abandoned Patrol Car", "A patrol car sits half on the curb. The doors are locked; a weapon rack is visible inside.", [
+-            {"text": "Break in", "action": "patrol_break"},
+-            {"text": "Inspect carefully first", "action": "patrol_inspect"},
+-            {"text": "Leave it", "action": "resume"},
+-        ], context)
+-    if key == "smoke":
+-        return _event_base(key, "Smoke in the Distance", "A thin column of smoke rises beyond the next block.", [
+-            {"text": "Investigate", "action": "smoke_investigate"},
+-            {"text": "Mark the direction and continue", "action": "smoke_mark"},
+-            {"text": "Ignore it", "action": "resume"},
++        var has_pry = _party_has_tool(exp["survivor_ids"], "Breach")
++        return _event_base(key, "Abandoned Patrol Car", "A patrol car sits half on the curb. The doors are locked. A pistol is still visible in the rack.", [
++            _choice("Pry the door quietly", "patrol_pry", not has_pry, "NEEDS PRY TOOL"),
++            _choice("Smash the window and move fast", "patrol_break"),
++            _choice("Inspect it for alarms or traps", "patrol_inspect"),
++            _choice("Leave it", "resume")
+         ], context)
++
+     if key == "barricade":
+-        return _event_base(key, "The Barricade", "Someone has deliberately blocked the route with shopping carts and sheet metal. Two armed strangers step into view.", [
+-            {"text": "Talk", "action": "barricade_talk"},
+-            {"text": "Back away", "action": "resume"},
+-            {"text": "Stand your ground", "action": "barricade_stand"},
++        return _event_base(key, "The Barricade", "Shopping carts and sheet metal block the road. Two armed strangers step into view but keep their weapons lowered.", [
++            _choice("Talk before this gets stupid", "barricade_talk"),
++            _choice("Back away slowly", "resume"),
++            _choice("Refuse to be pushed around", "barricade_stand")
+         ], context)
+     return {}
+ 
+ func _discovery_event(site, body, context):
+     return _event_base("discover_site", site, body, [
+-        {"text": "Mark the location", "action": "mark_site:%s" % site},
+-        {"text": "Leave it for now", "action": "resume"},
++        _choice("Mark it for a dedicated trip", "mark_site:%s" % site),
++        _choice("Leave it alone for now", "resume")
+     ], context)
+ 
+ func _build_special_site_event(site, exp):
+     var context = {"expedition_id": exp["id"], "survivor_ids": exp["survivor_ids"], "site": site, "zone": exp["zone"]}
+     if site == "Miller Street Market":
+-        return _event_base("site_market", site, "The store itself is wrecked, but the stockroom is still sealed behind shelving. Something scratches intermittently on the other side.", [
+-            {"text": "Clear the stockroom carefully", "action": "site_market_careful"},
+-            {"text": "Force it open fast", "action": "site_market_force"},
+-            {"text": "Turn back", "action": "site_retreat"},
++        var rm = rng.randf()
++        context["market_kind"] = "survivor" if rm < 0.30 else ("zombie" if rm < 0.75 else "animal")
++        return _event_base("site_market", site, "The sales floor is wrecked, but the stockroom is still sealed behind shelving. Something scratches intermittently on the other side.", [
++            _choice("Clear it slowly and listen first", "site_market_careful"),
++            _choice("Force the shelving aside and get it over with", "site_market_force"),
++            _choice("Turn back", "site_retreat")
+         ], context)
+     if site == "Neighborhood Clinic":
+-        return _event_base("site_clinic", site, "The clinic is dark and dusty. Cabinets remain closed, and a faint sound comes from the storage room.", [
+-            {"text": "Search the medical cabinets", "action": "site_clinic_search"},
+-            {"text": "Call toward the storage room", "action": "site_clinic_call"},
+-            {"text": "Turn back", "action": "site_retreat"},
++        var rc = rng.randf()
++        context["clinic_kind"] = "survivor" if rc < 0.45 else ("zombie" if rc < 0.75 else "empty")
++        var cabinets_looted = bool(special_sites[site].get("cabinets_looted", false))
++        return _event_base("site_clinic", site, "The clinic is dusty but surprisingly intact. %s A faint sound still comes from the storage room." % ("The medical cabinets have already been stripped." if cabinets_looted else "Several medical cabinets remain closed."), [
++            _choice("Search the medical cabinets first", "site_clinic_search", cabinets_looted, "ALREADY SEARCHED"),
++            _choice("Call toward the storage room", "site_clinic_call"),
++            _choice("Turn back", "site_retreat")
+         ], context)
+     if site == "Hardware Cage":
+-        return _event_base("site_hardware", site, "The contractor cage is packed with boxes behind heavy chain-link.", [
+-            {"text": "Open the cage", "action": "site_hardware_open"},
+-            {"text": "Turn back", "action": "site_retreat"},
++        var ids = exp["survivor_ids"]
++        return _event_base("site_hardware", site, "Boxes of contractor hardware sit behind heavy chain-link and a stubborn lock.", [
++            _choice("Cut the chain", "site_hardware_cut", not _party_has_tool(ids, "Cutters"), "NEEDS BOLT CUTTERS"),
++            _choice("Pry the latch", "site_hardware_pry", not _party_has_tool(ids, "Breach"), "NEEDS PRY TOOL"),
++            _choice("Work the lock", "site_hardware_technical"),
++            _choice("Turn back", "site_retreat")
+         ], context)
+     if site == "Construction Trailer":
+-        return _event_base("site_construction", site, "The trailer contains shelving, job boxes, rolled plans and the stale smell of a place abandoned mid-shift.", [
+-            {"text": "Strip useful construction supplies", "action": "site_construction_loot"},
+-            {"text": "Check the locked back room", "action": "site_construction_room"},
+-            {"text": "Turn back", "action": "site_retreat"},
++        var has_pry = _party_has_tool(exp["survivor_ids"], "Breach")
++        var shelves_looted = bool(special_sites[site].get("shelves_looted", false))
++        return _event_base("site_construction", site, "The trailer holds job boxes, rolled plans and %s A locked interior door leads to the back room." % ("empty open shelves." if shelves_looted else "open shelves of supplies."), [
++            _choice("Strip the open shelves for supplies", "site_construction_loot", shelves_looted, "ALREADY STRIPPED"),
++            _choice("Pry open the back room", "site_construction_pry", not has_pry, "NEEDS PRY TOOL"),
++            _choice("Work the back-room lock", "site_construction_room"),
++            _choice("Turn back", "site_retreat")
+         ], context)
+     if site == "Locked Industrial Office":
+-        return _event_base("site_office", site, "The barricade shifts when you knock. Someone is definitely alive inside.", [
+-            {"text": "Talk to them", "action": "site_office_talk"},
+-            {"text": "Force the door", "action": "site_office_force"},
+-            {"text": "Turn back", "action": "site_retreat"},
++        return _event_base("site_office", site, "The barricade shifts when you knock. Someone is alive inside and very deliberately keeping the door shut.", [
++            _choice("Talk through the door", "site_office_talk"),
++            _choice("Force the door", "site_office_force"),
++            _choice("Respect the warning and leave", "site_retreat")
+         ], context)
+     return {}
+ 
+@@ -1299,235 +1426,532 @@
+ func _handle_event_action(event, action):
+     var lead: Variant = _lead_from_event(event)
+     var ids = event.get("context", {}).get("survivor_ids", [])
+-    var eid = int(event.get("context", {}).get("expedition_id", -1))
++    var zone = event.get("context", {}).get("zone", "")
+ 
+     if action == "resume":
+         _finish_event_expedition(event, true)
+         return
++    if action == "close":
++        return
+     if action.begins_with("mark_site:"):
+         var site = action.trim_prefix("mark_site:")
+         if special_sites.has(site):
+             special_sites[site]["discovered"] = true
+-            _add_history("Day %d — %s discovered %s." % [day, lead["name"] if lead != null else "A survivor", site])
++            _record_event_history(event, "%s marked %s for a dedicated scavenging run." % [lead["name"] if lead != null else "The party", site])
+             toast_requested.emit("Special site discovered: %s" % site)
+         _finish_event_expedition(event, true)
+         return
+ 
+     match action:
++        "recruit_offer_accept":
++            var preferred = event.get("context", {}).get("preferred_background", "")
++            var source = event.get("context", {}).get("recruit_source", "stranger")
++            var recruit: Variant = _add_recruit(preferred, ids)
++            if recruit != null:
++                if source == "injured_stranger":
++                    for sid in ids:
++                        var helper: Variant = get_survivor(sid)
++                        if helper != null:
++                            helper["fatigue"] = min(100.0, float(helper["fatigue"]) + 8.0)
++                _queue_field_result(event, "%s Joins First Fire" % recruit["name"], "%s accepts. They will finish the trip with the party and follow them back to camp." % recruit["name"], "%s agreed to join First Fire." % recruit["name"])
++            else:
++                _queue_field_result(event, "No Room", "There is nowhere safe to put another person yet. You exchange directions and part ways.")
++        "recruit_offer_info":
++            var revealed = _discover_site_from_zone(zone)
++            if revealed != "":
++                _queue_field_result(event, "Useful Information", "They sketch a route and point out a place that may still be worth searching: %s." % revealed, "The party learned the location of %s from another survivor." % revealed)
++            else:
++                resources["Raw Food"] += 2
++                _queue_field_result(event, "A Small Favor", "They cannot offer a place you have not already found, but they hand over two usable food items before leaving.", "A survivor repaid the party with food.")
++        "recruit_offer_decline":
++            _queue_field_result(event, "Parting Ways", "Nobody makes promises. You trade names, wish each other luck, and head in opposite directions.")
++
+         "backpack_grab":
+-            if lead != null and rng.randf() < 0.70:
++            var rb = rng.randf()
++            if rb < 0.68:
+                 inventory_gear.append("School Backpack")
+                 resources["Cooked Food"] += 1
+-                toast_requested.emit("Found a School Backpack and food.")
++                _queue_field_result(event, "Worth the Risk", "The bag is real and nobody is waiting on it. Inside is a sealed snack and a few useless personal items.", "The party recovered a School Backpack and food from an exposed road.")
++            elif rb < 0.88:
++                inventory_gear.append("School Backpack")
++                if lead != null:
++                    lead["stress"] = min(100.0, float(lead["stress"]) + 6.0)
++                _queue_field_result(event, "Noise in the Alley", "You get the pack, but something moves close enough to make the grab feel like a bad idea. The party leaves quickly.", "The party grabbed an exposed backpack and drew unwanted attention.")
+             else:
+-                if lead != null: _apply_injury(lead, "Hurt")
+-            _finish_event_expedition(event, true)
++                if lead != null:
++                    _apply_injury(lead, "Hurt")
++                _queue_field_result(event, "Not Unattended", "A dead hand snaps out from under a wreck as the bag is lifted. You get away, but not cleanly.", "A scavenging grab ended in an injury.")
+         "backpack_watch":
+             if lead != null:
+-                var r = skill_check(lead, "Survival", 8)
++                var rw = skill_check(lead, "Survival", 8)
+                 add_skill_xp(lead, "Survival", 4)
+-                if r >= 0:
++                if rw >= 1:
+                     inventory_gear.append("School Backpack")
+-                    toast_requested.emit("Careful observation paid off: School Backpack recovered.")
++                    resources["Cooked Food"] += 1
++                    if rw == 2:
++                        resources["Ammo"] += 1
++                    _queue_field_result(event, "Clear Enough", "After several quiet minutes, the street tells you what you needed to know. The pack is safe to recover." + (" A loose round under a nearby seat is a bonus." if rw == 2 else ""), "Careful observation turned an exposed backpack into safe loot.")
++                elif rw == 0:
++                    inventory_gear.append("School Backpack")
++                    lead["stress"] = min(100.0, float(lead["stress"]) + 2.0)
++                    _queue_field_result(event, "Probably Safe", "You never get a perfect read on the street, but nothing closes in. The bag comes with you.")
+                 else:
+-                    lead["stress"] = min(100.0, float(lead["stress"]) + 3.0)
+-            _finish_event_expedition(event, true)
++                    lead["stress"] = min(100.0, float(lead["stress"]) + 4.0)
++                    _queue_field_result(event, "Someone Else Was Watching", "A shape appears two blocks away and disappears when noticed. Keeping the bag is not worth showing them where you are going.")
++
+         "inside_call":
+-            if rng.randf() < 0.55 and population() < shelter_capacity() + 1:
+-                _add_recruit("", ids)
+-            elif lead != null:
+-                lead["stress"] = min(100.0, float(lead["stress"]) + 4.0)
+-            _finish_event_expedition(event, true)
++            var kind = event.get("context", {}).get("inside_kind", "empty")
++            if kind == "survivor":
++                var rs = skill_check(lead, "Social", 10) if lead != null else -1
++                if lead != null: add_skill_xp(lead, "Social", 6)
++                if rs >= 0:
++                    _queue_recruit_offer(event, "A Voice Answers", "After a long silence, a frightened survivor opens the door just enough to talk.", "house_survivor")
++                else:
++                    if lead != null: lead["stress"] = min(100.0, float(lead["stress"]) + 3.0)
++                    _queue_field_result(event, "No Trust", "Someone is definitely inside, but they refuse to answer again. Pushing harder would turn a conversation into a fight.")
++            elif kind == "zombie":
++                var rz = skill_check(lead, "Combat", 8, _equipment_combat_bonus(lead)) if lead != null else -1
++                if lead != null: add_skill_xp(lead, "Combat", 5)
++                if rz < 0 and lead != null: _apply_injury(lead, "Hurt")
++                else: resources["Raw Food"] += 1
++                _queue_field_result(event, "The Answer Is Dead", "The call brings a single infected body through the doorway. At least now the house is quieter." + (" A little usable food remains in the kitchen." if rz >= 0 else ""), "The party called an infected occupant out of a house.")
++            elif kind == "hostile":
++                var rh = skill_check(lead, "Social", 13) if lead != null else -1
++                if rh >= 1:
++                    _queue_field_result(event, "A Bad Conversation Ends Well", "The voice inside is armed and angry, but not suicidal. Both sides agree to leave it there.")
++                elif rh == 0 and int(resources.get("Cooked Food", 0)) > 0:
++                    resources["Cooked Food"] -= 1
++                    _queue_field_result(event, "A Toll", "They demand food for letting you walk away without trouble. One meal is cheaper than a gunfight.")
++                else:
++                    if lead != null: _apply_injury(lead, "Hurt")
++                    _queue_field_result(event, "Shots Through the Door", "The conversation turns ugly fast. The party escapes, but not untouched.", "An attempted contact with armed occupants ended violently.")
++            else:
++                resources["Cloth"] += 1
++                _queue_field_result(event, "Nothing Human", "No one answers. A trapped animal bolts from the back of the house when you finally approach. A blanket near the door is still usable.")
+         "inside_quiet":
+-            if lead != null:
+-                var r2 = skill_check(lead, "Survival", 10)
+-                if r2 >= 1 and rng.randf() < 0.55 and population() < shelter_capacity() + 1:
+-                    _add_recruit("", ids)
+-                elif r2 < 0:
++            var ri = skill_check(lead, "Survival", 10) if lead != null else -1
++            if lead != null: add_skill_xp(lead, "Survival", 5)
++            var ik = event.get("context", {}).get("inside_kind", "empty")
++            if ik == "survivor" and ri >= 0:
++                _queue_recruit_offer(event, "You Find a Survivor", "You locate them before they locate you. Once the initial panic passes, they are willing to talk.", "house_survivor")
++            elif ik == "zombie":
++                if ri < 0 and lead != null:
+                     _apply_injury(lead, "Hurt")
+-            _finish_event_expedition(event, true)
++                    _queue_field_result(event, "Too Close", "The thing behind the curtain is dead and much closer than expected. The quiet entry becomes a scramble back outside.")
++                else:
++                    resources["Cooked Food"] += 1
++                    resources["Cloth"] += 1
++                    _queue_field_result(event, "A Dead House", "You get the drop on the infected occupant and search without drawing the whole block. A little food and cloth remain.")
