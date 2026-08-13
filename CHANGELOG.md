@@ -2,6 +2,29 @@
 
 This file tracks player-facing changes to the playable Alpha builds.
 
+## Alpha 0.2 — Tactical Expedition Encounters — 2026-08-12
+
+### Tactical Combat
+- Exploration can now break into a **portrait, turn-based tactical encounter** instead of resolving every dangerous situation as text and dice.
+- Tactical encounters use the **actual First Fire expedition survivor**, including their six skills, fatigue, stress, condition, equipped weapon, clothing, pack/tool context, and shared ammunition supply.
+- A second survivor sent on the expedition now appears as a real **companion on the tactical board**, follows and supports the lead survivor, and can be injured or killed during the encounter.
+- Tactical wounds, deaths, Combat XP, fatigue, stress, and ammunition use return to the persistent camp state after the encounter.
+- Tactical combat uses directional vision, fog of war, remembered last-seen zombies, approximate sound locations, facing, doors, glass, environmental obstacles, explosive hazards, stealth/rear advantages, melee, firearms, and physical pre-placed zombies.
+- Zombies that currently see the player get a red threat ring plus the global **SPOTTED** warning; once line of sight is broken they pursue the last confirmed position rather than tracking through walls.
+- Closed doors open on the first forward action; an open door can then be crossed normally.
+- Mobile input disables touch-to-mouse emulation so one touch has one gameplay path.
+
+### Expedition Encounter Types
+- **Survivor Rescue:** reach the stranded survivor, then escape. A successful rescue feeds into First Fire's existing survivor/recruit decision popup rather than auto-recruiting them.
+- **Explore Location:** reach and search a randomly named location, then escape for a modest extra loot result before the expedition continues.
+- **Ambush:** the party is jumped; there is nothing to clear or collect, and the objective is simply to break contact and reach the exit.
+- Encounter mix varies by zone, with deeper/industrial travel leaning more toward ambushes and commercial/residential travel leaning more toward locations to explore.
+- Tactical encounters replace the expedition's abstract routine-danger resolution for that run, preventing survivors from being hit by a second invisible combat roll after escaping the board.
+
+### Persistence
+- Active tactical encounters are saved with survivor health, positions, facing, objective progress, zombie state, doors, broken glass, and removed hazards so a browser reload can resume the same fight.
+- Save schema advanced to **3**; older Alpha saves are intentionally invalidated rather than migrated.
+
 ## Alpha 0.1 — Hard Save Reset Policy — 2026-08-12
 
 ### Saves
