@@ -1,0 +1,311 @@
+--- scripts/Game.gd
++++ scripts/Game.gd
+@@ -7,7 +7,7 @@
+ 
+ const D = preload("res://scripts/FFData.gd")
+ const SAVE_PATH := "user://first_fire_alpha01.json"
+-const DAY_SECONDS := 240.0
++const DAY_SECONDS := 120.0
+ 
+ var rng := RandomNumberGenerator.new()
+ var sim_paused := false
+@@ -370,7 +370,12 @@
+     for s in survivors:
+         if s["condition"] == "Dead":
+             continue
++
++        # Idle survivors recover automatically while remaining Available for work.
++        # "Resting" is kept only as a legacy save-state and is normalized to Available.
+         if s["status"] == "Resting":
++            s["status"] = "Available"
++        if s["status"] == "Available":
+             var fatigue_rate = 0.5 if buildings.get("Cabin", false) else (1.0 / 3.0)
+             var stress_rate = (1.0 / 6.0) if buildings.get("Cabin", false) else 0.1
+             if leader_id != -1:
+@@ -398,17 +403,6 @@
+             if float(s["task"]["remaining"]) <= 0.0:
+                 _complete_task(s)
+ 
+-func set_resting(sid, value):
+-    var s: Variant = get_survivor(sid)
+-    if s == null or s["condition"] == "Dead":
+-        return
+-    if value and s["status"] == "Available":
+-        s["status"] = "Resting"
+-    elif not value and s["status"] == "Resting":
+-        s["status"] = "Available"
+-    save_game()
+-    state_changed.emit()
+-
+ func treat_survivor(sid):
+     var s: Variant = get_survivor(sid)
+     if s == null or s["condition"] == "Healthy" or s["condition"] == "Dead":
+@@ -421,7 +415,7 @@
+             return false
+         components["Sterile Dressing"] -= 1
+         s["injury_remaining"] = min(float(s["injury_remaining"]), 30.0)
+-        s["status"] = "Resting"
++        s["status"] = "Available"
+     else:
+         if int(resources.get("Medicine", 0)) <= 0:
+             toast_requested.emit("You need Medicine.")
+@@ -482,7 +476,7 @@
+         elif s["condition"] == "Wounded":
+             s["condition"] = "Hurt"
+             s["injury_remaining"] = 60.0
+-        s["status"] = "Resting"
++        s["status"] = "Available"
+         toast_requested.emit("%s's treatment is complete." % s["name"])
+     save_game()
+     state_changed.emit()
+@@ -938,38 +932,83 @@
+ 
+ func _roll_loot(exp, party):
+     var zone = exp["zone"]
+-    var base_rolls = int(D.ZONES[zone]["loot_rolls"])
++    var target_items = _loot_item_target(zone)
+     var pressure = int(zone_pressure.get(zone, 0))
+     if pressure >= 85:
+-        base_rolls = max(1, base_rolls - 3)
++        target_items = max(0, target_items - 2)
+     elif pressure >= 60:
+-        base_rolls = max(1, base_rolls - 2)
+-    elif pressure >= 30:
+-        base_rolls = max(1, base_rolls - 1)
++        target_items = max(0, target_items - 1)
++
+     var best_scav = 0
+     for s in party:
+         best_scav = max(best_scav, int(s["skills"]["Scavenging"]))
+-    if best_scav >= 3: base_rolls += 1
+-    if best_scav >= 6: base_rolls += 1
++    # Skill improves reliability without returning to giant Alpha loot piles.
++    if best_scav >= 3 and rng.randf() < 0.20:
++        target_items += 1
++    if best_scav >= 6 and rng.randf() < 0.15:
++        target_items += 1
++
++    var zone_cap = {
++        "Camp Perimeter": 3, "Nearby Streets": 4, "Residential Blocks": 5,
++        "Commercial Fringe": 6, "Industrial Edge": 7
++    }[zone]
++    target_items = min(target_items, int(zone_cap))
++
+     var capacity = 0
+     for s in party:
+         capacity += _pack_capacity(s)
++    target_items = min(target_items, capacity)
++
+     var loot = {}
+-    var used = 0
+-    for i in range(base_rolls):
++    for i in range(target_items):
+         var key = _weighted_loot_pick(zone, exp["focus"])
+-        var qty = _loot_quantity(zone)
+-        qty = min(qty, capacity - used)
+-        if qty <= 0:
+-            break
+-        loot[key] = int(loot.get(key, 0)) + qty
+-        used += qty
++        loot[key] = int(loot.get(key, 0)) + 1
++
+     var leader: Variant = get_survivor(leader_id)
+-    if leader != null and leader["leader_ability"] == "Provider" and used < capacity and rng.randf() < 0.25:
++    if leader != null and leader["leader_ability"] == "Provider" and target_items < capacity and target_items < int(zone_cap) and rng.randf() < 0.15:
+         var bonus_key = _weighted_loot_pick(zone, exp["focus"])
+         loot[bonus_key] = int(loot.get(bonus_key, 0)) + 1
+     return loot
+ 
++func _loot_item_target(zone):
++    var r = rng.randf()
++    # Total items per routine expedition. Zero-result runs become less common
++    # as survivors push farther from camp, while maximum hauls rise slowly.
++    if zone == "Camp Perimeter":
++        if r < 0.25: return 0
++        if r < 0.70: return 1
++        if r < 0.95: return 2
++        return 3
++    if zone == "Nearby Streets":
++        if r < 0.15: return 0
++        if r < 0.45: return 1
++        if r < 0.80: return 2
++        if r < 0.95: return 3
++        return 4
++    if zone == "Residential Blocks":
++        if r < 0.08: return 0
++        if r < 0.30: return 1
++        if r < 0.60: return 2
++        if r < 0.85: return 3
++        if r < 0.97: return 4
++        return 5
++    if zone == "Commercial Fringe":
++        if r < 0.04: return 0
++        if r < 0.20: return 1
++        if r < 0.45: return 2
++        if r < 0.70: return 3
++        if r < 0.88: return 4
++        if r < 0.97: return 5
++        return 6
++    if r < 0.02: return 0
++    if r < 0.12: return 1
++    if r < 0.32: return 2
++    if r < 0.57: return 3
++    if r < 0.77: return 4
++    if r < 0.89: return 5
++    if r < 0.97: return 6
++    return 7
++
+ func _weighted_loot_pick(zone, focus):
+     var table = D.ZONES[zone]["loot"]
+     var total = 0.0
+@@ -990,24 +1029,6 @@
+             return entry[0]
+     return weighted.back()[0]
+ 
+-func _loot_quantity(zone):
+-    var r = rng.randf()
+-    if zone == "Camp Perimeter":
+-        return 2 if r < 0.20 else 1
+-    if zone == "Nearby Streets":
+-        return 2 if r < 0.20 else 1
+-    if zone == "Residential Blocks":
+-        if r < 0.05: return 3
+-        if r < 0.35: return 2
+-        return 1
+-    if zone == "Commercial Fringe":
+-        if r < 0.10: return 3
+-        if r < 0.45: return 2
+-        return 1
+-    if r < 0.15: return 3
+-    if r < 0.55: return 2
+-    return 1
+-
+ func _pack_capacity(s):
+     var pack = s["equipment"].get("Pack", "")
+     if pack != "" and D.GEAR.has(pack):
+@@ -1985,7 +2006,7 @@
+             _resolve_fight(event, "settle")
+         "camp_refuse_rest":
+             if lead != null:
+-                lead["status"] = "Resting"
++                lead["fatigue"] = max(0.0, float(lead["fatigue"]) - 15.0)
+                 lead["stress"] = max(0.0, float(lead["stress"]) - 5.0)
+         "camp_refuse_force":
+             if lead != null:
+@@ -2505,6 +2526,8 @@
+             s["leader_ability"] = _derive_leader_ability(s)
+         if not s.has("status"):
+             s["status"] = "Available"
++        elif s["status"] == "Resting":
++            s["status"] = "Available"
+         if not s.has("condition"):
+             s["condition"] = "Healthy"
+         if not s.has("task"):
+--- scripts/FFData.gd
++++ scripts/FFData.gd
+@@ -80,48 +80,48 @@
+ 
+ const ZONES := {
+     "Camp Perimeter": {
+-        "duration": 10.0, "danger": "Minimal", "fatigue": 4, "loot_rolls": 2,
++        "duration": 10.0, "danger": "Minimal", "fatigue": 4, "loot_rolls": 1,
+         "pressure": 10, "event_chance": 0.02,
+         "loot": {
+-            "Wood": 25, "Dirty Water": 14, "Plastic": 13, "Cloth": 9,
+-            "Scrap Metal": 9, "Raw Food": 14, "Cooked Food": 8,
+-            "Hardware": 4, "Clean Water": 4
++            "Dirty Water": 30, "Raw Food": 24,
++            "Wood": 12, "Plastic": 9, "Cloth": 8, "Scrap Metal": 7, "Hardware": 4,
++            "Clean Water": 5, "Cooked Food": 2
+         }
+     },
+     "Nearby Streets": {
+-        "duration": 15.0, "danger": "Low", "fatigue": 6, "loot_rolls": 3,
++        "duration": 15.0, "danger": "Low", "fatigue": 6, "loot_rolls": 1,
+         "pressure": 8, "event_chance": 0.08,
+         "loot": {
+-            "Wood": 12, "Cooked Food": 18, "Cloth": 10, "Dirty Water": 8,
+-            "Clean Water": 8, "Raw Food": 16, "Plastic": 9, "Scrap Metal": 9,
+-            "Hardware": 7, "Medicine": 1, "Seeds": 2
++            "Dirty Water": 28, "Raw Food": 22,
++            "Wood": 11, "Plastic": 9, "Cloth": 8, "Scrap Metal": 8, "Hardware": 6,
++            "Clean Water": 5, "Cooked Food": 2, "Seeds": 2, "Medicine": 1
+         }
+     },
+     "Residential Blocks": {
+-        "duration": 25.0, "danger": "Moderate", "fatigue": 10, "loot_rolls": 4,
++        "duration": 25.0, "danger": "Moderate", "fatigue": 10, "loot_rolls": 1,
+         "pressure": 6, "event_chance": 0.18,
+         "loot": {
+-            "Cooked Food": 22, "Clean Water": 10, "Cloth": 10, "Raw Food": 16,
+-            "Wood": 7, "Plastic": 7, "Hardware": 8, "Scrap Metal": 6,
+-            "Dirty Water": 4, "Medicine": 5, "Seeds": 3, "Ammo": 2
++            "Dirty Water": 25, "Raw Food": 20,
++            "Cloth": 10, "Wood": 9, "Plastic": 9, "Hardware": 8, "Scrap Metal": 7,
++            "Clean Water": 5, "Cooked Food": 2, "Medicine": 4, "Seeds": 3, "Ammo": 2
+         }
+     },
+     "Commercial Fringe": {
+-        "duration": 40.0, "danger": "High", "fatigue": 16, "loot_rolls": 5,
++        "duration": 40.0, "danger": "High", "fatigue": 16, "loot_rolls": 1,
+         "pressure": 5, "event_chance": 0.28,
+         "loot": {
+-            "Hardware": 14, "Cooked Food": 18, "Scrap Metal": 13, "Clean Water": 7,
+-            "Plastic": 9, "Cloth": 7, "Medicine": 8, "Ammo": 6,
+-            "Wood": 4, "Raw Food": 8, "Seeds": 4, "Dirty Water": 2
++            "Dirty Water": 22, "Raw Food": 18,
++            "Hardware": 12, "Scrap Metal": 11, "Plastic": 10, "Cloth": 9, "Wood": 7,
++            "Clean Water": 5, "Cooked Food": 2, "Medicine": 5, "Ammo": 4, "Seeds": 3
+         }
+     },
+     "Industrial Edge": {
+-        "duration": 60.0, "danger": "Severe", "fatigue": 22, "loot_rolls": 6,
++        "duration": 60.0, "danger": "Severe", "fatigue": 22, "loot_rolls": 1,
+         "pressure": 4, "event_chance": 0.35,
+         "loot": {
+-            "Scrap Metal": 24, "Hardware": 20, "Plastic": 13, "Ammo": 8,
+-            "Wood": 8, "Dirty Water": 4, "Cloth": 5, "Cooked Food": 6,
+-            "Clean Water": 3, "Medicine": 3, "Raw Food": 3, "Seeds": 3
++            "Dirty Water": 20, "Raw Food": 16,
++            "Scrap Metal": 14, "Hardware": 12, "Plastic": 10, "Wood": 8, "Cloth": 7,
++            "Clean Water": 5, "Cooked Food": 2, "Ammo": 5, "Medicine": 3, "Seeds": 2
+         }
+     }
+ }
+--- scripts/Main.gd
++++ scripts/Main.gd
+@@ -681,6 +681,8 @@
+     content_box.add_child(_make_label("%s  •  %s  •  %s" % [s["background"], s["condition"], s["status"]], 14))
+     content_box.add_child(_make_label("Traits: %s" % ", ".join(s["traits"]), 14))
+     content_box.add_child(_make_label("Fatigue %.0f/100  •  Stress %.0f/100" % [float(s["fatigue"]), float(s["stress"])], 14))
++    if s["status"] == "Available" and s["condition"] != "Dead":
++        content_box.add_child(_make_label("Idle — recovering fatigue and stress automatically.", 12))
+     if s["condition"] != "Dead":
+         var big_send = Button.new()
+         big_send.text = "SEND %s OUT" % str(s["name"]).to_upper()
+@@ -722,7 +724,7 @@
+             row.add_child(label)
+             var equip = Button.new()
+             equip.text = "EQUIP"
+-            equip.disabled = s["status"] not in ["Available", "Resting"]
++            equip.disabled = s["status"] != "Available"
+             equip.pressed.connect(_on_equip_pressed.bind(gear))
+             row.add_child(equip)
+             content_box.add_child(row)
+@@ -731,15 +733,9 @@
+     content_box.add_child(_heading("Actions", 18))
+     var actions = HBoxContainer.new()
+     if s["condition"] != "Dead":
+-        var rest = Button.new()
+-        rest.text = "STOP REST" if s["status"] == "Resting" else "REST"
+-        rest.disabled = s["status"] not in ["Available", "Resting"]
+-        rest.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+-        rest.pressed.connect(func(): Game.set_resting(s["id"], s["status"] != "Resting"))
+-        actions.add_child(rest)
+         var treat = Button.new()
+         treat.text = "TREAT"
+-        treat.disabled = s["condition"] == "Healthy" or s["status"] not in ["Available", "Resting"]
++        treat.disabled = s["condition"] == "Healthy" or s["status"] != "Available"
+         treat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+         treat.pressed.connect(func(): Game.treat_survivor(s["id"]))
+         actions.add_child(treat)
