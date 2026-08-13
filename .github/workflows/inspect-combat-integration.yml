@@ -1,0 +1,63 @@
+name: Inspect First Fire combat integration points
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct current source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p src
+          unzip -q -o first_fire_alpha01_web_ready.zip -d src
+          cat .deploy/alpha01_patch_00.part .deploy/alpha01_patch_01.part .deploy/alpha01_patch_02.part .deploy/alpha01_patch_03.part .deploy/alpha01_patch_04.part > /tmp/base.patch
+          cd src/first_fire_alpha01_web_ready
+          patch -p0 --batch < /tmp/base.patch
+          patch -p0 --batch < "$GITHUB_WORKSPACE/.deploy/balance_pass.patch"
+          patch -p0 --batch < "$GITHUB_WORKSPACE/.deploy/save_schema_reset.patch"
+      - name: Print integration surfaces
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          root = Path('src/first_fire_alpha01_web_ready')
+          game = (root/'scripts/Game.gd').read_text()
+          main = (root/'scripts/Main.gd').read_text()
+          data = (root/'scripts/FFData.gd').read_text()
+
+          def funcs(text):
+              lines=text.splitlines()
+              starts=[]
+              for i,l in enumerate(lines):
+                  if l.startswith('func '): starts.append(i)
+              out={}
+              for n,i in enumerate(starts):
+                  j=starts[n+1] if n+1<len(starts) else len(lines)
+                  name=lines[i].split('func ',1)[1].split('(',1)[0].strip()
+                  out[name]='\n'.join(lines[i:j])
+              return out
+
+          gf=funcs(game); mf=funcs(main)
+          wanted_game = [n for n in gf if any(k in n.lower() for k in ['expedition','event','encounter','survivor','loot','fight','injur','damage','gear','equipment','save','load'])]
+          wanted_main = [n for n in mf if any(k in n.lower() for k in ['expedition','event','survivor','result','popup','screen','view'])]
+          print('=== GAME FUNCTIONS ===')
+          for n in wanted_game:
+              print(f'\n--- {n} ---\n{gf[n]}')
+          print('\n=== MAIN FUNCTIONS ===')
+          for n in wanted_main:
+              print(f'\n--- {n} ---\n{mf[n]}')
+          print('\n=== DATA CONSTANT HEADINGS / GEAR / ZONES ===')
+          lines=data.splitlines()
+          for i,l in enumerate(lines):
+              if l.startswith('const GEAR') or l.startswith('const ZONES') or l.startswith('const ENCOUNTERS') or l.startswith('const '):
+                  if any(k in l for k in ['GEAR','ZONES','ENCOUNTER','WEAPON','ARMOR']):
+                      print('\n'.join(lines[i:min(len(lines), i+140)]))
