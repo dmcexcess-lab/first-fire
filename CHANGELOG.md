@@ -2,6 +2,31 @@
 
 This file tracks player-facing changes to the playable Alpha builds.
 
+## Alpha 0.1 — Loot / Recovery / Clock Pass — 2026-08-12
+
+### Scavenging & Loot
+- Routine expedition rewards now use a **total-haul** roll instead of multiple quantity rolls.
+- **Camp Perimeter:** 0–3 total items per run; 25% chance of returning empty-handed.
+- Empty-run chance falls as zones get farther from camp: **15% Nearby / 8% Residential / 4% Commercial / 2% Industrial**.
+- Maximum routine hauls rise gradually by zone: **3 / 4 / 5 / 6 / 7** items.
+- Scavenging skill can occasionally add one extra item, but cannot exceed the zone cap.
+- High zone depletion/pressure can reduce the final haul.
+- Routine loot priority was rebuilt around: **Dirty Water most common → Raw Food → materials → Clean Water → Cooked Food rarest**.
+- Cooked food remains intentionally rare in the world because Raw Food can be processed efficiently at camp.
+
+### Survivor Recovery
+- Survivors now **recover fatigue and stress automatically whenever they are Available and doing nothing**.
+- Idle recovery does not make survivors unavailable; they can be assigned to work or expeditions immediately.
+- The manual **REST / STOP REST** action has been removed.
+- Old saves with survivors marked Resting automatically normalize them back to Available.
+- Hurt/Wounded natural recovery now progresses while the survivor is idle and Available.
+- Treatment completion returns survivors to Available rather than leaving them in a Resting state.
+- The camp event option to give someone time to rest now grants an immediate fatigue/stress reduction instead of locking them into Resting.
+
+### Alpha Clock
+- Full in-game day accelerated from **4 real minutes to 2 real minutes** for Alpha testing.
+- Expedition/crafting/building timer lengths are otherwise unchanged.
+
 ## Alpha 0.1 — Systems & Balance Pass — 2026-08-12
 
 ### Encounters
