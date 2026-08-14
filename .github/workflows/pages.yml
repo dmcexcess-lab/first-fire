@@ -31,6 +31,7 @@ jobs:
           test -f game/scripts/Main.gd
           test -f game/scripts/FFData.gd
           test -f game/scripts/FFCombat.gd
+          test -f game/scripts/FFTacticalVisuals.gd
           test -f game/scripts/FFExpeditionRules.gd
           test -f game/scripts/FFTacticalScenarios.gd
           test -f game/scripts/FFFieldEventsLegacy.gd
@@ -44,11 +45,13 @@ jobs:
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
-          grep -q 'const SAVE_SCHEMA_VERSION := 3' game/scripts/Game.gd
+          grep -q 'const TacticalVisuals = preload' game/scripts/Game.gd
+          grep -q 'const SAVE_SCHEMA_VERSION := 4' game/scripts/Game.gd
           grep -q 'var current_combat := {}' game/scripts/Game.gd
           grep -q 'func resolve_combat' game/scripts/Game.gd
           grep -q 'sim_paused = true' game/scripts/Game.gd
           grep -q 'signal encounter_finished' game/scripts/FFCombat.gd
+          grep -q 'TacticalVisuals.draw_survivor' game/scripts/FFCombat.gd
           grep -q 'pointing/emulate_mouse_from_touch=false' game/project.godot
           grep -q 'vram_texture_compression/for_mobile=false' game/export_presets.cfg
           if grep -q 'func _normalize_loaded_state' game/scripts/Game.gd; then exit 1; fi
