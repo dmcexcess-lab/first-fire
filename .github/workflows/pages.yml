@@ -64,6 +64,9 @@ jobs:
           test ! -e .github/scripts/temp_tactical_items_patch.py
           test ! -e .github/scripts/temp_tactical_items_trigger.txt
           test ! -e .github/workflows/temp-tactical-items.yml
+          test ! -e .github/scripts/temp_field_loot_fix.py
+          test ! -e .github/scripts/temp_field_loot_fix_trigger.txt
+          test ! -e .github/workflows/temp-field-loot-fix.yml
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
