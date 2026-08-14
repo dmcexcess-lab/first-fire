@@ -453,10 +453,10 @@ func treat_survivor(sid):
             return false
         resources["Medicine"] -= 1
         s["status"] = "Recovering"
-        var base = 45.0 if s["condition"] == "Wounded" else 120.0
-        var medical_skill = _best_available_skill("Medical", sid)
-        var reduction = min(0.35, medical_skill * 0.04)
-        var treatment_time := base * (1.0 - reduction) * CampLifeRules.treatment_time_multiplier(bool(buildings.get("Infirmary", false)))
+        var base: float = 45.0 if s["condition"] == "Wounded" else 120.0
+        var medical_skill: int = int(_best_available_skill("Medical", sid))
+        var reduction: float = minf(0.35, float(medical_skill) * 0.04)
+        var treatment_time: float = base * (1.0 - reduction) * CampLifeRules.treatment_time_multiplier(bool(buildings.get("Infirmary", false)))
         s["task"] = {"kind": "treatment", "remaining": treatment_time, "duration": base, "target": sid}
     save_game()
     state_changed.emit()
