@@ -55,6 +55,12 @@ jobs:
           test ! -e .github/scripts/temp_beta_freeze_patch.py
           test ! -e .github/scripts/temp_beta_freeze_trigger.txt
           test ! -e .github/workflows/temp-beta-freeze.yml
+          test ! -e .github/scripts/temp_beta_fix.py
+          test ! -e .github/scripts/temp_beta_fix_trigger.txt
+          test ! -e .github/workflows/temp-beta-fix.yml
+          test ! -e .github/scripts/temp_beta_logic_fix.py
+          test ! -e .github/scripts/temp_beta_logic_fix_trigger.txt
+          test ! -e .github/workflows/temp-beta-logic-fix.yml
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
