@@ -1,0 +1,36 @@
+name: Temporary tactical 0.3D compile fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply compile fixes and rasterize atlas
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if test -f game/assets/tactical_atlas.png && grep -q 'preload("res://assets/tactical_atlas.png")' game/scripts/FFTacticalTiles.gd; then
+            echo '0.3D compile fix already applied.'
+            exit 0
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          rsvg-convert -w 512 -h 512 game/assets/tactical_atlas.svg -o game/assets/tactical_atlas.png
+          python3 .github/scripts/temp_tactical03d_fix.py | tee /tmp/tactical03d-fix.log
+          grep -q 'FIRST_FIRE_TACTICAL_03D_FIX_OK' /tmp/tactical03d-fix.log
+          test -s game/assets/tactical_atlas.png
+          grep -q 'preload("res://assets/tactical_atlas.png")' game/scripts/FFTacticalTiles.gd
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game/assets/tactical_atlas.png game/scripts/FFTacticalTiles.gd game/scripts/FFCombat.gd
+          git commit -m 'Fix tactical atlas loading and strict typing'
+          git push origin HEAD:main
