@@ -44,21 +44,27 @@ jobs:
           test -f game/scripts/FFSaveCodec.gd
           test -f game/scripts/FFCampLifeRules.gd
           test -f game/scripts/FFCampSocial.gd
+          test -f game/scripts/FFCampView.gd
           test -f game/scripts/ci/FFArchitectureSmoke.gd
           test ! -e first_fire_alpha01_web_ready.zip
           test ! -d .deploy
           test ! -d .razor
+          test ! -e .github/scripts/temp_camp03e_patch.py
+          test ! -e .github/scripts/temp_camp03e_trigger.txt
+          test ! -e .github/workflows/temp-camp03e.yml
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
           grep -q 'const TacticalVisuals = preload' game/scripts/Game.gd
+          grep -q 'const CampView = preload' game/scripts/Main.gd
           grep -q 'const TacticalEnvironments = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalLighting = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalTiles = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalTime = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalSound = preload' game/scripts/FFCombat.gd
           grep -q 'const Environments = preload' game/scripts/FFTacticalScenarios.gd
-          grep -q 'const SAVE_SCHEMA_VERSION := 5' game/scripts/Game.gd
+          grep -q 'const SAVE_SCHEMA_VERSION := 6' game/scripts/Game.gd
+          grep -Fq 'founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight"' game/scripts/Game.gd
           grep -q 'var current_combat := {}' game/scripts/Game.gd
           grep -q 'func resolve_combat' game/scripts/Game.gd
           grep -q 'sim_paused = true' game/scripts/Game.gd
