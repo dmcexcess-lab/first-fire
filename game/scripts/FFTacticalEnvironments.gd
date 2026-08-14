@@ -191,7 +191,7 @@ static func validate_layout(spec: Dictionary) -> bool:
     while not queue.is_empty():
         var p: Vector2i = queue.pop_front()
         for d in [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]:
-            var n := p + d
+            var n: Vector2i = p + Vector2i(d)
             if not _inside(n) or blocked.has(n) or seen.has(n):
                 continue
             seen[n] = true

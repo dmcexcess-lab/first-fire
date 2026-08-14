@@ -249,7 +249,7 @@ func choose_far_open_cell() -> Vector2i:
         var p: Vector2i = queue.pop_front()
         var base_distance := int(distances[p])
         for d in DIRS:
-            var n := p + d
+            var n: Vector2i = p + Vector2i(d)
             if not inside(n) or walls.has(n) or obstacles.has(n) or distances.has(n):
                 continue
             distances[n] = base_distance + 1
