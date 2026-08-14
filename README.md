@@ -8,13 +8,13 @@ Created by DMC and AI.
 
 **Web build:** https://dmcexcess-lab.github.io/first-fire/
 
-The current playable milestone is **Alpha 0.2 — Tactical Expedition Encounters**. The game is designed phone-first and is actively tested in mobile browsers, including iPhone/Safari.
+The current playable milestone is **Alpha 0.2 — Tactical Expedition Encounters**. The game is designed phone-first and actively tested in mobile browsers, including iPhone/Safari.
 
 > Alpha saves may be intentionally invalidated when major systems or save structures change. This is deliberate while the game is still in active development.
 
 ## What you do
 
-Build a fragile survivor camp, keep people fed and supplied, craft and build infrastructure, send real survivors into the outside world, make decisions during encounters, and bring the consequences home.
+Build a fragile survivor camp, keep people fed and supplied, craft and build infrastructure, send real survivors into the outside world, make decisions during tactical encounters, and bring the consequences home.
 
 The field game is about **survival, looting, rescue, investigation, and escape** rather than clearing every enemy from a map.
 
@@ -39,26 +39,36 @@ Survivors are persistent individuals. Their skills, gear, health, fatigue, stres
 
 ## Design direction
 
-First Fire is being built around a few strong rules:
+First Fire is **feature-complete at the pillar level**. Development now focuses on deepening and unifying the existing loop rather than adding another major mode.
 
-- **Simulation first.** Drama should emerge from systems and persistent state rather than an AI director manufacturing trouble.
-- **Survivors are people, not disposable units.** Their condition, skills, equipment, relationships, and history are the real progression system.
-- **No player levels as the main source of power.** Capability comes from use-based skills, gear, health, team composition, and camp infrastructure.
-- **Persistent consequences matter.** Field decisions should affect the settlement and future expeditions.
-- **Extraction over extermination.** Getting what you need and getting home alive is usually more important than killing everything.
-- **Low content count, high implementation depth.** A few complete encounters are preferred over a large pile of placeholder events.
-- **Phone-first usability.** Touch, portrait screen space, browser lifecycle, and mobile performance are design constraints from the start.
+The roadmap moves toward:
 
-## Development status
+- every outside-world event becoming a physical tactical event;
+- camp text events focusing on survivor stories and politics;
+- richer tactical locations/maps/graphics;
+- autonomous survivor social behavior;
+- pets with lightweight persistent needs and autonomous survivor care;
+- vehicles as expedition/logistics equipment and tactical entry/exit anchors;
+- a living 3D camp background that visualizes the simulation without becoming a second control mode.
 
-First Fire is an active Alpha and balance is still moving quickly. Current testing is focused on the early settlement economy, expedition pacing, survivor recovery, encounter quality, and the integration between camp play and tactical field encounters.
+See [`ROADMAP.md`](ROADMAP.md) for the full sequence.
 
-The repository currently reconstructs the playable Godot project during CI from a base Alpha package plus persistent patch/module inputs. This is a development-stage packaging setup, not the intended final project layout.
+## Development architecture
+
+The one-time source razor replaced the historical ZIP/patch/Base64 reconstruction pipeline.
+
+The canonical Godot project now lives directly in [`game/`](game/), and CI builds that source directly.
+
+Durable rules are being separated into clear owners for tactical scenarios, expedition/logistics rules, camp-life tuning, social relationships, save I/O, and tactical runtime. The remaining Alpha 0.2 text-based outside-world encounter catalog is explicitly isolated as legacy code pending the Alpha 0.3 tactical conversion.
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for current ownership.
 
 ## Project documentation
 
-- [`README_CONTEXT.md`](README_CONTEXT.md) — durable game/design context and current product direction
-- [`README_SOPS.md`](README_SOPS.md) — coding, GitHub, architecture, packaging, testing, and deployment SOP for GPT-assisted development
-- [`CHANGELOG.md`](CHANGELOG.md) — player-facing changes by Alpha build
+- [`ROADMAP.md`](ROADMAP.md) — planned development through 1.0
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — canonical source layout and module ownership
+- [`README_CONTEXT.md`](README_CONTEXT.md) — durable game/design context
+- [`README_SOPS.md`](README_SOPS.md) — coding, GitHub, testing, and deployment SOP for GPT-assisted development
+- [`CHANGELOG.md`](CHANGELOG.md) — shipped changes by Alpha build
 
 For development work, **current repository state and the newest explicit design decision are the source of truth**.

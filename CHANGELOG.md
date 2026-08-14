@@ -1,6 +1,29 @@
 # First Fire — Changelog
 
-This file tracks player-facing changes to the playable Alpha builds.
+This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
+
+## Alpha 0.2 — Architecture Razor — 2026-08-13
+
+### Source / Architecture
+- Canonical Godot source now lives directly under `game/`.
+- Removed the active ZIP/patch/Base64 reconstruction chain from the repository tree; Git history retains the old packaging if historical inspection is ever needed.
+- Extracted expedition/logistics rules into `FFExpeditionRules.gd`.
+- Extracted tactical scenario selection/catalog ownership into `FFTacticalScenarios.gd`.
+- Extracted camp-life tuning into `FFCampLifeRules.gd`.
+- Extracted relationship/social-selection rules into `FFCampSocial.gd`.
+- Extracted file/JSON persistence mechanics into `FFSaveCodec.gd`.
+- Isolated the remaining outside-world text encounter catalog in `FFFieldEventsLegacy.gd`, explicitly temporary until Alpha 0.3 converts those situations to tactical encounters.
+- `Game.gd` now delegates these rules to their owners while retaining low-risk compatibility facades where useful.
+
+### CI / Reliability
+- GitHub Pages now builds the canonical `game/` project directly.
+- CI now imports/parses the project, runs deterministic architecture smoke tests, boots the real project headlessly, exports Web, and rejects script/parse/load errors before publication.
+- The stronger startup gate exposed and fixed three pre-existing Godot 4.7 strict type-inference errors in tactical combat that the older export-only pipeline did not catch.
+
+### Compatibility
+- This pass intentionally avoids gameplay balance/content changes.
+- Save schema remains **3**.
+- The legacy save filename remains unchanged so this behavior-preserving refactor does not unnecessarily reset current Alpha saves.
 
 ## Alpha 0.2 — Tactical Expedition Encounters — 2026-08-12
 
