@@ -22,6 +22,7 @@ jobs:
             echo '0.3B environment overhaul already applied.'
             exit 0
           fi
+          sed -i "s/if 'exit_cell' in t:/if 'var exit_cell :=' in t:/" .github/scripts/temp_env03b_patch.py
           python3 .github/scripts/temp_env03b_patch.py
           grep -q 'FIRST_FIRE_ENV03B_PATCH_OK' <(python3 -c 'print("FIRST_FIRE_ENV03B_PATCH_OK")')
           test -f game/scripts/FFTacticalEnvironments.gd
