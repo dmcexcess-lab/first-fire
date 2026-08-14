@@ -20,7 +20,7 @@ static func zombie_location_error(received_intensity: int) -> int:
     return 2
 
 static func player_location_error(awareness: float, received_intensity: int, distance: int) -> int:
-    var error := 3
+    var error: int = 3
     if awareness >= 3.0:
         error -= 1
     if awareness >= 6.0:
@@ -39,10 +39,10 @@ static func estimate_location(source: Vector2i, listener: Vector2i, max_error: i
     var candidates: Array = []
     for y in range(source.y - max_error, source.y + max_error + 1):
         for x in range(source.x - max_error, source.x + max_error + 1):
-            var p := Vector2i(x, y)
+            var p: Vector2i = Vector2i(x, y)
             if p.x < 1 or p.y < 1 or p.x >= width - 1 or p.y >= height - 1:
                 continue
-            var error_distance := abs(p.x - source.x) + abs(p.y - source.y)
+            var error_distance: int = absi(p.x - source.x) + absi(p.y - source.y)
             if error_distance <= max_error:
                 candidates.append(p)
     if candidates.is_empty():
@@ -51,18 +51,21 @@ static func estimate_location(source: Vector2i, listener: Vector2i, max_error: i
     # uncertainty. This prevents the old random-square marker from pointing to a
     # completely unrelated part of the board.
     var weighted: Array = []
-    for p in candidates:
-        var from_source := abs(p.x - source.x) + abs(p.y - source.y)
-        var listener_delta := abs(p.x - listener.x) + abs(p.y - listener.y)
-        var weight := 5 - from_source
-        if listener_delta < abs(source.x - listener.x) + abs(source.y - listener.y):
+    var true_listener_distance: int = absi(source.x - listener.x) + absi(source.y - listener.y)
+    for candidate_value in candidates:
+        var candidate: Vector2i = candidate_value
+        var from_source: int = absi(candidate.x - source.x) + absi(candidate.y - source.y)
+        var listener_delta: int = absi(candidate.x - listener.x) + absi(candidate.y - listener.y)
+        var weight: int = 5 - from_source
+        if listener_delta < true_listener_distance:
             weight += 1
         for i in range(maxi(1, weight)):
-            weighted.append(p)
-    return weighted[rng.randi_range(0, weighted.size() - 1)]
+            weighted.append(candidate)
+    var result: Vector2i = weighted[rng.randi_range(0, weighted.size() - 1)]
+    return result
 
 static func display_label(raw_label: String) -> String:
-    var label := raw_label.strip_edges().to_upper()
+    var label: String = raw_label.strip_edges().to_upper()
     if label.length() <= 16:
         return label
     return label.substr(0, 15) + "…"
@@ -94,4 +97,5 @@ static func ambient_profile(theme: String, time_of_day: String, power_on: bool, 
         options.append({"label": "night wind", "intensity": 17})
     if options.is_empty():
         return {}
-    return options[rng.randi_range(0, options.size() - 1)]
+    var selected: Dictionary = options[rng.randi_range(0, options.size() - 1)]
+    return selected
