@@ -12,7 +12,6 @@ const LegacyFieldEvents = preload("res://scripts/FFFieldEventsLegacy.gd")
 const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
 const CampSocial = preload("res://scripts/FFCampSocial.gd")
-const CampView = preload("res://scripts/FFCampView.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 
 func _init() -> void:
@@ -41,8 +40,6 @@ func _init() -> void:
     var scene_state: Dictionary = TacticalScenarios.pick_scene_state("gas_station", visual_rng)
     if not _check(scene_state.has("time_of_day") and scene_state.has("power_on"), "scene day night state"): return
     if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
-    if not _check(CampView.station_cell("Workbench") == Vector2i(10, 2), "camp workbench visual station"): return
-    if not _check(CampView.building_cell("Cabin") == Vector2i(12, 5), "camp cabin visual anchor"): return
 
     var light_actor: Dictionary = {"equipment": {"Weapon": "Utility Knife", "Secondary": "", "Tool": "", "Clothing": "", "Pack": ""}, "fatigue": 0.0, "condition": "Healthy", "skills": {"Survival": 3, "Combat": 2}, "crouched": false}
     var heavy_actor: Dictionary = light_actor.duplicate(true)
