@@ -1,0 +1,1 @@
+This temporary staging file records the corrected rule while the final README_CONTEXT.md tree update is prepared.
