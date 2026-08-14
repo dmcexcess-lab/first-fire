@@ -31,7 +31,6 @@ var inspector_overlay: Control
 var expedition_overlay: ColorRect
 var expedition_title: Label
 var expedition_zone: OptionButton
-var expedition_focus: OptionButton
 var expedition_companion: OptionButton
 var expedition_specials: VBoxContainer
 
@@ -307,13 +306,6 @@ func _build_expedition_overlay():
     expedition_zone = OptionButton.new()
     expedition_zone.custom_minimum_size = Vector2(0, 44)
     v.add_child(expedition_zone)
-
-    v.add_child(_make_label("Loot Focus", 13))
-    expedition_focus = OptionButton.new()
-    for focus in ["Balanced", "Food & Water", "Materials", "Gear"]:
-        expedition_focus.add_item(focus)
-    expedition_focus.custom_minimum_size = Vector2(0, 44)
-    v.add_child(expedition_focus)
 
     v.add_child(_make_label("Companion", 13))
     expedition_companion = OptionButton.new()
@@ -855,9 +847,8 @@ func _on_expedition_send():
     if expedition_zone.item_count == 0:
         return
     var zone = str(expedition_zone.get_item_metadata(expedition_zone.selected))
-    var focus = expedition_focus.get_item_text(expedition_focus.selected)
     var companion = int(expedition_companion.get_item_metadata(expedition_companion.selected)) if expedition_companion.item_count > 0 else -1
-    if Game.start_expedition(selected_survivor_id, companion, zone, focus):
+    if Game.start_expedition(selected_survivor_id, companion, zone):
         expedition_overlay.visible = false
 
 func _on_special_site_pressed(site):

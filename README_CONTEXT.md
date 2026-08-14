@@ -26,6 +26,7 @@ First Fire is considered **feature-complete at the pillar level**. The roadmap i
 - **Low content count, high implementation depth.** Deepen existing systems before multiplying shallow content.
 - **Low pointless micromanagement.** Idle recovery and social/pet care should be systemic/autonomous when natural.
 - **Phone/Web first.** Touch, portrait layout, browser lifecycle, storage, pause/resume, and mobile Safari constraints are architectural inputs.
+- **Original presentation.** First Fire art should avoid third-party franchise names, logos, characters, or other recognizable branded identifiers unless explicitly requested and appropriate.
 
 ## Outside world vs. camp narrative
 
@@ -89,7 +90,9 @@ Loot priority is approximately **Dirty Water → Raw Food → materials → Clea
 
 ## Current Alpha 0.3A playtest tuning
 
-- Tactical encounter chance now rolls independently from legacy text events: **55% Nearby / 65% Residential / 75% Commercial / 85% Industrial**. Camp Perimeter remains non-tactical.
+- Tactical encounter chance rolls independently from legacy text events and now includes the starting zone: **65% Camp Perimeter / 70% Nearby / 75% Residential / 82% Commercial / 90% Industrial**.
+- Tactical drought protection guarantees a tactical encounter on the next normal field run after two consecutive ordinary runs without one.
+- Expedition dispatch no longer has a loot-focus selector; routine loot follows the zone's natural loot table plus survivor skill/equipment rules.
 - Fatigue gains from expeditions, tactical encounters, crafting/building, and garden work are currently **2×** their original Alpha values. Idle recovery rates are unchanged.
 
 ## Saves

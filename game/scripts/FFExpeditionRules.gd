@@ -4,12 +4,13 @@ class_name FFExpeditionRules
 # Pure expedition rules live here so travel/logistics changes (especially vehicles)
 # do not spread back through Game.gd.
 const TACTICAL_EVENT_CHANCE := {
-    "Camp Perimeter": 0.0,
-    "Nearby Streets": 0.55,
-    "Residential Blocks": 0.65,
-    "Commercial Fringe": 0.75,
-    "Industrial Edge": 0.85,
+    "Camp Perimeter": 0.65,
+    "Nearby Streets": 0.70,
+    "Residential Blocks": 0.75,
+    "Commercial Fringe": 0.82,
+    "Industrial Edge": 0.90,
 }
+const TACTICAL_DROUGHT_LIMIT := 2
 const ZONE_CAPS := {
     "Camp Perimeter": 3,
     "Nearby Streets": 4,
@@ -37,6 +38,9 @@ static func tactical_event_chance(zone: String) -> float:
 
 static func should_trigger_tactical_event(zone: String, rng: RandomNumberGenerator) -> bool:
     return rng.randf() < tactical_event_chance(zone)
+
+static func should_force_tactical(drought_count: int) -> bool:
+    return drought_count >= TACTICAL_DROUGHT_LIMIT
 
 static func zone_cap(zone: String) -> int:
     return int(ZONE_CAPS.get(zone, 3))

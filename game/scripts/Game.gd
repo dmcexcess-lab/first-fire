@@ -604,7 +604,7 @@ func _process_expeditions(delta):
     for eid in finished:
         _finish_expedition(eid)
 
-func start_expedition(primary_id, companion_id, zone, focus):
+func start_expedition(primary_id, companion_id, zone):
     if not unlocked_zones.has(zone) or not D.ZONES.has(zone):
         return false
     var party_ids = [int(primary_id)]
@@ -633,6 +633,7 @@ func start_expedition(primary_id, companion_id, zone, focus):
 
     var event_key = ""
     var combat_kind = ""
+    var tactical_drought = int(flags.get("tactical_drought", 0))
     # Scripted follow-ups have priority. They are consequences of earlier choices,
     # not additional random encounter types.
     if recruit_eligible and flags.has("injured_stranger_return_after"):
@@ -647,24 +648,29 @@ func start_expedition(primary_id, companion_id, zone, focus):
             flags.erase("dog_return_after")
             event_key = "dog_return"
     if event_key == "" and force_recruit:
-        # Recruitment protection now guarantees a real rescue opportunity.
-        # The tactical encounter only gets the stranger out; the existing
-        # recruit popup still decides whether they actually join First Fire.
+        # Recruitment protection guarantees a real rescue opportunity.
         eligible_expeditions_since_recruit = 0
         combat_kind = "rescue"
-    elif event_key == "" and ExpeditionRules.should_trigger_tactical_event(str(zone), rng):
-        # Alpha 0.3 tactical encounters have their own explicit pop rate so they
-        # are common enough to playtest instead of being double-gated by legacy events.
+        flags["tactical_drought"] = 0
+    elif event_key == "" and ExpeditionRules.should_force_tactical(tactical_drought):
+        # After two ordinary field runs without tactical combat, force the next
+        # normal run tactical so Alpha playtesting cannot miss the system forever.
         combat_kind = _pick_tactical_kind(zone)
+        flags["tactical_drought"] = 0
+    elif event_key == "" and ExpeditionRules.should_trigger_tactical_event(str(zone), rng):
+        combat_kind = _pick_tactical_kind(zone)
+        flags["tactical_drought"] = 0
     elif event_key == "" and rng.randf() < float(D.ZONES[zone]["event_chance"]):
         # Temporary legacy text events only roll when no tactical encounter fired.
         event_key = _select_field_event(zone)
+        flags["tactical_drought"] = tactical_drought + 1
+    elif event_key == "":
+        flags["tactical_drought"] = tactical_drought + 1
 
     var exp = {
         "id": next_expedition_id,
         "survivor_ids": party_ids,
         "zone": zone,
-        "focus": focus,
         "duration": duration,
         "remaining": duration,
         "state": "traveling",
@@ -703,7 +709,7 @@ func start_special_site(primary_id, companion_id, site):
     var duration = float(D.SPECIAL_SITES[site]["duration"])
     var exp = {
         "id": next_expedition_id, "survivor_ids": party_ids,
-        "zone": D.SPECIAL_SITES[site]["zone"], "focus": "Special",
+        "zone": D.SPECIAL_SITES[site]["zone"],
         "duration": duration, "remaining": duration, "state": "traveling",
         "event_key": "", "event_triggered": true, "event_trigger_remaining": -1.0,
         "special_site": site,
@@ -819,7 +825,7 @@ func _grant_tactical_explore_reward(exp, lead):
         count += 1
     var found = {}
     for i in range(count):
-        var key = _weighted_loot_pick(exp["zone"], exp.get("focus", "General"))
+        var key = _weighted_loot_pick(exp["zone"])
         resources[key] = int(resources.get(key, 0)) + 1
         found[key] = int(found.get(key, 0)) + 1
     var bits = []
@@ -982,9 +988,16 @@ func _finish_expedition(eid):
     for key in loot.keys():
         if int(loot[key]) > 0:
             loot_text.append("+%d %s" % [loot[key], key])
+    if gear_found != "":
+        loot_text.append("Found %s" % gear_found)
     var names = _party_names(exp["survivor_ids"])
-    _add_history("Day %d — %s returned from %s (%s)." % [day, names, zone, ", ".join(loot_text)])
-    toast_requested.emit("%s returned: %s" % [names, ", ".join(loot_text)])
+    if loot_text.is_empty():
+        _add_history("Day %d — %s returned from %s empty-handed." % [day, names, zone])
+        toast_requested.emit("%s returned empty-handed." % names)
+    else:
+        var haul_summary = ", ".join(loot_text)
+        _add_history("Day %d — %s returned from %s (%s)." % [day, names, zone, haul_summary])
+        toast_requested.emit("%s returned: %s" % [names, haul_summary])
     expeditions.erase(exp)
     _check_game_over()
     save_game()
@@ -1122,28 +1135,24 @@ func _roll_loot(exp, party):
 
     var loot = {}
     for i in range(target_items):
-        var key = _weighted_loot_pick(zone, exp["focus"])
+        var key = _weighted_loot_pick(zone)
         loot[key] = int(loot.get(key, 0)) + 1
 
     var leader: Variant = get_survivor(leader_id)
     if leader != null and leader["leader_ability"] == "Provider" and target_items < capacity and target_items < int(zone_cap) and rng.randf() < 0.15:
-        var bonus_key = _weighted_loot_pick(zone, exp["focus"])
+        var bonus_key = _weighted_loot_pick(zone)
         loot[bonus_key] = int(loot.get(bonus_key, 0)) + 1
     return loot
 
 func _loot_item_target(zone):
     return ExpeditionRules.loot_item_target(str(zone), rng)
 
-func _weighted_loot_pick(zone, focus):
+func _weighted_loot_pick(zone):
     var table = D.ZONES[zone]["loot"]
     var total = 0.0
     var weighted = []
     for key in table.keys():
         var w = float(table[key])
-        if focus == "Food & Water" and ["Raw Food", "Cooked Food", "Dirty Water", "Clean Water"].has(key):
-            w *= 2.0
-        elif focus == "Materials" and ["Wood", "Scrap Metal", "Cloth", "Plastic", "Hardware"].has(key):
-            w *= 1.75
         weighted.append([key, w])
         total += w
     var roll = rng.randf_range(0.0, total)
@@ -1167,8 +1176,6 @@ func _roll_gear(exp, party):
     for s in party:
         best = max(best, int(s["skills"]["Scavenging"]))
     chance += best * 0.015
-    if exp["focus"] == "Gear":
-        chance *= 2.0
     if int(zone_pressure.get(zone, 0)) >= 60:
         chance *= 0.65
     chance = min(chance, 0.35)

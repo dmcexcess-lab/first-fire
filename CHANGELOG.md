@@ -2,6 +2,21 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Alpha 0.3A — Tactical Spawn & Expedition Simplification — 2026-08-13
+
+### Tactical Encounter Reliability
+- Fixed the starting-zone oversight that made **Camp Perimeter incapable of spawning tactical encounters** even though it is the only zone unlocked in a new run.
+- Tactical playtest rates are now 65% Camp Perimeter, 70% Nearby Streets, 75% Residential Blocks, 82% Commercial Fringe, and 90% Industrial Edge.
+- Added drought protection: after two consecutive normal field runs without tactical combat, the next normal run is forced tactical.
+
+### Expedition Dispatch
+- Removed **Loot Focus** from the send-out screen. Expedition choice is now survivor, destination, and optional companion.
+- Routine scavenging no longer receives Food/Water, Materials, or Gear focus multipliers; each zone's natural loot table is authoritative.
+- Empty resource runs now report **returned empty-handed** instead of displaying an unexplained `()`.
+
+### Presentation Policy
+- Added a durable project rule that future First Fire art should avoid third-party franchise names/logos/characters unless explicitly requested and appropriate.
+
 ## Alpha 0.3A — Encounter, Fatigue & Menu Tuning — 2026-08-13
 
 ### Tactical Encounters

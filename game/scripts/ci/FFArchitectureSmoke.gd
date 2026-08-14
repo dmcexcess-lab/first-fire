@@ -13,6 +13,8 @@ func _init() -> void:
     if not _check(ExpeditionRules.zone_cap("Industrial Edge") == 7, "industrial cap"): return
     if not _check(abs(ExpeditionRules.travel_duration(20.0, 0.0) - 20.0) < 0.001, "base travel"): return
     if not _check(ExpeditionRules.should_force_recruit(1, 1, 5, true), "solo recruit protection"): return
+    if not _check(ExpeditionRules.tactical_event_chance("Camp Perimeter") > 0.0, "starting zone tactical chance"): return
+    if not _check(ExpeditionRules.should_force_tactical(2), "tactical drought protection"): return
     if not _check(not ExpeditionRules.should_force_recruit(1, 1, 4, true), "solo recruit threshold"): return
     if not _check(abs(ExpeditionRules.tactical_event_chance("Nearby Streets") - 0.55) < 0.001, "nearby tactical pop rate"): return
     if not _check(abs(ExpeditionRules.tactical_event_chance("Industrial Edge") - 0.85) < 0.001, "industrial tactical pop rate"): return
