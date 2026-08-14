@@ -65,6 +65,18 @@ jobs:
           unzip -q templates.tpz -d templates
           cp -a templates/templates/. "$HOME/.local/share/godot/export_templates/4.7.1.stable/"
 
+      - name: Import and parse Godot project
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ./Godot_v4.7.1-stable_linux.x86_64 \
+            --headless \
+            --editor \
+            --path "$GITHUB_WORKSPACE/game" \
+            --quit \
+            2>&1 | tee "$RUNNER_TEMP/import.log"
+          if grep -Eqi 'SCRIPT ERROR|Parse Error|Failed to load script' "$RUNNER_TEMP/import.log"; then exit 1; fi
+
       - name: Architecture smoke test
         shell: bash
         run: |
