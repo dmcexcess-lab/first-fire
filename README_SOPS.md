@@ -76,6 +76,7 @@ Important current owners:
 - `FFFieldEventsLegacy.gd` — temporary outside-world text-event selector pending Alpha 0.3 conversion.
 - `Game.gd` — persistent state/orchestration facade and fluid Alpha save-state schema.
 - `Main.gd` — UI/input/presentation.
+- `FFCampView.gd` — living 2D camp presentation using the tactical atlas; survivor positions are visual reflections of authoritative status/task state, never a second simulation.
 
 ### One owner per rule
 
@@ -96,6 +97,7 @@ Use roadmap seams rather than inventing new architecture ad hoc:
 - Alpha 0.3/0.4 outside-world tactical conversion and variety → `FFTacticalScenarios` + `FFCombat`.
 - Alpha 0.5 autonomous survivor interaction → `FFCampSocial`, consuming camp/survivor state.
 - Camp recovery/vibe/cadence → `FFCampLifeRules`.
+- Living camp/menu visualization → `FFCampView`, reading `Game` state only.
 - Alpha 0.6 pets → create a real `FFPets` owner only when implementing actual pet behavior; do not add empty placeholder modules.
 - Alpha 0.7 vehicles → create a real `FFVehicles` owner for vehicle state when implementing vehicles, feed derived effects into `FFExpeditionRules`, and represent vehicles physically through tactical scenario/runtime state.
 - Beta 3D camp → presentation reads simulation state; it does not own it.
@@ -137,7 +139,7 @@ While a tactical encounter is active, do not advance unrelated food consumption,
 
 ## 8. Save policy
 
-Current schema: **5**.
+Current schema: **6**.
 
 Alpha policy:
 

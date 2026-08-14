@@ -16,7 +16,7 @@ const CampSocial = preload("res://scripts/FFCampSocial.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 # Alpha saves are disposable; the filename remains stable while schema changes invalidate old state cleanly.
 const SAVE_PATH := "user://first_fire_alpha01.json"
-const SAVE_SCHEMA_VERSION := 5
+const SAVE_SCHEMA_VERSION := 6
 const DAY_SECONDS := 120.0
 
 var rng := RandomNumberGenerator.new()
@@ -116,7 +116,7 @@ func new_game():
     camp_event_cooldown = CampLifeRules.NEW_GAME_EVENT_COOLDOWN
     sim_paused = false
     var founder = _generate_survivor(true)
-    founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "", "Clothing": "", "Pack": "Worn Backpack", "Tool": ""}
+    founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight", "Clothing": "", "Pack": "Worn Backpack", "Tool": ""}
     founder["history"].append("Day 1 — Established First Fire.")
     survivors.append(founder)
     _add_history("Day 1 — %s established First Fire." % founder["name"])

@@ -138,6 +138,12 @@ Continue upgrading tactical presentation while preserving phone readability:
 - damage/wound clarity;
 - objective markers that do not overwhelm the map.
 
+### Living camp presentation foundation — started in Alpha 0.3E
+
+The menu now has a persistent 2D camp rendered in the same tactical visual language. It is a **view of simulation state**, not a new control mode: survivors visually walk to crafting/building/garden/recovery stations according to their existing status/task, structures appear as they are built, and survivors outside camp disappear from the scene.
+
+This should grow alongside the simulation: social interactions, pets, vehicles, repairs, eating, resting, and future camp activity can become visible here when those systems have real state worth showing. The renderer can be enlarged or eventually replaced by 3D without changing who owns the simulation.
+
 ---
 
 ## Alpha 0.5 — Autonomous Camp Life
@@ -291,11 +297,11 @@ Vehicles make expeditions more capable, but they should also create new things t
 
 ---
 
-## Beta — Living 3D Camp Background
+## Beta — Living Camp Presentation / Optional 3D Renderer
 
-The long-planned 3D camp should arrive **after the simulation knows what it needs to display**.
+Alpha 0.3E establishes the living camp concept in 2D using the tactical renderer. By Beta, deepen that presentation based on what the finished simulation actually needs to display; move to 3D only if it provides a clear gain over the working 2D camp.
 
-The menu remains the primary interface. The 3D camp is a living representation of settlement state, not a second Sims-style control mode.
+The menu remains the primary interface. Any 2D or 3D camp renderer is a living representation of settlement state, not a second Sims-style control mode.
 
 ### Visual progression
 

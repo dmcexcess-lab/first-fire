@@ -34,6 +34,9 @@ Persistent state and orchestration facade: camp ticks, expedition sequencing, ev
 ### `Main.gd`
 Top-level UI/input coordinator: persistent HUD, navigation, main menu, expedition launcher, event/tactical transitions, and mounting presentation modules. It should coordinate presentation rather than contain every detailed screen.
 
+### `FFCampView.gd`
+Living 2D camp presentation built from the tactical tile/character language. It reads authoritative buildings, survivor status/tasks, equipment, appearance, fatigue/stress, and camp clock state; it maps those facts to visual stations and cosmetic movement only. Crafting survivors walk to the real task station, builders move to the relevant construction anchor, tending survivors move to the garden, recovering survivors move toward shelter, and expedition survivors disappear from camp. It must never become the owner of work timing, survivor status, resource production, or pathfinding gameplay.
+
 ### `FFSurvivorPanel.gd`
 Survivor-tab dashboard presentation. Owns the concise CAMP/OUT/BUSY/LOST summary, current away-party cards and remaining times, recent return summaries derived from persistent camp history, and the compact roster. It does not own survivor state or expedition rules.
 
@@ -91,7 +94,7 @@ Expected owner for animal state/needs, bonds/trust, care outcomes, species/train
 Expected owner for vehicle definitions/state, fuel, condition/reliability, seats, cargo/storage, repairs, and noise. It feeds derived logistics into `FFExpeditionRules`. On tactical maps, the vehicle becomes the physical entry/exit anchor — the map’s “stairs.” No real-time driving subsystem is planned.
 
 ### Future 3D camp presentation
-A dedicated presentation scene/controller should **read** authoritative survivor/camp/pet/vehicle state. It can visualize work, rest, conversations, pets, and repairs but must not become a second simulation.
+`FFCampView.gd` is now the working 2D foundation for this idea. A later 3D renderer may replace or extend that presentation if it materially improves the game, but it should consume the same authoritative survivor/camp/pet/vehicle state and must not become a second simulation.
 
 ## Tactical pause boundary
 
@@ -101,7 +104,7 @@ Detailed survivor/item inspection also pauses settlement simulation while the mo
 
 ## Save boundary
 
-Current schema: **5**. Alpha policy is clean invalidation on meaningful incompatibility rather than accumulating migrations.
+Current schema: **6**. Alpha policy is clean invalidation on meaningful incompatibility rather than accumulating migrations.
 
 The filename `user://first_fire_alpha01.json` remains intentionally for compatibility; its old name alone is not grounds for a save wipe.
 

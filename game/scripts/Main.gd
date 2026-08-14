@@ -4,6 +4,7 @@ const D = preload("res://scripts/FFData.gd")
 const FFCombat = preload("res://scripts/FFCombat.gd")
 const SurvivorPanel = preload("res://scripts/FFSurvivorPanel.gd")
 const InspectorOverlay = preload("res://scripts/FFInspector.gd")
+const CampView = preload("res://scripts/FFCampView.gd")
 
 var current_tab := "Camp"
 var selected_worker_id := -1
@@ -39,8 +40,8 @@ var new_game_confirm: ConfirmationDialog
 var main_menu_overlay: ColorRect
 var load_game_button: Button
 var nav_buttons := {}
-const TAB_ART := {"Camp": "res://assets/camp.png", "Craft": "res://assets/craft.png", "Build": "res://assets/build.png", "Survivors": "res://assets/survivors.png"}
-const MAIN_MENU_BG := "res://assets/menu_bg.jpg"
+var camp_view: Control
+var menu_camp_view: Control
 
 func _ready():
     _build_ui()
@@ -120,6 +121,17 @@ func _build_ui():
     toast_timer.timeout.connect(func(): toast_panel.visible = false)
     add_child(toast_timer)
 
+    var camp_frame = PanelContainer.new()
+    camp_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    camp_frame.clip_contents = true
+    camp_frame.custom_minimum_size = Vector2(0, 210)
+    camp_view = CampView.new()
+    camp_view.custom_minimum_size = Vector2(0, 210)
+    camp_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    camp_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    camp_frame.add_child(camp_view)
+    root.add_child(camp_frame)
+
     content_scroll = ScrollContainer.new()
     content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -176,12 +188,9 @@ func _build_main_menu():
     main_menu_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
     add_child(main_menu_overlay)
 
-    var bg_tex = TextureRect.new()
-    bg_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    bg_tex.texture = load(MAIN_MENU_BG)
-    bg_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    bg_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-    main_menu_overlay.add_child(bg_tex)
+    menu_camp_view = CampView.new()
+    menu_camp_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    main_menu_overlay.add_child(menu_camp_view)
     var shade = ColorRect.new()
     shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     shade.color = Color(0, 0, 0, 0.38)
@@ -457,19 +466,6 @@ func _separator():
     return sep
 
 
-func _tab_art(tab_name: String) -> Control:
-    var frame = PanelContainer.new()
-    frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    frame.clip_contents = true
-    var tex = TextureRect.new()
-    tex.texture = load(TAB_ART.get(tab_name, TAB_ART["Camp"]))
-    tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-    tex.custom_minimum_size = Vector2(0, 150)
-    tex.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    frame.add_child(tex)
-    return frame
-
 func _refresh_nav_buttons():
     for tab in nav_buttons.keys():
         var b = nav_buttons[tab]
@@ -525,7 +521,6 @@ func _refresh_content():
         "Survivors": _draw_survivors()
 
 func _draw_camp():
-    content_box.add_child(_tab_art("Camp"))
     content_box.add_child(_heading("FIRST FIRE", 26))
     content_box.add_child(_make_label("A tiny camp trying to become something permanent.", 14))
 
@@ -619,7 +614,6 @@ func _draw_camp():
     content_box.add_child(reset)
 
 func _draw_craft():
-    content_box.add_child(_tab_art("Craft"))
     content_box.add_child(_heading("CRAFT", 26))
     var worker = _worker_picker()
     content_box.add_child(worker)
@@ -654,7 +648,6 @@ func _draw_craft():
             content_box.add_child(panel)
 
 func _draw_build():
-    content_box.add_child(_tab_art("Build"))
     content_box.add_child(_heading("BUILD", 26))
     content_box.add_child(_make_label("All Alpha 0.1 structures are shown here. Gray BUILD buttons mean you are missing materials, a worker, or a prerequisite.", 13))
     content_box.add_child(_worker_picker())

@@ -2,6 +2,24 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Alpha 0.3E — Living Camp View — 2026-08-13
+
+### Living Tactical Camp
+- Replaced the active per-tab Camp/Craft/Build splash banners with one persistent **living camp view** rendered from the same tactical tile and survivor art language used outside camp.
+- The pause/main menu now uses that same live camp scene as its background instead of the separate zombie photograph, unifying the game's presentation.
+- Camp structures appear at stable visual anchors as they are actually built: Fire Pit and sleeping space first, then rain catcher, shelter, storage, workbench, sewing table, garden, noise line, and cabin. Active construction gets a visible progress marker before completion.
+- Survivors are the real persistent survivor sprites. Their cosmetic camp position follows authoritative state: crafting walks them to the selected station, building sends them to the relevant construction anchor, garden work goes to the plot, recovery goes to sleeping/cabin space, available survivors idle around camp, and expedition survivors disappear from the settlement view.
+- Camp movement is presentation-only; work timers, status changes, resources, expeditions, and progression remain owned by the existing simulation.
+- Camp daylight follows the actual settlement clock. Night darkens the map while the First Fire and completed cabin add warm local glow.
+
+### Alpha Lighting Test Access
+- Every new founder now starts with **Flashlight** equipped in the Secondary slot so tactical day/night/blackout lighting can always be tested immediately.
+- Save schema advanced to **6** and older Alpha saves are intentionally invalidated instead of migrated.
+
+### Architecture / CI
+- Added `FFCampView.gd` as the living camp/menu presentation owner.
+- Expanded deterministic architecture smoke coverage for camp station/building anchors and permanent CI validation for the new module, schema, and founder flashlight guarantee.
+
 ## Alpha 0.3D — Tactical Senses, Timing & Art — 2026-08-13
 
 ### Sprite / Tile Overhaul

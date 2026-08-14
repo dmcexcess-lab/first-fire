@@ -8,7 +8,7 @@ This file records durable product/design context. `README_SOPS.md` records how t
 
 **First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game. It mixes menu-driven camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
 
-Current milestone: **Alpha 0.3D — Tactical Senses, Timing & Art**.
+Current milestone: **Alpha 0.3E — Living Camp View**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
@@ -69,6 +69,12 @@ Tactical action time is authoritative: equipped weight, fatigue, injuries, stanc
 
 It is also the intended integration seam for vehicles. Vehicles should affect travel/logistics and become the tactical map’s physical entry/exit anchor (“stairs”), not create a driving minigame.
 
+## Living camp presentation
+
+The management menus now share a persistent **2D tactical-style living camp view** instead of separate decorative tab splash images. It uses the same tactical tile/character visual language while remaining presentation-only. Built structures appear at stable visual anchors; survivors physically move toward the station implied by their real task/status (crafting, building, tending, recovery), available survivors idle around camp, and expedition survivors are absent. The pause/main menu uses the same living camp as its background. Camp lighting follows the real settlement clock, with fire/cabin glow after dark.
+
+For Alpha 0.3E playtesting, every new founder starts with a **Flashlight equipped in Secondary** so day/night and blackout tactical lighting can always be exercised immediately. Save schema 6 intentionally invalidates older Alpha state rather than carrying a compatibility path.
+
 ## Autonomous camp life
 
 `FFCampLifeRules.gd` owns camp-life cadence/recovery tuning.
@@ -107,7 +113,7 @@ Loot priority is approximately **Dirty Water → Raw Food → materials → Clea
 
 Alpha save compatibility is **not sacred**. Use explicit save schema versions and invalidate old saves cleanly when meaningful schema/system changes occur instead of accumulating migrations.
 
-Current save schema: **5**.
+Current save schema: **6**.
 
 The save filename remains `user://first_fire_alpha01.json` intentionally for compatibility. Its legacy name alone is not a reason to wipe a working Alpha save.
 
@@ -131,6 +137,7 @@ Current Web CI uses **Godot 4.7.1** and runs import/parse, architecture, startup
 - expedition/logistics/vehicles → `FFExpeditionRules` + future `FFVehicles`
 - autonomous survivor relationships → `FFCampSocial`
 - camp-life cadence/recovery → `FFCampLifeRules`
+- living camp/menu visualization → `FFCampView`
 - pets → future `FFPets`, consuming camp/social state
 - saves → `FFSaveCodec` transport + current Game schema
 - Beta 3D camp → presentation only; reads simulation state, does not own it
