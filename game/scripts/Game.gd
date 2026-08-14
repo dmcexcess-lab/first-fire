@@ -314,8 +314,8 @@ func _add_recruit(preferred_background = "", rescuer_ids = []) -> Variant:
     if population() >= MAX_POPULATION:
         toast_requested.emit("First Fire is at its %d-person limit." % MAX_POPULATION)
         return null
-    if population() >= shelter_capacity():
-        toast_requested.emit("There is no open shelter space right now.")
+    if population() >= mini(MAX_POPULATION, shelter_capacity() + 1):
+        toast_requested.emit("There is no room to squeeze another survivor into camp right now.")
         return null
     var s = _generate_survivor(false, preferred_background)
     _initialize_relationships(s)
@@ -1374,7 +1374,7 @@ func _choice(text, action, disabled = false, reason = ""):
     return c
 
 func _has_room_for_recruit():
-    return population() < MAX_POPULATION and population() < shelter_capacity()
+    return population() < MAX_POPULATION and population() < mini(MAX_POPULATION, shelter_capacity() + 1)
 
 func _party_has_gear_name(ids, gear_name):
     for sid in ids:

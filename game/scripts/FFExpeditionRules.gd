@@ -22,7 +22,7 @@ static func travel_duration(base_duration: float, survival_skill: float) -> floa
     return base_duration * (1.0 - reduction)
 
 static func should_force_recruit(population: int, shelter_capacity: int, max_population: int, eligible_count: int, recruit_eligible: bool) -> bool:
-    if not recruit_eligible or population >= mini(shelter_capacity, max_population):
+    if not recruit_eligible or population >= max_population:
         return false
     if population <= 1:
         return eligible_count >= 4
