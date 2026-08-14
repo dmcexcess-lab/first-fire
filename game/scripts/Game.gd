@@ -512,7 +512,7 @@ func start_craft(sid, station, recipe_id):
     _pay(recipe.get("cost", {}), cc)
     var duration = _work_duration(s, float(recipe["time"]))
     s["status"] = "Crafting"
-    s["fatigue"] = min(100.0, float(s["fatigue"]) + float(recipe["time"]) / 5.0)
+    s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(float(recipe["time"]) / 5.0))
     s["task"] = {"kind": "craft", "station": station, "recipe": recipe.duplicate(true), "remaining": duration, "duration": float(recipe["time"])}
     save_game()
     state_changed.emit()
@@ -535,7 +535,7 @@ func start_build(sid, building):
     _pay(data.get("cost", {}), data.get("component_cost", {}))
     var duration = _work_duration(s, float(data["time"]))
     s["status"] = "Building"
-    s["fatigue"] = min(100.0, float(s["fatigue"]) + float(data["time"]) / 5.0)
+    s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(float(data["time"]) / 5.0))
     s["task"] = {"kind": "build", "building": building, "remaining": duration, "duration": float(data["time"])}
     save_game()
     state_changed.emit()
@@ -551,6 +551,7 @@ func tend_garden(sid):
     if s == null or s["status"] != "Available":
         return false
     s["status"] = "Tending"
+    s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(4.0))
     s["task"] = {"kind": "garden", "remaining": _work_duration(s, 8.0), "duration": 8.0}
     save_game()
     state_changed.emit()
@@ -651,13 +652,13 @@ func start_expedition(primary_id, companion_id, zone, focus):
         # recruit popup still decides whether they actually join First Fire.
         eligible_expeditions_since_recruit = 0
         combat_kind = "rescue"
+    elif event_key == "" and ExpeditionRules.should_trigger_tactical_event(str(zone), rng):
+        # Alpha 0.3 tactical encounters have their own explicit pop rate so they
+        # are common enough to playtest instead of being double-gated by legacy events.
+        combat_kind = _pick_tactical_kind(zone)
     elif event_key == "" and rng.randf() < float(D.ZONES[zone]["event_chance"]):
-        # Keep text encounters alive, but let a little over half of random field
-        # encounters become playable tactical situations outside the perimeter.
-        if ExpeditionRules.should_use_tactical_event(zone, rng):
-            combat_kind = _pick_tactical_kind(zone)
-        else:
-            event_key = _select_field_event(zone)
+        # Temporary legacy text events only roll when no tactical encounter fired.
+        event_key = _select_field_event(zone)
 
     var exp = {
         "id": next_expedition_id,
@@ -838,12 +839,12 @@ func resolve_combat(result):
 
     if lead != null:
         _commit_tactical_health(lead, result.get("lead_hp", 0), result.get("lead_max_hp", 18), "was killed in a tactical field encounter")
-        lead["fatigue"] = min(100.0, float(lead["fatigue"]) + 6.0)
+        lead["fatigue"] = min(100.0, float(lead["fatigue"]) + CampLifeRules.fatigue_gain(6.0))
         lead["stress"] = min(100.0, float(lead["stress"]) + min(18.0, float(result.get("damage", 0)) * 1.5))
         add_skill_xp(lead, "Combat", min(22, 4 + int(result.get("kills", 0)) * 3))
     if companion != null and result.get("companion_hp", -1) >= 0:
         _commit_tactical_health(companion, result.get("companion_hp", 0), result.get("companion_max_hp", 18), "was killed while supporting a tactical field encounter")
-        companion["fatigue"] = min(100.0, float(companion["fatigue"]) + 4.0)
+        companion["fatigue"] = min(100.0, float(companion["fatigue"]) + CampLifeRules.fatigue_gain(4.0))
         if companion["condition"] != "Dead":
             add_skill_xp(companion, "Combat", min(12, 2 + int(result.get("kills", 0))))
 
@@ -966,7 +967,7 @@ func _finish_expedition(eid):
     for s in living_party:
         s["status"] = "Available"
         s["task"] = {}
-        s["fatigue"] = min(100.0, float(s["fatigue"]) + float(D.ZONES[zone]["fatigue"]))
+        s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(float(D.ZONES[zone]["fatigue"])))
         s["expeditions_done"] = int(s.get("expeditions_done", 0)) + 1
         var sxp = {"Camp Perimeter": 3, "Nearby Streets": 5, "Residential Blocks": 7, "Commercial Fringe": 9, "Industrial Edge": 11}[zone]
         var survxp = {"Camp Perimeter": 1, "Nearby Streets": 2, "Residential Blocks": 3, "Commercial Fringe": 4, "Industrial Edge": 6}[zone]
@@ -1597,7 +1598,7 @@ func _handle_event_action(event, action):
                     for sid in ids:
                         var helper: Variant = get_survivor(sid)
                         if helper != null:
-                            helper["fatigue"] = min(100.0, float(helper["fatigue"]) + 8.0)
+                            helper["fatigue"] = min(100.0, float(helper["fatigue"]) + CampLifeRules.fatigue_gain(8.0))
                 _queue_field_result(event, "%s Joins First Fire" % recruit["name"], "%s accepts. They will finish the trip with the party and follow them back to camp." % recruit["name"], "%s agreed to join First Fire." % recruit["name"])
             else:
                 _queue_field_result(event, "No Room", "There is nowhere safe to put another person yet. You exchange directions and part ways.")

@@ -3,7 +3,13 @@ class_name FFExpeditionRules
 
 # Pure expedition rules live here so travel/logistics changes (especially vehicles)
 # do not spread back through Game.gd.
-const TACTICAL_EVENT_SHARE := 0.55
+const TACTICAL_EVENT_CHANCE := {
+    "Camp Perimeter": 0.0,
+    "Nearby Streets": 0.55,
+    "Residential Blocks": 0.65,
+    "Commercial Fringe": 0.75,
+    "Industrial Edge": 0.85,
+}
 const ZONE_CAPS := {
     "Camp Perimeter": 3,
     "Nearby Streets": 4,
@@ -26,8 +32,11 @@ static func should_force_recruit(population: int, shelter_capacity: int, eligibl
         return eligible_count >= 7
     return false
 
-static func should_use_tactical_event(zone: String, rng: RandomNumberGenerator) -> bool:
-    return zone != "Camp Perimeter" and rng.randf() < TACTICAL_EVENT_SHARE
+static func tactical_event_chance(zone: String) -> float:
+    return float(TACTICAL_EVENT_CHANCE.get(zone, 0.0))
+
+static func should_trigger_tactical_event(zone: String, rng: RandomNumberGenerator) -> bool:
+    return rng.randf() < tactical_event_chance(zone)
 
 static func zone_cap(zone: String) -> int:
     return int(ZONE_CAPS.get(zone, 3))

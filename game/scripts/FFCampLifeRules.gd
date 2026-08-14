@@ -5,6 +5,10 @@ class_name FFCampLifeRules
 # can build on the same simulation cadence instead of hiding rules in UI code.
 const CAMP_EVENT_INTERVAL := 45.0
 const NEW_GAME_EVENT_COOLDOWN := 20.0
+const FATIGUE_GAIN_MULTIPLIER := 2.0
+
+static func fatigue_gain(base_amount: float) -> float:
+    return maxf(0.0, base_amount) * FATIGUE_GAIN_MULTIPLIER
 
 static func idle_recovery_rates(has_cabin: bool, caretaker_leader: bool) -> Vector2:
     var fatigue_rate: float = 0.5 if has_cabin else (1.0 / 3.0)

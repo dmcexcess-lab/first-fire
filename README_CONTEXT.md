@@ -87,6 +87,11 @@ Routine scavenging remains intentionally constrained after early over-looting:
 
 Loot priority is approximately **Dirty Water → Raw Food → materials → Clean Water → Cooked Food**.
 
+## Current Alpha 0.3A playtest tuning
+
+- Tactical encounter chance now rolls independently from legacy text events: **55% Nearby / 65% Residential / 75% Commercial / 85% Industrial**. Camp Perimeter remains non-tactical.
+- Fatigue gains from expeditions, tactical encounters, crafting/building, and garden work are currently **2×** their original Alpha values. Idle recovery rates are unchanged.
+
 ## Saves
 
 Alpha save compatibility is **not sacred**. Use explicit save schema versions and invalidate old saves cleanly when meaningful schema/system changes occur instead of accumulating migrations.

@@ -2,6 +2,23 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Alpha 0.3A — Encounter, Fatigue & Menu Tuning — 2026-08-13
+
+### Tactical Encounters
+- Tactical encounters now roll independently from the temporary legacy text-event chance instead of being double-gated.
+- Alpha playtest rates are now 55% on Nearby Streets, 65% in Residential Blocks, 75% on the Commercial Fringe, and 85% at the Industrial Edge.
+- Camp Perimeter remains a routine non-tactical scavenging zone.
+- Legacy text field events can still occur when a tactical encounter does not fire; they remain temporary pending the planned all-tactical field conversion.
+
+### Fatigue
+- Added one central fatigue-gain multiplier in `FFCampLifeRules.gd`.
+- Fatigue gained from normal expeditions, tactical encounters, crafting, building, and garden tending is now doubled.
+- Automatic idle fatigue recovery is unchanged, so repeated work/runs should now create meaningful exhaustion pressure.
+
+### Main Menu
+- Replaced the previous main-menu zombie art with the newly generated darker PG-13 survival-horror zombie background.
+- The new art is stored as a Web/mobile-friendly JPEG to keep the browser payload modest.
+
 ## Alpha 0.3A — Tactical Character Graphics — 2026-08-13
 
 ### Survivors

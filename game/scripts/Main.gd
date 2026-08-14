@@ -41,7 +41,7 @@ var main_menu_overlay: ColorRect
 var load_game_button: Button
 var nav_buttons := {}
 const TAB_ART := {"Camp": "res://assets/camp.png", "Craft": "res://assets/craft.png", "Build": "res://assets/build.png", "Survivors": "res://assets/survivors.png"}
-const PAUSE_BG := "res://assets/pause_bg.png"
+const MAIN_MENU_BG := "res://assets/menu_bg.jpg"
 
 func _ready():
     _build_ui()
@@ -179,7 +179,7 @@ func _build_main_menu():
 
     var bg_tex = TextureRect.new()
     bg_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    bg_tex.texture = load(PAUSE_BG)
+    bg_tex.texture = load(MAIN_MENU_BG)
     bg_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
     bg_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
     main_menu_overlay.add_child(bg_tex)
