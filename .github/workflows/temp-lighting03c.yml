@@ -32,6 +32,6 @@ jobs:
           grep -q 'flashlight secondary slot' game/scripts/ci/FFArchitectureSmoke.gd
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add game/scripts/FFData.gd game/scripts/FFInspector.gd game/scripts/FFTacticalEnvironments.gd game/scripts/FFTacticalLighting.gd game/scripts/FFCombat.gd game/scripts/ci/FFArchitectureSmoke.gd .github/workflows/pages.yml ARCHITECTURE.md README_SOPS.md README_CONTEXT.md CHANGELOG.md
+          git add game/scripts/FFData.gd game/scripts/FFInspector.gd game/scripts/FFTacticalEnvironments.gd game/scripts/FFTacticalLighting.gd game/scripts/FFCombat.gd game/scripts/ci/FFArchitectureSmoke.gd ARCHITECTURE.md README_SOPS.md README_CONTEXT.md CHANGELOG.md
           git commit -m 'Add tactical lighting and secondary gear slot'
           git push origin HEAD:main
