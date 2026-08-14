@@ -3,8 +3,6 @@ class_name FFTacticalScenarios
 
 const Environments = preload("res://scripts/FFTacticalEnvironments.gd")
 
-# Objective mix is independent from physical place. The same gas station or
-# apartment can host an ambush, a search, or a rescue when compatible.
 const KIND_WEIGHTS := {
     "Camp Perimeter": [["explore", 0.65], ["ambush", 1.00]],
     "Nearby Streets": [["rescue", 0.35], ["explore", 0.70], ["ambush", 1.00]],
@@ -29,3 +27,8 @@ static func environment_name(environment_id: String) -> String:
 
 static func environment_variant(environment_id: String, rng: RandomNumberGenerator) -> int:
     return Environments.pick_variant(environment_id, rng)
+
+static func pick_scene_state(environment_id: String, rng: RandomNumberGenerator) -> Dictionary:
+    var time_of_day := "day" if rng.randf() < 0.50 else "night"
+    var power_on := rng.randf() < Environments.power_chance(environment_id)
+    return {"time_of_day": time_of_day, "power_on": power_on}
