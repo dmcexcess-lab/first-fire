@@ -2,6 +2,8 @@ extends Control
 
 const D = preload("res://scripts/FFData.gd")
 const FFCombat = preload("res://scripts/FFCombat.gd")
+const SurvivorPanel = preload("res://scripts/FFSurvivorPanel.gd")
+const InspectorOverlay = preload("res://scripts/FFInspector.gd")
 
 var current_tab := "Camp"
 var selected_worker_id := -1
@@ -24,6 +26,7 @@ var event_choices: VBoxContainer
 
 var combat_overlay: Control
 var combat_uid := ""
+var inspector_overlay: Control
 
 var expedition_overlay: ColorRect
 var expedition_title: Label
@@ -149,6 +152,7 @@ func _build_ui():
     _build_event_overlay()
     _build_expedition_overlay()
     _build_main_menu()
+    _build_inspector_overlay()
     _build_combat_overlay()
 
     reset_confirm = ConfirmationDialog.new()
@@ -332,6 +336,11 @@ func _build_expedition_overlay():
     close.pressed.connect(func(): expedition_overlay.visible = false)
     v.add_child(close)
 
+func _build_inspector_overlay():
+    inspector_overlay = InspectorOverlay.new()
+    inspector_overlay.send_survivor.connect(_on_inspector_send)
+    add_child(inspector_overlay)
+
 func _build_combat_overlay():
     combat_overlay = FFCombat.new()
     combat_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -354,6 +363,8 @@ func _refresh_combat_overlay():
         expedition_overlay.visible = false
     if event_overlay != null:
         event_overlay.visible = false
+    if inspector_overlay != null and inspector_overlay.visible:
+        inspector_overlay.force_close()
     var uid = str(Game.current_combat.get("uid", ""))
     if uid != combat_uid or not combat_overlay.visible:
         combat_uid = uid
@@ -381,6 +392,8 @@ func _show_main_menu():
     if not Game.current_combat.is_empty():
         _refresh_combat_overlay()
         return
+    if inspector_overlay != null and inspector_overlay.visible:
+        inspector_overlay.force_close()
     Game.set_paused(true)
     if main_menu_overlay != null:
         load_game_button.disabled = not Game.save_existed_on_boot
@@ -689,134 +702,11 @@ func _draw_build():
         content_box.add_child(panel)
 
 func _draw_survivors():
-    content_box.add_child(_tab_art("Survivors"))
-    content_box.add_child(_heading("SURVIVORS", 26))
-    if Game.survivors.is_empty():
-        content_box.add_child(_make_label("No survivor data loaded. Start a NEW GAME from MENU to repair this run.", 14))
-        return
-
-    content_box.add_child(_make_label("Population: %d   •   Tap a name to inspect them." % Game.population(), 14))
-    var quick_row = GridContainer.new()
-    quick_row.columns = 2
-    quick_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    quick_row.add_theme_constant_override("h_separation", 4)
-    quick_row.add_theme_constant_override("v_separation", 4)
-    for person in Game.survivors:
-        var qb = Button.new()
-        qb.text = str(person.get("name", "Survivor"))
-        qb.disabled = int(person.get("id", -1)) == selected_survivor_id
-        qb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        qb.add_theme_font_size_override("font_size", 12)
-        qb.pressed.connect(_on_quick_survivor_pressed.bind(int(person.get("id", -1))))
-        quick_row.add_child(qb)
-    content_box.add_child(quick_row)
-
-    var selector = OptionButton.new()
-    var selected_index = 0
-    var idx = 0
-    for s in Game.survivors:
-        selector.add_item("%s%s" % [s["name"], " — DEAD" if s["condition"] == "Dead" else ""])
-        selector.set_item_metadata(idx, int(s["id"]))
-        if int(s["id"]) == selected_survivor_id: selected_index = idx
-        idx += 1
-    selector.select(selected_index)
-    selector.item_selected.connect(_on_survivor_selected.bind(selector))
-    selector.custom_minimum_size = Vector2(0, 46)
-    content_box.add_child(selector)
-
-    var s: Variant = Game.get_survivor(selected_survivor_id)
-    if s == null:
-        selected_survivor_id = int(Game.survivors[0]["id"])
-        s = Game.get_survivor(selected_survivor_id)
-    if s == null:
-        return
-
-    content_box.add_child(_heading(s["name"], 21))
-    content_box.add_child(_make_label("%s  •  %s  •  %s" % [s["background"], s["condition"], s["status"]], 14))
-    content_box.add_child(_make_label("Traits: %s" % ", ".join(s["traits"]), 14))
-    content_box.add_child(_make_label("Fatigue %.0f/100  •  Stress %.0f/100" % [float(s["fatigue"]), float(s["stress"])], 14))
-    if s["status"] == "Available" and s["condition"] != "Dead":
-        content_box.add_child(_make_label("Idle — recovering fatigue and stress automatically.", 12))
-    if s["condition"] != "Dead":
-        var big_send = Button.new()
-        big_send.text = "SEND %s OUT" % str(s["name"]).to_upper()
-        big_send.custom_minimum_size = Vector2(0, 54)
-        big_send.disabled = s["status"] != "Available"
-        big_send.pressed.connect(_open_expedition_overlay)
-        content_box.add_child(big_send)
-    var ability = str(s.get("leader_ability", "Organizer"))
-    var ability_desc = str(D.LEADER_ABILITIES.get(ability, "Leadership effect unavailable."))
-    content_box.add_child(_make_label("Potential leader ability: %s — %s" % [ability, ability_desc], 12))
-
-    content_box.add_child(_separator())
-    content_box.add_child(_heading("Skills", 18))
-    var grid = GridContainer.new()
-    grid.columns = 2
-    for skill in ["Combat", "Scavenging", "Survival", "Medical", "Technical", "Social"]:
-        var rank = int(s["skills"][skill])
-        var threshold = 20 + rank * 15
-        grid.add_child(_make_label(skill, 14))
-        var val = _make_label("%d  (%d/%d XP)" % [rank, int(s["skill_xp"][skill]), threshold], 13)
-        val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-        grid.add_child(val)
-    content_box.add_child(grid)
-
-    content_box.add_child(_separator())
-    content_box.add_child(_heading("Equipment", 18))
-    for slot in ["Weapon", "Clothing", "Pack", "Tool"]:
-        content_box.add_child(_make_label("%s: %s" % [slot, s["equipment"].get(slot, "") if s["equipment"].get(slot, "") != "" else "None"], 14))
-
-    if not Game.inventory_gear.is_empty() and s["condition"] != "Dead":
-        content_box.add_child(_make_label("Camp gear", 14))
-        var counts = {}
-        for gear in Game.inventory_gear:
-            counts[gear] = int(counts.get(gear, 0)) + 1
-        for gear in counts.keys():
-            var row = HBoxContainer.new()
-            var label = _make_label("%s ×%d" % [gear, counts[gear]], 13)
-            label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-            row.add_child(label)
-            var equip = Button.new()
-            equip.text = "EQUIP"
-            equip.disabled = s["status"] != "Available"
-            equip.pressed.connect(_on_equip_pressed.bind(gear))
-            row.add_child(equip)
-            content_box.add_child(row)
-
-    content_box.add_child(_separator())
-    content_box.add_child(_heading("Actions", 18))
-    var actions = HBoxContainer.new()
-    if s["condition"] != "Dead":
-        var treat = Button.new()
-        treat.text = "TREAT"
-        treat.disabled = s["condition"] == "Healthy" or s["status"] != "Available"
-        treat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        treat.pressed.connect(func(): Game.treat_survivor(s["id"]))
-        actions.add_child(treat)
-        var send = Button.new()
-        send.text = "SEND OUT"
-        send.disabled = s["status"] != "Available"
-        send.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        send.pressed.connect(_open_expedition_overlay)
-        actions.add_child(send)
-    content_box.add_child(actions)
-
-    content_box.add_child(_separator())
-    content_box.add_child(_heading("Relationships", 18))
-    var any_rel = false
-    for other in Game.survivors:
-        if int(other["id"]) == int(s["id"]) or other["condition"] == "Dead": continue
-        var value = int(s["relationships"].get(str(other["id"]), 0))
-        content_box.add_child(_make_label("%s — %s" % [other["name"], Game.relationship_label(value)], 13))
-        any_rel = true
-    if not any_rel:
-        content_box.add_child(_make_label("No relationships yet.", 13))
-
-    content_box.add_child(_separator())
-    content_box.add_child(_heading("History", 18))
-    var start = max(0, s["history"].size() - 8)
-    for i in range(s["history"].size() - 1, start - 1, -1):
-        content_box.add_child(_make_label(s["history"][i], 13))
+    var panel = SurvivorPanel.new()
+    panel.inspect_survivor.connect(_open_survivor_inspector)
+    panel.inspect_inventory.connect(_open_camp_inventory_inspector)
+    panel.send_survivor.connect(_send_survivor_from_panel)
+    content_box.add_child(panel)
 
 func _worker_picker():
     var box = VBoxContainer.new()
@@ -904,22 +794,28 @@ func _on_tab_pressed(tab):
 func _on_worker_selected(index, option):
     selected_worker_id = int(option.get_item_metadata(index))
 
-func _on_quick_survivor_pressed(id):
+func _open_survivor_inspector(id):
     selected_survivor_id = int(id)
-    _refresh_content()
+    if inspector_overlay != null:
+        inspector_overlay.open_survivor(selected_survivor_id)
 
-func _on_survivor_selected(index, option):
-    selected_survivor_id = int(option.get_item_metadata(index))
-    _refresh_content()
+func _open_camp_inventory_inspector():
+    if inspector_overlay != null:
+        inspector_overlay.open_inventory()
+
+func _send_survivor_from_panel(id):
+    selected_survivor_id = int(id)
+    _open_expedition_overlay()
+
+func _on_inspector_send(id):
+    selected_survivor_id = int(id)
+    _open_expedition_overlay()
 
 func _on_craft_pressed(station, recipe_id):
     Game.start_craft(selected_worker_id, station, recipe_id)
 
 func _on_build_pressed(building):
     Game.start_build(selected_worker_id, building)
-
-func _on_equip_pressed(gear):
-    Game.equip_gear(selected_survivor_id, gear)
 
 func _open_expedition_overlay():
     var s: Variant = Game.get_survivor(selected_survivor_id)
