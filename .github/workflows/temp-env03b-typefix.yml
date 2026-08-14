@@ -1,0 +1,33 @@
+name: Temporary 0.3B type inference fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fix strict Vector2i inference
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if grep -q 'var n: Vector2i = p + Vector2i(d)' game/scripts/FFTacticalEnvironments.gd && grep -q 'var n: Vector2i = p + Vector2i(d)' game/scripts/FFCombat.gd; then
+            echo 'Type fixes already applied.'
+            exit 0
+          fi
+          sed -i 's/            var n := p + d/            var n: Vector2i = p + Vector2i(d)/' game/scripts/FFTacticalEnvironments.gd
+          sed -i 's/            var n := p + d/            var n: Vector2i = p + Vector2i(d)/' game/scripts/FFCombat.gd
+          grep -q 'var n: Vector2i = p + Vector2i(d)' game/scripts/FFTacticalEnvironments.gd
+          grep -q 'var n: Vector2i = p + Vector2i(d)' game/scripts/FFCombat.gd
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game/scripts/FFTacticalEnvironments.gd game/scripts/FFCombat.gd
+          git commit -m 'Fix tactical environment Vector2i inference'
+          git push origin HEAD:main
