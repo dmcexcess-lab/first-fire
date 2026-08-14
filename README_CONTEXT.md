@@ -8,7 +8,7 @@ This file records durable product/design context. `README_SOPS.md` records how t
 
 **First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game. It mixes menu-driven camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
 
-Current milestone: **Alpha 0.3E — Living Camp View**.
+Current milestone: **Beta Candidate — Feature Freeze**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
@@ -24,7 +24,7 @@ First Fire is considered **feature-complete at the pillar level**. The roadmap i
 - **Persistent consequences.** Field outcomes feed back into camp/world state.
 - **Extraction over extermination.** Loot, rescue, investigation, survival, and escape matter more than clearing every enemy.
 - **Low content count, high implementation depth.** Deepen existing systems before multiplying shallow content.
-- **Low pointless micromanagement.** Idle recovery and social/pet care should be systemic/autonomous when natural.
+- **Low pointless micromanagement.** Idle recovery and social behavior should be systemic/autonomous when natural.
 - **Phone/Web first.** Touch, portrait layout, browser lifecycle, storage, pause/resume, and mobile Safari constraints are architectural inputs.
 - **Original presentation.** First Fire art should avoid third-party franchise names, logos, characters, or other recognizable branded identifiers unless explicitly requested and appropriate.
 
@@ -67,23 +67,22 @@ Tactical action time is authoritative: equipped weight, fatigue, injuries, stanc
 
 `FFExpeditionRules.gd` owns current travel duration, recruit protection, tactical-event mix, zone caps, and routine haul-count rules.
 
-It is also the intended integration seam for vehicles. Vehicles should affect travel/logistics and become the tactical map’s physical entry/exit anchor (“stairs”), not create a driving minigame.
+Expeditions are permanently single-survivor. Multi-survivor dispatch, companion AI, and vehicle logistics are cut from scope.
 
 ## Living camp presentation
 
 The management menus now share a persistent **2D tactical-style living camp view** instead of separate decorative tab splash images. It uses the same tactical tile/character visual language while remaining presentation-only. Built structures appear at stable visual anchors; survivors physically move toward the station implied by their real task/status (crafting, building, tending, recovery), available survivors idle around camp, and expedition survivors are absent. The pause/main menu uses the same living camp as its background. Camp lighting follows the real settlement clock, with fire/cabin glow after dark.
 
-For Alpha 0.3E playtesting, every new founder starts with a **Flashlight equipped in Secondary** so day/night and blackout tactical lighting can always be exercised immediately. Save schema 6 intentionally invalidates older Alpha state rather than carrying a compatibility path.
+For Alpha 0.3E playtesting, every new founder starts with a **Flashlight equipped in Secondary** so day/night and blackout tactical lighting can always be exercised immediately. Save schema 7 is the final planned Alpha invalidation before Beta save stability. Every new founder still starts with a Flashlight equipped in Secondary.
 
 ## Autonomous camp life
 
 `FFCampLifeRules.gd` owns camp-life cadence/recovery tuning.
 
-`FFCampSocial.gd` owns current relationship/social-selection rules and is the intended owner for Alpha 0.5 autonomous survivor interactions.
+`FFCampSocial.gd` owns relationship/social-selection rules, political standing, and autonomous camp chatter. Chatter is selected from real relationship, shortage, personality, leadership-support and policy state; `Game.gd` applies its small consequences and `FFCampView.gd` only renders the callout.
 
 Future interactions should be influenced by personality, relationships, stress, health, fatigue, injuries, recent losses/successes, resource security, comfort/crowding, shared history, politics/leadership, and overall camp vibe. Routine interactions should occur autonomously; the player handles conditions and meaningful consequences rather than scheduling conversations.
 
-Pets should eventually get a dedicated owner (anticipated `FFPets.gd`) with lightweight persistent needs/bonds. Survivors should care for them autonomously when possible. Pet behavior should integrate with camp-life/social state and tactical expeditions rather than becoming a repetitive button timer.
 
 ## Current economy / time
 
@@ -113,7 +112,7 @@ Loot priority is approximately **Dirty Water → Raw Food → materials → Clea
 
 Alpha save compatibility is **not sacred**. Use explicit save schema versions and invalidate old saves cleanly when meaningful schema/system changes occur instead of accumulating migrations.
 
-Current save schema: **6**.
+Current save schema: **7**.
 
 The save filename remains `user://first_fire_alpha01.json` intentionally for compatibility. Its legacy name alone is not a reason to wipe a working Alpha save.
 
@@ -131,16 +130,18 @@ Current important module boundaries are documented in `ARCHITECTURE.md`.
 
 Current Web CI uses **Godot 4.7.1** and runs import/parse, architecture, startup, and export gates before Pages deployment.
 
-## Roadmap ownership summary
+## Frozen-scope ownership summary
 
-- Alpha 0.3/0.4 tactical field conversion/variety → `FFTacticalScenarios` + `FFCombat`
-- expedition/logistics/vehicles → `FFExpeditionRules` + future `FFVehicles`
-- autonomous survivor relationships → `FFCampSocial`
-- camp-life cadence/recovery → `FFCampLifeRules`
-- living camp/menu visualization → `FFCampView`
-- pets → future `FFPets`, consuming camp/social state
+- tactical field play/conversion → `FFTacticalScenarios` + `FFTacticalEnvironments` + `FFCombat`
+- single-survivor expedition logistics → `FFExpeditionRules`
+- relationships/politics/autonomous chatter → `FFCampSocial`
+- camp cadence/recovery/building effects → `FFCampLifeRules`
+- living 2D camp/menu visualization → `FFCampView`
 - saves → `FFSaveCodec` transport + current Game schema
-- Beta 3D camp → presentation only; reads simulation state, does not own it
+
+There is no future pets, vehicles, companion-expedition, or 3D-camp owner. The 2D camp is final presentation.
+
+Final population ceiling is **18**. At **15+ survivors + every building + an elected leader**, the settlement is marked mature, but the game continues indefinitely.
 
 ## Source-of-truth order
 

@@ -21,6 +21,13 @@ const BUILDING_CELLS := {
     "Garden Plot": Vector2i(2, 4),
     "Noise Line": Vector2i(8, 1),
     "Cabin": Vector2i(12, 5),
+    "Water Tank": Vector2i(1, 2),
+    "Communal Table": Vector2i(7, 6),
+    "Infirmary": Vector2i(14, 6),
+    "Watch Post": Vector2i(14, 2),
+    "Bunkhouse": Vector2i(3, 7),
+    "Armory": Vector2i(14, 4),
+    "Dormitory": Vector2i(10, 7),
 }
 const STATION_OFFSETS := {
     "Fire Pit": Vector2i(0, 1),
@@ -31,12 +38,16 @@ const STATION_OFFSETS := {
 var actor_positions := {}
 var actor_facing := {}
 var redraw_accum := 0.0
+var chatter_entry := {}
+var chatter_until_ms := 0
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     clip_contents = true
     custom_minimum_size = Vector2(0, 210)
     set_process(true)
+    if not Game.camp_chatter_requested.is_connected(_on_camp_chatter):
+        Game.camp_chatter_requested.connect(_on_camp_chatter)
     queue_redraw()
 
 func _process(delta: float) -> void:
@@ -70,6 +81,12 @@ func _process(delta: float) -> void:
             actor_positions.erase(old_sid)
             actor_facing.erase(old_sid)
             moved = true
+    var now_ms := Time.get_ticks_msec()
+    if not chatter_entry.is_empty() and now_ms >= chatter_until_ms:
+        chatter_entry = {}
+        moved = true
+    elif not chatter_entry.is_empty():
+        moved = true
     redraw_accum += delta
     if moved or redraw_accum >= 0.20:
         redraw_accum = 0.0
@@ -141,10 +158,11 @@ func _draw() -> void:
     _draw_construction(origin, tile)
     _draw_night(origin, tile)
     _draw_survivors(origin, tile)
+    _draw_chatter(origin, tile)
     draw_rect(Rect2(origin, map_size), Color(0.30, 0.42, 0.35, 0.55), false, 1.0)
     var font: Font = get_theme_default_font()
     var title_size: int = maxi(9, int(tile * 0.38))
-    draw_string(font, origin + Vector2(7.0, float(title_size) + 4.0), "FIRST FIRE CAMP  •  %s" % Game.formatted_time(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.92, 0.94, 0.88, 0.92))
+    draw_string(font, origin + Vector2(7.0, float(title_size) + 4.0), "FIRST FIRE CAMP  •  %s  •  %s" % [Game.formatted_time(), _day_phase()], HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.92, 0.94, 0.88, 0.92))
 
 func _cell_rect(cell: Vector2i, origin: Vector2, tile: float) -> Rect2:
     return Rect2(origin + Vector2(float(cell.x) * tile, float(cell.y) * tile), Vector2(tile, tile))
@@ -192,6 +210,36 @@ func _draw_structures(origin: Vector2, tile: float) -> void:
         _draw_noise_line(origin, tile)
     if bool(Game.buildings.get("Cabin", false)):
         _draw_cabin(origin, tile)
+    if bool(Game.buildings.get("Water Tank", false)):
+        var tank_rect := _cell_rect(building_cell("Water Tank"), origin, tile).grow(-tile * 0.03)
+        Tiles.draw_barrel(self, tank_rect)
+        draw_circle(tank_rect.get_center(), tile * 0.38, Color(0.42, 0.70, 0.86, 0.65), false, 1.5)
+    if bool(Game.buildings.get("Communal Table", false)):
+        Tiles.draw_prop(self, _cell_rect(building_cell("Communal Table"), origin, tile).grow(-tile * 0.04), "table")
+    if bool(Game.buildings.get("Infirmary", false)):
+        var infirmary_rect := _cell_rect(building_cell("Infirmary"), origin, tile).grow(-tile * 0.04)
+        Tiles.draw_prop(self, infirmary_rect, "bed")
+        var ic := infirmary_rect.get_center()
+        draw_line(ic + Vector2(-tile * 0.11, 0), ic + Vector2(tile * 0.11, 0), Color("d7e7df"), 2.0)
+        draw_line(ic + Vector2(0, -tile * 0.11), ic + Vector2(0, tile * 0.11), Color("d7e7df"), 2.0)
+    if bool(Game.buildings.get("Watch Post", false)):
+        var wc := _cell_center(building_cell("Watch Post"), origin, tile)
+        draw_rect(Rect2(wc - Vector2(tile * 0.30, tile * 0.30), Vector2(tile * 0.60, tile * 0.60)), Color("4b5146"))
+        draw_line(wc + Vector2(0, tile * 0.28), wc + Vector2(-tile * 0.20, tile * 0.48), Color("897e65"), 2.0)
+        draw_line(wc + Vector2(0, tile * 0.28), wc + Vector2(tile * 0.20, tile * 0.48), Color("897e65"), 2.0)
+    if bool(Game.buildings.get("Bunkhouse", false)):
+        var br := _cell_rect(building_cell("Bunkhouse"), origin, tile).grow(-tile * 0.03)
+        draw_rect(br, Color("5a594d"))
+        draw_polyline(PackedVector2Array([br.position + Vector2(0, br.size.y * 0.35), br.position + Vector2(br.size.x * 0.5, 0), br.position + Vector2(br.size.x, br.size.y * 0.35)]), Color("a69c7b"), 2.0)
+    if bool(Game.buildings.get("Armory", false)):
+        var ar := _cell_rect(building_cell("Armory"), origin, tile).grow(-tile * 0.04)
+        Tiles.draw_prop(self, ar, "crate")
+        draw_rect(ar, Color(0.62, 0.24, 0.18, 0.85), false, 2.0)
+    if bool(Game.buildings.get("Dormitory", false)):
+        var dr := _cell_rect(building_cell("Dormitory"), origin, tile).grow(-tile * 0.02)
+        draw_rect(dr, Color("4d5a55"))
+        Tiles.draw_window(self, Rect2(dr.position + Vector2(dr.size.x * 0.18, dr.size.y * 0.18), dr.size * 0.34))
+        Tiles.draw_window(self, Rect2(dr.position + Vector2(dr.size.x * 0.55, dr.size.y * 0.18), dr.size * 0.28))
 
 func _draw_fire(origin: Vector2, tile: float) -> void:
     var center := _cell_center(FIRE_CELL, origin, tile)
@@ -239,9 +287,19 @@ func _draw_construction(origin: Vector2, tile: float) -> void:
         var progress: float = 1.0 - remaining / duration
         draw_rect(Rect2(r.position + Vector2(0, r.size.y - 3.0), Vector2(r.size.x * progress, 3.0)), Color("d6bd63"))
 
-func _night_alpha() -> float:
+func _camp_hour() -> float:
     var fraction: float = clampf(float(Game.day_elapsed) / maxf(1.0, float(Game.DAY_SECONDS)), 0.0, 1.0)
-    var hour: float = fmod(8.0 + fraction * 24.0, 24.0)
+    return fmod(8.0 + fraction * 24.0, 24.0)
+
+func _day_phase() -> String:
+    var hour := _camp_hour()
+    if hour >= 20.0 or hour < 5.0: return "NIGHT"
+    if hour < 7.0: return "DAWN"
+    if hour >= 18.0: return "DUSK"
+    return "DAY"
+
+func _night_alpha() -> float:
+    var hour := _camp_hour()
     if hour >= 20.0 or hour < 5.0:
         return 0.64
     if hour >= 18.0:
@@ -251,10 +309,17 @@ func _night_alpha() -> float:
     return 0.0
 
 func _draw_night(origin: Vector2, tile: float) -> void:
+    var hour := _camp_hour()
+    var map_rect := Rect2(origin, Vector2(tile * float(GRID_W), tile * float(GRID_H)))
+    if hour >= 17.0 and hour < 20.0:
+        var dusk_alpha := 0.10 * clampf((hour - 17.0) / 3.0, 0.0, 1.0)
+        draw_rect(map_rect, Color(0.34, 0.12, 0.05, dusk_alpha))
+    elif hour >= 5.0 and hour < 7.0:
+        var dawn_alpha := 0.08 * clampf((7.0 - hour) / 2.0, 0.0, 1.0)
+        draw_rect(map_rect, Color(0.10, 0.18, 0.30, dawn_alpha))
     var alpha := _night_alpha()
     if alpha <= 0.001:
         return
-    var map_rect := Rect2(origin, Vector2(tile * float(GRID_W), tile * float(GRID_H)))
     draw_rect(map_rect, Color(0.015, 0.035, 0.085, alpha))
     var fire_center := _cell_center(FIRE_CELL, origin, tile)
     draw_circle(fire_center, tile * 2.25, Color(1.0, 0.36, 0.10, 0.055))
@@ -263,6 +328,12 @@ func _draw_night(origin: Vector2, tile: float) -> void:
     if bool(Game.buildings.get("Cabin", false)):
         var cabin_center := _cell_center(Vector2i(12, 5), origin, tile)
         draw_circle(cabin_center, tile * 1.7, Color(1.0, 0.72, 0.34, 0.075))
+    if bool(Game.buildings.get("Infirmary", false)):
+        var infirmary_center := _cell_center(building_cell("Infirmary"), origin, tile)
+        draw_circle(infirmary_center, tile * 1.20, Color(0.58, 0.82, 0.90, 0.065))
+    if bool(Game.buildings.get("Watch Post", false)):
+        var watch_center := _cell_center(building_cell("Watch Post"), origin, tile)
+        draw_circle(watch_center, tile * 0.80, Color(0.78, 0.86, 0.72, 0.055))
 
 func _draw_survivors(origin: Vector2, tile: float) -> void:
     var font: Font = get_theme_default_font()
@@ -296,6 +367,41 @@ func _draw_survivors(origin: Vector2, tile: float) -> void:
         var activity := _activity_short(status)
         if activity != "":
             draw_string(font, center + Vector2(-tile * 0.52, tile * 0.62), activity, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, maxi(7, font_size - 2), Color(0.87, 0.78, 0.49, 0.95))
+
+func _on_camp_chatter(data: Dictionary) -> void:
+    if not is_visible_in_tree():
+        return
+    var speaker_id := int(data.get("speaker_id", -1))
+    if not actor_positions.has(speaker_id):
+        return
+    chatter_entry = data.duplicate(true)
+    chatter_until_ms = Time.get_ticks_msec() + 3400
+    queue_redraw()
+
+func _draw_chatter(origin: Vector2, tile: float) -> void:
+    if chatter_entry.is_empty() or Time.get_ticks_msec() >= chatter_until_ms:
+        return
+    var sid := int(chatter_entry.get("speaker_id", -1))
+    if not actor_positions.has(sid):
+        return
+    var center := _grid_center(actor_positions[sid], origin, tile)
+    var width := minf(tile * 6.2, tile * float(GRID_W) - 8.0)
+    var height := maxf(34.0, tile * 1.35)
+    var x := clampf(center.x - width * 0.5, origin.x + 4.0, origin.x + tile * float(GRID_W) - width - 4.0)
+    var y := clampf(center.y - height - tile * 0.65, origin.y + 20.0, origin.y + tile * float(GRID_H) - height - 4.0)
+    var box := Rect2(Vector2(x, y), Vector2(width, height))
+    var tone := str(chatter_entry.get("tone", "neutral"))
+    var border := Color("d7bd58")
+    if tone in ["friendly", "warm"]: border = Color("78b987")
+    elif tone in ["hostile", "tense"]: border = Color("c35a4d")
+    elif tone == "politics": border = Color("8f78c7")
+    elif tone == "worry": border = Color("c9a15a")
+    draw_rect(box, Color(0.025, 0.035, 0.032, 0.92))
+    draw_rect(box, border, false, 1.3)
+    var font := get_theme_default_font()
+    var header := "%s → %s" % [str(chatter_entry.get("speaker_name", "?")), str(chatter_entry.get("listener_name", "?"))]
+    draw_string(font, box.position + Vector2(4.0, 11.0), header, HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 8.0, 8, border)
+    draw_string(font, box.position + Vector2(4.0, 25.0), str(chatter_entry.get("text", "...")), HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 8.0, 8, Color(0.94, 0.94, 0.88, 0.98))
 
 func _activity_short(status: String) -> String:
     match status:

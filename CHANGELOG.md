@@ -2,6 +2,37 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Beta Candidate — Feature Freeze & Living Camp Politics — 2026-08-13
+
+### Final Scope / Population
+- First Fire is now in feature freeze: no new gameplay pillars are planned before Beta.
+- Permanently cut 3D camp rendering, pets, vehicles, multi-survivor expeditions, and tactical companion AI.
+- Expeditions are now single-survivor dispatches in both UI and simulation APIs.
+- Added a hard **18-survivor** population ceiling. Housing now grows additively through the final building tree to exactly 18 beds.
+- The mature-settlement milestone now requires **15+ living survivors, every planned building, and an elected leader**. It is a milestone only; the game continues indefinitely.
+- Save schema advanced to **7**, intended as the last deliberate Alpha reset before Beta save stability.
+
+### Living Camp Day / Night & Chatter
+- Kept the existing clock-driven camp darkness and made the cycle explicit as DAWN / DAY / DUSK / NIGHT, including dawn/dusk tinting plus fire, cabin, infirmary, and watch-post night glow.
+- Added autonomous survivor chatter rendered as compact tactical-sound-style callouts over the living camp.
+- Chatter is selected from real relationship values, personality, stress, shortages, expedition-duty policy, and opinion of the current coordinator/leader.
+- Friendly/hostile/political chatter can make small relationship or stress changes; `FFCampSocial` selects them, `Game` applies consequences, and `FFCampView` remains presentation-only.
+
+### Camp Politics / Events
+- Formal leadership is no longer one-and-done. Weak elected leaders can now face recurring confidence votes against the strongest available challenger.
+- Added communal-meal and shortage-politics camp events alongside the existing shelter, duty, ration, theft, fight, burnout, perimeter and personal-request events.
+- Communal Table improves stress recovery and gives the camp a social gathering event hook.
+
+### Final Building Tree
+- Expanded the build tree from 8 to **15 planned structures**: Water Tank, Communal Table, Infirmary, Watch Post, Bunkhouse, Armory and Dormitory join the existing eight.
+- Water Tank doubles Rain Catcher output; Infirmary speeds treatment/wound recovery and lowers untreated critical decline; Watch Post reduces camp-perimeter danger; Bunkhouse/Dormitory expand housing; Armory gates firearm construction.
+- The living camp visually represents every final building using the existing tactical art language.
+
+### Items / Crafting / Tactical Readability
+- Every current `FFData.GEAR` item now has a crafting recipe in the existing Workbench/Sewing Table system; firearms are late-camp Workbench recipes requiring the Armory.
+- Tactical HUD now exposes all five equipment slots—Weapon, Secondary, Tool, Clothing and Pack—so every equipped item is visible during field play.
+- Added deterministic smoke coverage that every gear catalog entry has a crafting path, final building count is complete, social chatter can resolve, and tactical equipment summaries expose all slots.
+
 ## Alpha 0.3E — Living Camp View — 2026-08-13
 
 ### Living Tactical Camp

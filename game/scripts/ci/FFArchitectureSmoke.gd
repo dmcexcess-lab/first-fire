@@ -21,10 +21,10 @@ func _init() -> void:
     if not _check(ExpeditionRules.zone_cap("Camp Perimeter") == 3, "perimeter cap"): return
     if not _check(ExpeditionRules.zone_cap("Industrial Edge") == 7, "industrial cap"): return
     if not _check(abs(ExpeditionRules.travel_duration(20.0, 0.0) - 20.0) < 0.001, "base travel"): return
-    if not _check(ExpeditionRules.should_force_recruit(1, 1, 5, true), "solo recruit protection"): return
+    if not _check(ExpeditionRules.should_force_recruit(1, 1, 18, 4, true), "solo recruit protection"): return
     if not _check(ExpeditionRules.tactical_event_chance("Camp Perimeter") > 0.0, "starting zone tactical chance"): return
     if not _check(ExpeditionRules.should_force_tactical(2), "tactical drought protection"): return
-    if not _check(not ExpeditionRules.should_force_recruit(1, 1, 4, true), "solo recruit threshold"): return
+    if not _check(not ExpeditionRules.should_force_recruit(1, 1, 18, 3, true), "solo recruit threshold"): return
     if not _check(abs(ExpeditionRules.tactical_event_chance("Nearby Streets") - 0.70) < 0.001, "nearby tactical pop rate"): return
     if not _check(abs(ExpeditionRules.tactical_event_chance("Industrial Edge") - 0.90) < 0.001, "industrial tactical pop rate"): return
     if not _check(TacticalScenarios.KIND_WEIGHTS.has("Residential Blocks"), "scenario catalog"): return
@@ -65,6 +65,27 @@ func _init() -> void:
     var zombie_look: Dictionary = TacticalVisuals.zombie_appearance(visual_rng, "Industrial Edge")
     if not _check(str(zombie_look.get("family", "")) != "", "zombie visual family"): return
     if not _check(str(TacticalVisuals.weapon_visual("Pistol").get("kind", "")) == "pistol", "weapon visual catalog"): return
+    var equipped_lines: Array = TacticalVisuals.equipment_summary_lines({"Weapon": "Pistol", "Secondary": "Flashlight", "Tool": "First Aid Kit", "Clothing": "Leather Jacket", "Pack": "Hiking Pack"})
+    if not _check(str(equipped_lines[0]).contains("Pistol") and str(equipped_lines[0]).contains("Flashlight"), "tactical primary equipment summary"): return
+    if not _check(str(equipped_lines[1]).contains("First Aid Kit") and str(equipped_lines[1]).contains("Leather Jacket") and str(equipped_lines[1]).contains("Hiking Pack"), "tactical utility equipment summary"): return
+
+    var craftable_gear := {}
+    for station in D.RECIPES.keys():
+        for recipe in D.RECIPES[station]:
+            var gives := str(recipe.get("gives_gear", ""))
+            if gives != "": craftable_gear[gives] = true
+    for gear_name in D.GEAR.keys():
+        if not _check(craftable_gear.has(gear_name), "craftable gear: %s" % gear_name): return
+    if not _check(D.BUILD_ORDER.size() == 15 and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory"), "final building tree"): return
+
+    var chatter_rng := RandomNumberGenerator.new()
+    chatter_rng.seed = 44
+    var chatter_people := [
+        {"id": 1, "name": "Alex Reed", "condition": "Healthy", "status": "Available", "task": {}, "relationships": {"2": 65}, "traits": ["Friendly"], "leader_support": 0, "stress": 10.0, "fatigue": 5.0},
+        {"id": 2, "name": "Sam Hale", "condition": "Healthy", "status": "Available", "task": {}, "relationships": {"1": 50}, "traits": ["Optimistic"], "leader_support": 0, "stress": 10.0, "fatigue": 5.0},
+    ]
+    var chatter: Dictionary = CampSocial.roll_chatter(chatter_people, -1, -1, 0, 0, {}, chatter_rng)
+    if not _check(not chatter.is_empty() and str(chatter.get("text", "")) != "", "camp chatter selection"): return
 
     var path := "user://ff_architecture_smoke.json"
     var payload := {"save_schema": 99, "ok": true}

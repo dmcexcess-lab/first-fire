@@ -177,43 +177,66 @@ const RECIPES := {
         {"id": "Sterile Dressing", "time": 5.0, "cost": {"Cloth": 1, "Clean Water": 1}, "gives_component": {"Sterile Dressing": 1}},
     ],
     "Workbench": [
+        {"id": "Utility Knife", "time": 6.0, "cost": {"Scrap Metal": 1, "Cloth": 1}, "gives_gear": "Utility Knife"},
+        {"id": "Kitchen Knife", "time": 6.0, "cost": {"Scrap Metal": 1, "Plastic": 1}, "gives_gear": "Kitchen Knife"},
         {"id": "Wooden Club", "time": 6.0, "cost": {"Wood": 2}, "gives_gear": "Wooden Club"},
+        {"id": "Baseball Bat", "time": 8.0, "cost": {"Wood": 3}, "gives_gear": "Baseball Bat"},
+        {"id": "Hammer", "time": 8.0, "cost": {"Wood": 1, "Scrap Metal": 1}, "gives_gear": "Hammer"},
         {"id": "Improvised Spear", "time": 8.0, "cost": {"Wood": 2, "Scrap Metal": 1}, "gives_gear": "Improvised Spear"},
-        {"id": "Pry Tool", "time": 8.0, "cost": {"Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Pry Tool"},
+        {"id": "Crowbar", "time": 9.0, "cost": {"Scrap Metal": 2, "Hardware": 1}, "gives_gear": "Crowbar"},
+        {"id": "Hatchet", "time": 10.0, "cost": {"Wood": 1, "Scrap Metal": 2, "Hardware": 1}, "gives_gear": "Hatchet"},
+        {"id": "Pistol", "time": 18.0, "cost": {"Scrap Metal": 4, "Hardware": 3, "Plastic": 1}, "requires": ["Armory"], "gives_gear": "Pistol"},
+        {"id": "Shotgun", "time": 24.0, "cost": {"Scrap Metal": 6, "Hardware": 4, "Wood": 2}, "requires": ["Armory"], "gives_gear": "Shotgun"},
         {"id": "Flashlight", "time": 7.0, "cost": {"Plastic": 1, "Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Flashlight"},
         {"id": "Headlamp", "time": 8.0, "cost": {"Plastic": 1, "Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Headlamp"},
         {"id": "Lantern", "time": 9.0, "cost": {"Scrap Metal": 1, "Hardware": 2}, "gives_gear": "Lantern"},
-        {"id": "Hammer", "time": 8.0, "cost": {"Wood": 1, "Scrap Metal": 1}, "gives_gear": "Hammer"},
+        {"id": "Glow Stick", "time": 5.0, "cost": {"Plastic": 1, "Cloth": 1}, "gives_gear": "Glow Stick"},
+        {"id": "Road Flare", "time": 6.0, "cost": {"Plastic": 1, "Cloth": 1, "Scrap Metal": 1}, "gives_gear": "Road Flare"},
+        {"id": "Screwdriver Set", "time": 7.0, "cost": {"Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Screwdriver Set"},
+        {"id": "Bolt Cutters", "time": 11.0, "cost": {"Scrap Metal": 3, "Hardware": 2}, "gives_gear": "Bolt Cutters"},
+        {"id": "Toolbox", "time": 12.0, "cost": {"Scrap Metal": 2, "Hardware": 3}, "gives_gear": "Toolbox"},
+        {"id": "First Aid Kit", "time": 10.0, "cost": {"Cloth": 2, "Plastic": 1, "Medicine": 1}, "gives_gear": "First Aid Kit"},
+        {"id": "Pry Tool", "time": 8.0, "cost": {"Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Pry Tool"},
         {"id": "Framing Kit", "time": 8.0, "cost": {"Wood": 2, "Hardware": 1}, "gives_component": {"Framing Kit": 1}},
         {"id": "Pack Frame", "time": 8.0, "cost": {"Wood": 1, "Hardware": 1}, "gives_component": {"Pack Frame": 1}},
     ],
     "Sewing Table": [
-        {"id": "Improvised Pack", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_gear": "Improvised Pack"},
+        {"id": "Work Gloves", "time": 5.0, "cost": {"Cloth": 1}, "gives_gear": "Work Gloves"},
+        {"id": "Heavy Boots", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1, "Scrap Metal": 1}, "gives_gear": "Heavy Boots"},
+        {"id": "Leather Jacket", "time": 10.0, "cost": {"Cloth": 3, "Plastic": 1}, "gives_gear": "Leather Jacket"},
+        {"id": "Work Jacket", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_gear": "Work Jacket"},
         {"id": "Padded Jacket", "time": 10.0, "cost": {"Cloth": 3, "Plastic": 1}, "gives_gear": "Padded Jacket"},
-        {"id": "Weatherproofing Roll", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_component": {"Weatherproofing Roll": 1}},
+        {"id": "Worn Backpack", "time": 7.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_gear": "Worn Backpack"},
+        {"id": "School Backpack", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 2}, "gives_gear": "School Backpack"},
+        {"id": "Improvised Pack", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_gear": "Improvised Pack"},
+        {"id": "Hiking Pack", "time": 12.0, "cost": {"Cloth": 3, "Plastic": 2, "Hardware": 1}, "gives_gear": "Hiking Pack"},
         {"id": "Reinforced Pack", "time": 12.0, "cost": {"Cloth": 2, "Plastic": 1}, "component_cost": {"Pack Frame": 1}, "gives_gear": "Reinforced Pack"},
+        {"id": "Weatherproofing Roll", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_component": {"Weatherproofing Roll": 1}},
     ]
 }
 
 const BUILDINGS := {
-    "Rain Catcher": {"time": 10.0, "cost": {"Wood": 2, "Cloth": 1, "Plastic": 1}},
-    "Makeshift Shelter": {"time": 15.0, "cost": {"Wood": 4, "Cloth": 2, "Plastic": 1}},
-    "Storage Crate": {"time": 8.0, "cost": {"Wood": 2, "Hardware": 1}},
-    "Workbench": {"time": 20.0, "cost": {"Wood": 4, "Scrap Metal": 2, "Hardware": 1}},
-    "Sewing Table": {"time": 18.0, "cost": {"Wood": 3, "Cloth": 2, "Hardware": 1}, "requires": ["Workbench"]},
-    "Garden Plot": {"time": 20.0, "cost": {"Wood": 3, "Seeds": 1}, "requires": ["Workbench"]},
-    "Noise Line": {"time": 10.0, "cost": {"Scrap Metal": 1, "Hardware": 1, "Cloth": 1}},
-    "Cabin": {
-        "time": 45.0,
-        "cost": {"Wood": 4, "Scrap Metal": 2},
-        "component_cost": {"Framing Kit": 4, "Weatherproofing Roll": 2},
-        "requires": ["Workbench", "Sewing Table"]
-    }
+    "Rain Catcher": {"time": 10.0, "cost": {"Wood": 2, "Cloth": 1, "Plastic": 1}, "description": "Produces dirty water each day."},
+    "Makeshift Shelter": {"time": 15.0, "cost": {"Wood": 4, "Cloth": 2, "Plastic": 1}, "description": "+2 shelter capacity."},
+    "Storage Crate": {"time": 8.0, "cost": {"Wood": 2, "Hardware": 1}, "description": "Dedicated camp storage."},
+    "Workbench": {"time": 20.0, "cost": {"Wood": 4, "Scrap Metal": 2, "Hardware": 1}, "description": "Unlocks tool, weapon and utility crafting."},
+    "Sewing Table": {"time": 18.0, "cost": {"Wood": 3, "Cloth": 2, "Hardware": 1}, "requires": ["Workbench"], "description": "Unlocks clothing and pack crafting."},
+    "Garden Plot": {"time": 20.0, "cost": {"Wood": 3, "Seeds": 1}, "requires": ["Workbench"], "description": "Produces raw food on days it is tended."},
+    "Noise Line": {"time": 10.0, "cost": {"Scrap Metal": 1, "Hardware": 1, "Cloth": 1}, "description": "Early warning lowers camp intrusion risk."},
+    "Cabin": {"time": 45.0, "cost": {"Wood": 4, "Scrap Metal": 2}, "component_cost": {"Framing Kit": 4, "Weatherproofing Roll": 2}, "requires": ["Workbench", "Sewing Table"], "description": "+4 shelter capacity and better idle recovery."},
+    "Water Tank": {"time": 24.0, "cost": {"Scrap Metal": 5, "Plastic": 4, "Hardware": 2}, "requires": ["Rain Catcher", "Workbench"], "description": "Doubles daily Rain Catcher output."},
+    "Communal Table": {"time": 18.0, "cost": {"Wood": 5, "Hardware": 2}, "requires": ["Cabin"], "description": "Improves idle stress recovery and enables shared-meal camp events."},
+    "Infirmary": {"time": 32.0, "cost": {"Wood": 5, "Cloth": 3, "Plastic": 3, "Hardware": 3}, "component_cost": {"Sterile Dressing": 2}, "requires": ["Cabin", "Workbench"], "description": "Speeds treatment and wound recovery; reduces untreated critical decline."},
+    "Watch Post": {"time": 28.0, "cost": {"Wood": 5, "Scrap Metal": 2, "Hardware": 2}, "requires": ["Noise Line", "Workbench"], "description": "Further reduces danger from camp-perimeter disturbances."},
+    "Bunkhouse": {"time": 42.0, "cost": {"Wood": 8, "Cloth": 4, "Plastic": 2}, "component_cost": {"Framing Kit": 2, "Weatherproofing Roll": 1}, "requires": ["Cabin", "Sewing Table"], "description": "+6 shelter capacity."},
+    "Armory": {"time": 38.0, "cost": {"Wood": 8, "Scrap Metal": 8, "Hardware": 6, "Plastic": 2}, "requires": ["Workbench", "Cabin"], "description": "Unlocks firearm construction at the Workbench."},
+    "Dormitory": {"time": 55.0, "cost": {"Wood": 12, "Scrap Metal": 6, "Cloth": 4, "Hardware": 4}, "component_cost": {"Framing Kit": 4, "Weatherproofing Roll": 2}, "requires": ["Bunkhouse", "Infirmary", "Sewing Table"], "description": "+5 shelter capacity; completes the 18-person housing ceiling."},
 }
 
 const BUILD_ORDER := [
     "Rain Catcher", "Makeshift Shelter", "Storage Crate", "Workbench",
-    "Sewing Table", "Garden Plot", "Noise Line", "Cabin"
+    "Sewing Table", "Garden Plot", "Noise Line", "Cabin", "Water Tank",
+    "Communal Table", "Infirmary", "Watch Post", "Bunkhouse", "Armory", "Dormitory"
 ]
 
 const LEADER_ABILITIES := {

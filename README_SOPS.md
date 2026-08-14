@@ -69,9 +69,9 @@ Important current owners:
 - `FFTacticalTime.gd` — pure derived tactical action timing from gear load, survivor state, and infected pace/mass.
 - `FFTacticalSound.gd` — pure tactical sound labeling/localization helpers; combat owns propagation and reactions.
 - `FFTacticalScenarios.gd` — tactical scenario/location/layout selection and future physical field-event definitions.
-- `FFExpeditionRules.gd` — travel/logistics/recruit protection/haul rules; vehicle integration seam.
+- `FFExpeditionRules.gd` — single-survivor travel/logistics/recruit protection/haul rules.
 - `FFCampLifeRules.gd` — camp-life cadence/recovery/general camp-state tuning.
-- `FFCampSocial.gd` — relationships and future autonomous survivor social behavior.
+- `FFCampSocial.gd` — relationships, political standing, and autonomous survivor chatter.
 - `FFSaveCodec.gd` — persistence file/JSON mechanics.
 - `FFFieldEventsLegacy.gd` — temporary outside-world text-event selector pending Alpha 0.3 conversion.
 - `Game.gd` — persistent state/orchestration facade and fluid Alpha save-state schema.
@@ -84,23 +84,20 @@ Do not duplicate a durable rule because several callers need it. Expose one API 
 
 ### Data-driven variation
 
-When content differs mostly by values, use catalogs/data rather than copied branches. New tactical locations, encounter variants, pets, vehicles, equipment, etc. should be data-driven until behavior truly differs.
+When content differs mostly by values, use catalogs/data rather than copied branches. New tactical locations, encounter variants, equipment, buildings, etc. should be data-driven until behavior truly differs.
 
 ### Compatibility facades
 
 A small forwarding method in `Game.gd` may remain if deleting it would require unrelated caller churn. Label temporary compatibility paths clearly and remove them when the feature touching them naturally makes that safe.
 
-## 4. Roadmap-oriented ownership
+## 4. Frozen-scope ownership
 
-Use roadmap seams rather than inventing new architecture ad hoc:
-
-- Alpha 0.3/0.4 outside-world tactical conversion and variety → `FFTacticalScenarios` + `FFCombat`.
-- Alpha 0.5 autonomous survivor interaction → `FFCampSocial`, consuming camp/survivor state.
-- Camp recovery/vibe/cadence → `FFCampLifeRules`.
-- Living camp/menu visualization → `FFCampView`, reading `Game` state only.
-- Alpha 0.6 pets → create a real `FFPets` owner only when implementing actual pet behavior; do not add empty placeholder modules.
-- Alpha 0.7 vehicles → create a real `FFVehicles` owner for vehicle state when implementing vehicles, feed derived effects into `FFExpeditionRules`, and represent vehicles physically through tactical scenario/runtime state.
-- Beta 3D camp → presentation reads simulation state; it does not own it.
+- Remaining outside-world tactical conversion/variety → `FFTacticalScenarios` + `FFTacticalEnvironments` + `FFCombat`.
+- Single-survivor expedition/logistics rules → `FFExpeditionRules`.
+- Camp relationships, political standing, and autonomous chatter → `FFCampSocial`.
+- Camp recovery/cadence/building effects → `FFCampLifeRules`.
+- Living 2D camp/menu visualization → `FFCampView`, reading `Game` state only.
+- No new pet, vehicle, companion-expedition, or 3D-camp modules: those features are permanently cut.
 
 The remaining field text-event selector is deliberately legacy. Do not deepen that path; convert events into tactical scenarios instead.
 
@@ -139,7 +136,7 @@ While a tactical encounter is active, do not advance unrelated food consumption,
 
 ## 8. Save policy
 
-Current schema: **6**.
+Current schema: **7**.
 
 Alpha policy:
 
@@ -238,9 +235,11 @@ Important bugs should leave behind a cheaper future check when practical.
 - outside-world physical events are moving entirely to tactical encounters;
 - camp story/politics events remain narrative/dialogue;
 - tactical encounters pause settlement simulation;
-- survivor social behavior should become autonomous rather than conversation micromanagement;
-- pet care should be systemic/autonomous where possible;
-- vehicles are expedition/logistics tools and tactical entry/exit anchors, not a driving game;
+- survivor social behavior is autonomous rather than conversation micromanagement;
+- expeditions are single-survivor only; no tactical companion AI;
+- living 2D camp is final; no pets, vehicles, or 3D camp;
+- hard population cap is 18; mature settlement is 15+ survivors plus all buildings and elected leadership, with endless continuation;
+- feature freeze: completion/balance/content/bugfixes only, no new foundational pillars;
 - low encounter count with deep mechanics beats many fake choices;
 - Alpha save compatibility is not sacred;
 - no exploitative monetization systems.

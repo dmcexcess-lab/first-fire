@@ -5,6 +5,7 @@ signal tick
 signal event_changed
 signal combat_changed
 signal toast_requested(message)
+signal camp_chatter_requested(data)
 
 const D = preload("res://scripts/FFData.gd")
 const ExpeditionRules = preload("res://scripts/FFExpeditionRules.gd")
@@ -16,8 +17,9 @@ const CampSocial = preload("res://scripts/FFCampSocial.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 # Alpha saves are disposable; the filename remains stable while schema changes invalidate old state cleanly.
 const SAVE_PATH := "user://first_fire_alpha01.json"
-const SAVE_SCHEMA_VERSION := 6
+const SAVE_SCHEMA_VERSION := 7
 const DAY_SECONDS := 120.0
+const MAX_POPULATION := 18
 
 var rng := RandomNumberGenerator.new()
 var sim_paused := false
@@ -27,6 +29,8 @@ var ui_emit_accum := 0.0
 var autosave_accum := 0.0
 var camp_event_accum := 0.0
 var camp_event_cooldown := 0.0
+var camp_chatter_accum := 0.0
+var next_camp_chatter_at := 10.0
 
 var day := 1
 var day_elapsed := 0.0
@@ -56,8 +60,8 @@ var food_shortage_days := 0
 var water_shortage_days := 0
 var garden_tended_day := -1
 var game_over := false
-var alpha_complete := false
-var alpha_complete_shown := false
+var settlement_mature := false
+var settlement_mature_shown := false
 var recent_expedition_ids := []
 
 func _ready():
@@ -109,11 +113,13 @@ func new_game():
     water_shortage_days = 0
     garden_tended_day = -1
     game_over = false
-    alpha_complete = false
-    alpha_complete_shown = false
+    settlement_mature = false
+    settlement_mature_shown = false
     recent_expedition_ids = []
     camp_event_accum = 0.0
     camp_event_cooldown = CampLifeRules.NEW_GAME_EVENT_COOLDOWN
+    camp_chatter_accum = 0.0
+    next_camp_chatter_at = rng.randf_range(CampLifeRules.CAMP_CHATTER_MIN_SECONDS, CampLifeRules.CAMP_CHATTER_MAX_SECONDS)
     sim_paused = false
     var founder = _generate_survivor(true)
     founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight", "Clothing": "", "Pack": "Worn Backpack", "Tool": ""}
@@ -134,6 +140,7 @@ func _process(delta):
         camp_event_cooldown = max(0.0, camp_event_cooldown - delta)
 
     _process_survivors(delta)
+    _process_camp_chatter(delta)
     _process_expeditions(delta)
 
     if day_elapsed >= DAY_SECONDS:
@@ -146,7 +153,7 @@ func _process(delta):
         _consider_camp_event()
 
     _consider_politics()
-    _check_alpha_complete()
+    _check_settlement_mature()
 
     if autosave_accum >= 10.0:
         autosave_accum = 0.0
@@ -193,11 +200,12 @@ func formatted_time():
     return "%d:%02d %s" % [display_hour, minute, suffix]
 
 func shelter_capacity():
-    if buildings.get("Cabin", false):
-        return 5
-    if buildings.get("Makeshift Shelter", false):
-        return 3
-    return 1
+    var capacity := 1
+    if buildings.get("Makeshift Shelter", false): capacity += 2
+    if buildings.get("Cabin", false): capacity += 4
+    if buildings.get("Bunkhouse", false): capacity += 6
+    if buildings.get("Dormitory", false): capacity += 5
+    return mini(MAX_POPULATION, capacity)
 
 func population():
     var count = 0
@@ -303,8 +311,11 @@ func _initialize_relationships(new_survivor):
         other["relationships"][str(new_survivor["id"])] = b
 
 func _add_recruit(preferred_background = "", rescuer_ids = []) -> Variant:
-    if population() >= shelter_capacity() + 1:
-        toast_requested.emit("There is no room for another survivor right now.")
+    if population() >= MAX_POPULATION:
+        toast_requested.emit("First Fire is at its %d-person limit." % MAX_POPULATION)
+        return null
+    if population() >= shelter_capacity():
+        toast_requested.emit("There is no open shelter space right now.")
         return null
     var s = _generate_survivor(false, preferred_background)
     _initialize_relationships(s)
@@ -367,6 +378,30 @@ func skill_check(s, skill, dc, extra = 0):
     if roll >= dc - 2: return 0
     return -1
 
+func _process_camp_chatter(delta):
+    if population() < 2 or not current_event.is_empty() or not current_combat.is_empty():
+        camp_chatter_accum = 0.0
+        return
+    camp_chatter_accum += float(delta)
+    if camp_chatter_accum < next_camp_chatter_at:
+        return
+    camp_chatter_accum = 0.0
+    next_camp_chatter_at = rng.randf_range(CampLifeRules.CAMP_CHATTER_MIN_SECONDS, CampLifeRules.CAMP_CHATTER_MAX_SECONDS)
+    var chatter: Dictionary = CampSocial.roll_chatter(survivors, leader_id, coordinator_id, food_shortage_days, water_shortage_days, policies, rng)
+    if chatter.is_empty():
+        return
+    var speaker: Variant = get_survivor(int(chatter.get("speaker_id", -1)))
+    var listener: Variant = get_survivor(int(chatter.get("listener_id", -1)))
+    if speaker == null or listener == null:
+        return
+    var delta_ab := int(chatter.get("relationship_delta", 0))
+    var delta_ba := int(chatter.get("reverse_delta", 0))
+    if delta_ab != 0: _change_relationship(speaker, listener, delta_ab)
+    if delta_ba != 0: _change_relationship(listener, speaker, delta_ba)
+    speaker["stress"] = clampf(float(speaker.get("stress", 0.0)) + float(chatter.get("speaker_stress_delta", 0.0)), 0.0, 100.0)
+    listener["stress"] = clampf(float(listener.get("stress", 0.0)) + float(chatter.get("listener_stress_delta", 0.0)), 0.0, 100.0)
+    camp_chatter_requested.emit(chatter)
+
 func _process_survivors(delta):
     for s in survivors:
         if s["condition"] == "Dead":
@@ -378,11 +413,11 @@ func _process_survivors(delta):
             if leader_id != -1:
                 var leader: Variant = get_survivor(leader_id)
                 caretaker_leader = leader != null and leader["leader_ability"] == "Caretaker"
-            var recovery := CampLifeRules.idle_recovery_rates(bool(buildings.get("Cabin", false)), caretaker_leader)
+            var recovery := CampLifeRules.idle_recovery_rates(bool(buildings.get("Cabin", false)), caretaker_leader, bool(buildings.get("Communal Table", false)))
             s["fatigue"] = max(0.0, float(s["fatigue"]) - recovery.x * delta)
             s["stress"] = max(0.0, float(s["stress"]) - recovery.y * delta)
             if s["condition"] == "Hurt" or s["condition"] == "Wounded":
-                s["injury_remaining"] = max(0.0, float(s["injury_remaining"]) - delta)
+                s["injury_remaining"] = max(0.0, float(s["injury_remaining"]) - delta * CampLifeRules.injury_recovery_multiplier(bool(buildings.get("Infirmary", false))))
                 if s["injury_remaining"] <= 0.0:
                     if s["condition"] == "Wounded":
                         s["condition"] = "Hurt"
@@ -421,7 +456,8 @@ func treat_survivor(sid):
         var base = 45.0 if s["condition"] == "Wounded" else 120.0
         var medical_skill = _best_available_skill("Medical", sid)
         var reduction = min(0.35, medical_skill * 0.04)
-        s["task"] = {"kind": "treatment", "remaining": base * (1.0 - reduction), "duration": base, "target": sid}
+        var treatment_time := base * (1.0 - reduction) * CampLifeRules.treatment_time_multiplier(bool(buildings.get("Infirmary", false)))
+        s["task"] = {"kind": "treatment", "remaining": treatment_time, "duration": base, "target": sid}
     save_game()
     state_changed.emit()
     return true
@@ -505,6 +541,10 @@ func start_craft(sid, station, recipe_id):
             break
     if recipe == null:
         return false
+    for req in recipe.get("requires", []):
+        if not buildings.get(req, false):
+            toast_requested.emit("Requires %s." % req)
+            return false
     var cc = recipe.get("component_cost", {})
     if not _can_pay(recipe.get("cost", {}), cc):
         toast_requested.emit("Not enough materials.")
@@ -610,12 +650,10 @@ func _process_expeditions(delta):
     for eid in finished:
         _finish_expedition(eid)
 
-func start_expedition(primary_id, companion_id, zone):
+func start_expedition(primary_id, zone):
     if not unlocked_zones.has(zone) or not D.ZONES.has(zone):
         return false
     var party_ids = [int(primary_id)]
-    if int(companion_id) > 0 and int(companion_id) != int(primary_id):
-        party_ids.append(int(companion_id))
     for sid in party_ids:
         var s: Variant = get_survivor(sid)
         if s == null or s["status"] != "Available" or s["condition"] == "Dead":
@@ -635,7 +673,7 @@ func start_expedition(primary_id, companion_id, zone):
         avg_survival += int(get_survivor(sid)["skills"]["Survival"])
     avg_survival /= party_ids.size()
     var duration = ExpeditionRules.travel_duration(float(D.ZONES[zone]["duration"]), avg_survival)
-    var force_recruit = ExpeditionRules.should_force_recruit(population(), shelter_capacity(), eligible_expeditions_since_recruit, recruit_eligible)
+    var force_recruit = ExpeditionRules.should_force_recruit(population(), shelter_capacity(), MAX_POPULATION, eligible_expeditions_since_recruit, recruit_eligible)
 
     var event_key = ""
     var combat_kind = ""
@@ -702,12 +740,10 @@ func start_expedition(primary_id, companion_id, zone):
     state_changed.emit()
     return true
 
-func start_special_site(primary_id, companion_id, site):
+func start_special_site(primary_id, site):
     if not special_sites.has(site) or not special_sites[site]["discovered"] or special_sites[site]["cleared"]:
         return false
     var party_ids = [int(primary_id)]
-    if int(companion_id) > 0 and int(companion_id) != int(primary_id):
-        party_ids.append(int(companion_id))
     for sid in party_ids:
         var s: Variant = get_survivor(sid)
         if s == null or s["status"] != "Available":
@@ -757,9 +793,6 @@ func _begin_tactical_encounter(exp):
         var s: Variant = get_survivor(sid)
         if s != null and s["condition"] != "Dead":
             s["status"] = "Tactical Encounter"
-    var companion_hp = -1
-    if ids.size() > 1:
-        companion_hp = _combat_condition_hp(get_survivor(ids[1]))
     var combat_kind := str(exp.get("combat_kind", "ambush"))
     var environment_id := TacticalScenarios.pick_environment(str(exp["zone"]), combat_kind, rng)
     var environment_variant := TacticalScenarios.environment_variant(environment_id, rng)
@@ -778,7 +811,6 @@ func _begin_tactical_encounter(exp):
         "seed": rng.randi_range(1, 2147483000),
         "runtime": {
             "lead_hp": _combat_condition_hp(lead),
-            "companion_hp": companion_hp,
             "objective_done": str(exp.get("combat_kind", "ambush")) == "ambush",
             "tick": 0
         }
@@ -851,19 +883,12 @@ func resolve_combat(result):
     var exp: Variant = _find_expedition(eid)
     var ids: Array = encounter.get("survivor_ids", [])
     var lead: Variant = get_survivor(ids[0]) if not ids.is_empty() else null
-    var companion: Variant = get_survivor(ids[1]) if ids.size() > 1 else null
 
     if lead != null:
         _commit_tactical_health(lead, result.get("lead_hp", 0), result.get("lead_max_hp", 18), "was killed in a tactical field encounter")
         lead["fatigue"] = min(100.0, float(lead["fatigue"]) + CampLifeRules.fatigue_gain(6.0))
         lead["stress"] = min(100.0, float(lead["stress"]) + min(18.0, float(result.get("damage", 0)) * 1.5))
         add_skill_xp(lead, "Combat", min(22, 4 + int(result.get("kills", 0)) * 3))
-    if companion != null and result.get("companion_hp", -1) >= 0:
-        _commit_tactical_health(companion, result.get("companion_hp", 0), result.get("companion_max_hp", 18), "was killed while supporting a tactical field encounter")
-        companion["fatigue"] = min(100.0, float(companion["fatigue"]) + CampLifeRules.fatigue_gain(4.0))
-        if companion["condition"] != "Dead":
-            add_skill_xp(companion, "Combat", min(12, 2 + int(result.get("kills", 0))))
-
     current_combat = {}
     sim_paused = false
     combat_changed.emit()
@@ -1247,12 +1272,12 @@ func _daily_tick():
         water_shortage_days = 0
 
     if buildings.get("Rain Catcher", false):
-        resources["Dirty Water"] = int(resources.get("Dirty Water", 0)) + 1
+        resources["Dirty Water"] = int(resources.get("Dirty Water", 0)) + CampLifeRules.rain_catcher_yield(bool(buildings.get("Water Tank", false)))
     if buildings.get("Garden Plot", false) and garden_tended_day == day:
         resources["Raw Food"] = int(resources.get("Raw Food", 0)) + 2
 
     for s in survivors:
-        if s["condition"] == "Critical" and s["status"] != "Recovering" and rng.randf() < 0.25:
+        if s["condition"] == "Critical" and s["status"] != "Recovering" and rng.randf() < CampLifeRules.critical_decline_chance(bool(buildings.get("Infirmary", false))):
             _kill_survivor(s, "died from untreated critical injuries")
         if s["condition"] != "Dead" and population() > shelter_capacity():
             s["stress"] = min(100.0, float(s["stress"]) + 10.0)
@@ -1349,14 +1374,14 @@ func _choice(text, action, disabled = false, reason = ""):
     return c
 
 func _has_room_for_recruit():
-    return population() < shelter_capacity() + 1
+    return population() < MAX_POPULATION and population() < shelter_capacity()
 
 func _party_has_gear_name(ids, gear_name):
     for sid in ids:
         var s: Variant = get_survivor(sid)
         if s == null:
             continue
-        for slot in ["Weapon", "Clothing", "Pack", "Tool"]:
+        for slot in ["Weapon", "Secondary", "Clothing", "Pack", "Tool"]:
             if s["equipment"].get(slot, "") == gear_name:
                 return true
     return false
@@ -2157,7 +2182,8 @@ func _handle_event_action(event, action):
                 lead["stress"] = min(100.0, float(lead["stress"]) + 10.0)
                 lead["leader_support"] = int(lead.get("leader_support", 0)) - 5
         "camp_outside_investigate":
-            if lead != null and not buildings.get("Noise Line", false) and rng.randf() < 0.20:
+            var outside_risk := CampLifeRules.outside_injury_chance(bool(buildings.get("Noise Line", false)), bool(buildings.get("Watch Post", false)))
+            if lead != null and rng.randf() < outside_risk:
                 _apply_injury(lead, "Hurt")
             else:
                 toast_requested.emit("Nothing made it into camp.")
@@ -2169,12 +2195,34 @@ func _handle_event_action(event, action):
                 if lead != null: lead["stress"] = max(0.0, float(lead["stress"]) - 8.0)
         "camp_request_refuse":
             if lead != null: lead["stress"] += 4
+        "camp_meal_share":
+            if int(resources.get("Cooked Food", 0)) >= 2:
+                resources["Cooked Food"] -= 2
+                for survivor in survivors:
+                    if survivor["condition"] != "Dead":
+                        survivor["stress"] = max(0.0, float(survivor["stress"]) - 6.0)
+                var meal_pair := CampSocial.pick_pair(survivors, rng)
+                if meal_pair.size() == 2:
+                    _change_relationship(meal_pair[0], meal_pair[1], 4)
+                    _change_relationship(meal_pair[1], meal_pair[0], 4)
+        "camp_meal_save":
+            pass
+        "camp_shortage_back_leader":
+            for survivor in survivors:
+                if survivor["condition"] != "Dead": survivor["leader_support"] = int(survivor.get("leader_support", 0)) + 2
+        "camp_shortage_open_floor":
+            for survivor in survivors:
+                if survivor["condition"] != "Dead":
+                    survivor["stress"] = max(0.0, float(survivor["stress"]) - 2.0)
+                    survivor["leader_support"] = int(survivor.get("leader_support", 0)) + rng.randi_range(-2, 1)
         "politics_support_a", "politics_support_b", "politics_neutral":
             _resolve_coordinator_vote(event, action)
         "election_support_a", "election_support_b", "election_neutral":
             _resolve_formal_election(event, action)
-        "alpha_continue":
-            alpha_complete_shown = true
+        "confidence_support_a", "confidence_support_b", "confidence_neutral":
+            _resolve_confidence_vote(event, action)
+        "mature_continue":
+            settlement_mature_shown = true
         _:
             pass
 
@@ -2244,6 +2292,8 @@ func _select_camp_event():
     if _high_stress_survivor() != null: candidates.append("refuse")
     candidates.append("outside")
     if int(resources.get("Cloth", 0)) > 0: candidates.append("request")
+    if buildings.get("Communal Table", false) and population() >= 3 and int(resources.get("Cooked Food", 0)) >= population() + 2: candidates.append("meal")
+    if (food_shortage_days > 0 or water_shortage_days > 0) and (leader_id != -1 or coordinator_id != -1): candidates.append("shortage_meeting")
     if candidates.is_empty(): return {}
     var key = candidates[rng.randi_range(0, candidates.size() - 1)]
     if key == "sleep":
@@ -2296,6 +2346,17 @@ func _select_camp_event():
             {"text": "Give them the cloth", "action": "camp_request_give"},
             {"text": "We need it for the camp", "action": "camp_request_refuse"},
         ], {"survivor_ids": [requester["id"]]})
+    if key == "meal":
+        return _event_base("camp_meal", "Eat Together", "There is enough food for once. Someone suggests putting two extra rations on the communal table and eating like people instead of inventory slots.", [
+            {"text": "Use two extra rations and eat together", "action": "camp_meal_share"},
+            {"text": "Save the food", "action": "camp_meal_save"},
+        ])
+    if key == "shortage_meeting":
+        var active_leader: Variant = get_survivor(leader_id if leader_id != -1 else coordinator_id)
+        return _event_base("camp_shortage_meeting", "Rations and Blame", "Short supplies turn into a political argument. People want to know whether %s actually has a plan." % (active_leader["name"] if active_leader != null else "anyone"), [
+            {"text": "Back the current ration plan", "action": "camp_shortage_back_leader"},
+            {"text": "Let everyone say what they think", "action": "camp_shortage_open_floor"},
+        ])
     return {}
 
 func _repeated_runner() -> Variant:
@@ -2377,9 +2438,26 @@ func _consider_politics():
     if population() >= 3 and coordinator_id == -1 and leader_id == -1 and not flags.get("coordinator_event_queued", false):
         flags["coordinator_event_queued"] = true
         _queue_event(_build_coordinator_event())
+        return
     if population() >= 5 and leader_id == -1 and coordinator_id != -1 and not flags.get("formal_election_queued", false):
         flags["formal_election_queued"] = true
         _queue_event(_build_formal_election())
+        return
+    if leader_id == -1 or population() < 6:
+        return
+    if not flags.has("next_confidence_check_day"):
+        flags["next_confidence_check_day"] = day + 3
+        return
+    if day < int(flags.get("next_confidence_check_day", day + 3)) or not current_event.is_empty():
+        return
+    var incumbent: Variant = get_survivor(leader_id)
+    var support := CampSocial.leader_support_score(incumbent, survivors)
+    flags["next_confidence_check_day"] = day + (3 if support <= -12.0 else 2)
+    if support > -12.0:
+        return
+    var challenger: Variant = CampSocial.strongest_challenger(survivors, leader_id)
+    if challenger != null:
+        _queue_event(_build_confidence_vote(challenger))
 
 func _candidate_standing(s):
     return CampSocial.candidate_standing(s, survivors)
@@ -2435,10 +2513,38 @@ func _resolve_formal_election(event, action):
     leader_id = _run_vote(ids, endorsement)
     coordinator_id = -1
     leadership_form = "Elected Leader"
+    flags["next_confidence_check_day"] = day + 3
     var winner: Variant = get_survivor(leader_id)
     if winner != null:
         _add_history("Day %d — %s was elected leader of First Fire (%s)." % [day, winner["name"], winner["leader_ability"]])
         toast_requested.emit("%s was elected leader." % winner["name"])
+
+func _build_confidence_vote(challenger: Dictionary):
+    var incumbent: Variant = get_survivor(leader_id)
+    if incumbent == null or challenger.is_empty():
+        return {}
+    return _event_base("politics_confidence", "Confidence Vote", "Support for %s has fallen far enough that %s openly asks the camp for a new vote." % [incumbent["name"], challenger["name"]], [
+        {"text": "Keep %s" % incumbent["name"], "action": "confidence_support_a"},
+        {"text": "Back %s" % challenger["name"], "action": "confidence_support_b"},
+        {"text": "Stay neutral", "action": "confidence_neutral"},
+    ], {"candidates": [incumbent["id"], challenger["id"]]})
+
+func _resolve_confidence_vote(event, action):
+    var ids = event.get("context", {}).get("candidates", [])
+    if ids.size() != 2:
+        return
+    var old_leader := int(leader_id)
+    var endorsement := -1
+    if action == "confidence_support_a": endorsement = int(ids[0])
+    elif action == "confidence_support_b": endorsement = int(ids[1])
+    leader_id = _run_vote(ids, endorsement)
+    leadership_form = "Elected Leader"
+    flags["next_confidence_check_day"] = day + 4
+    var winner: Variant = get_survivor(leader_id)
+    if winner != null:
+        var verb := "kept leadership" if leader_id == old_leader else "won leadership"
+        _add_history("Day %d — %s %s after a confidence vote." % [day, winner["name"], verb])
+        toast_requested.emit("%s %s." % [winner["name"], verb])
 
 func _run_vote(candidate_ids, endorsement):
     var totals = {}
@@ -2468,27 +2574,27 @@ func _run_vote(candidate_ids, endorsement):
 func leader_support_label():
     var leader: Variant = get_survivor(leader_id if leader_id != -1 else coordinator_id)
     if leader == null: return "None"
-    var sum = 0.0
-    var count = 0
-    for s in survivors:
-        if s["condition"] == "Dead" or int(s["id"]) == int(leader["id"]): continue
-        sum += int(s["relationships"].get(str(leader["id"]), 0)) + int(s.get("leader_support", 0))
-        count += 1
-    var avg = sum / count if count > 0 else 0.0
+    var avg := CampSocial.leader_support_score(leader, survivors)
     if avg >= 50: return "Very Strong"
     if avg >= 20: return "Strong"
     if avg <= -40: return "Hostile"
     if avg <= -15: return "Weak"
     return "Mixed"
 
-func _check_alpha_complete():
-    if alpha_complete:
+func _all_buildings_complete() -> bool:
+    for building in D.BUILD_ORDER:
+        if not buildings.get(building, false):
+            return false
+    return true
+
+func _check_settlement_mature():
+    if settlement_mature:
         return
-    if population() >= 5 and buildings.get("Rain Catcher", false) and buildings.get("Workbench", false) and buildings.get("Sewing Table", false) and buildings.get("Cabin", false) and leader_id != -1:
-        alpha_complete = true
-        _add_history("Day %d — First Fire became a real camp." % day)
-        _queue_event(_event_base("alpha_complete", "A REAL CAMP", "Five people sleep behind the same walls tonight. Nobody would mistake this for civilization. But it isn't just a campfire anymore.", [
-            {"text": "Continue playing", "action": "alpha_continue"}
+    if population() >= 15 and _all_buildings_complete() and leader_id != -1:
+        settlement_mature = true
+        _add_history("Day %d — First Fire reached mature-settlement scale." % day)
+        _queue_event(_event_base("settlement_mature", "FIRST FIRE ENDURES", "Fifteen people live here now, every planned structure is standing, and the camp has a government people can argue with. There is no ending from here—First Fire simply keeps living.", [
+            {"text": "Keep the fire going", "action": "mature_continue"}
         ]))
 
 func _check_game_over():
@@ -2512,7 +2618,7 @@ func save_game():
     if not initialized and survivors.is_empty():
         return
     var data = {
-        "version": "0.3.0",
+        "version": "0.9.0-beta-candidate",
         "save_schema": SAVE_SCHEMA_VERSION,
         "day": day, "day_elapsed": day_elapsed,
         "resources": resources, "components": components, "inventory_gear": inventory_gear,
@@ -2526,7 +2632,7 @@ func save_game():
         "eligible_expeditions_since_recruit": eligible_expeditions_since_recruit,
         "food_shortage_days": food_shortage_days, "water_shortage_days": water_shortage_days,
         "garden_tended_day": garden_tended_day,
-        "game_over": game_over, "alpha_complete": alpha_complete, "alpha_complete_shown": alpha_complete_shown,
+        "game_over": game_over, "settlement_mature": settlement_mature, "settlement_mature_shown": settlement_mature_shown,
         "recent_expedition_ids": recent_expedition_ids,
     }
     SaveCodec.write_json(SAVE_PATH, data)
@@ -2570,8 +2676,8 @@ func load_game():
     water_shortage_days = int(parsed.get("water_shortage_days", 0))
     garden_tended_day = int(parsed.get("garden_tended_day", -1))
     game_over = bool(parsed.get("game_over", false))
-    alpha_complete = bool(parsed.get("alpha_complete", false))
-    alpha_complete_shown = bool(parsed.get("alpha_complete_shown", false))
+    settlement_mature = bool(parsed.get("settlement_mature", false))
+    settlement_mature_shown = bool(parsed.get("settlement_mature_shown", false))
     recent_expedition_ids = parsed.get("recent_expedition_ids", [])
     # Returning to a saved game is always paused until the player explicitly resumes.
     sim_paused = true

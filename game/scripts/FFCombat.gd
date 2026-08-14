@@ -160,11 +160,6 @@ func make_party():
     var lead = Game.get_survivor(ids[0]) if not ids.is_empty() else null
     player = make_actor(lead, player_spawn, true)
     ally = {}
-    if ids.size() > 1:
-        var companion = Game.get_survivor(ids[1])
-        if companion != null and companion.get("condition", "Dead") != "Dead":
-            ally = make_actor(companion, ally_spawn, false)
-            ally["next"] = 85
 
 func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
     if s == null:
@@ -1295,13 +1290,11 @@ func draw_hud():
     var scene_label := "%s  •  %s  •  %s" % [location_name, scene_time.to_upper(), "POWER" if power_on else "NO POWER"]
     draw_string(font,Vector2(10,22),scene_label,HORIZONTAL_ALIGNMENT_LEFT,370,14,Color.WHITE)
     draw_string(font,Vector2(10,47),"%s  HP %d/%d  %s"%[player.name,int(player.hp),int(player.max_hp),str(player.condition).to_upper()],HORIZONTAL_ALIGNMENT_LEFT,370,13,Color(.70,.84,1))
-    var gear_line="%s"%player.weapon.name
-    if bool(player.weapon.gun): gear_line += "  |  Ammo %d"%int(Game.resources.get("Ammo",0))
-    if player.clothing!="": gear_line += "  |  %s"%player.clothing
-    if TacticalLighting.item_emits_light(str(player.get("secondary", ""))): gear_line += "  |  LIGHT"
-    draw_string(font,Vector2(10,69),gear_line,HORIZONTAL_ALIGNMENT_LEFT,370,11,Color(.82,.84,.82))
-    if not ally.is_empty():
-        draw_string(font,Vector2(10,90),"With: %s  HP %d/%d  %s"%[ally.name,int(ally.hp),int(ally.max_hp),"DOWN" if ally.dead else ally.weapon.name],HORIZONTAL_ALIGNMENT_LEFT,370,10,Color(.76,.64,.90))
+    var gear_lines: Array = TacticalVisuals.equipment_summary_lines(player.get("equipment", {}))
+    var primary_gear := str(gear_lines[0])
+    if bool(player.weapon.gun): primary_gear += " | Ammo %d" % int(Game.resources.get("Ammo", 0))
+    draw_string(font, Vector2(10,69), primary_gear, HORIZONTAL_ALIGNMENT_LEFT, 370, 9, Color(.82,.84,.82))
+    draw_string(font, Vector2(10,89), str(gear_lines[1]), HORIZONTAL_ALIGNMENT_LEFT, 370, 8, Color(.72,.78,.74))
     var objective_text := "ESCAPE"
     match str(context.get("kind","ambush")):
         "rescue": objective_text = "RESCUE + ESCAPE" if not objective_done else "ESCAPE WITH SURVIVOR"

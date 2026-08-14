@@ -71,13 +71,13 @@ Tactical character presentation owner. Generates persistent survivor appearance 
 Temporary Alpha 0.2 compatibility owner for remaining **outside-world text-event selection only**. Delete it when Alpha 0.3 has tactical equivalents for every field event and no caller needs the text field path. Camp stories/politics remain valid narrative events.
 
 ### `FFExpeditionRules.gd`
-Pure expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and routine haul-count distributions. This is the integration seam for future vehicle speed/range/cargo effects and route/logistics constraints.
+Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and routine haul-count distributions. Multi-survivor dispatch and vehicles are not part of the final design.
 
 ### `FFCampLifeRules.gd`
-Camp-life cadence and idle recovery tuning. Future home for shared camp vibe/comfort/resource-security modifiers that influence autonomous life.
+Camp-life cadence, idle recovery, injury/treatment modifiers, defensive-building risk, rain-catcher output, and chatter timing.
 
 ### `FFCampSocial.gd`
-Relationship mutation/labels and survivor social-selection rules. Alpha 0.5 should grow autonomous interactions here: personality, stress, health, fatigue, injuries, shared history, losses/successes, politics, comfort, resentment, friendship, and meaningful camp-story triggers.
+Relationship mutation/labels, candidate standing, leadership support, pair selection, and autonomous camp chatter. Personality, stress, shortages, relationship state, leadership opinion and policy can shape quiet interactions; Game applies consequences and the camp view renders them.
 
 ### `FFSaveCodec.gd`
 Persistence transport only: JSON/file read-write, compatibility check, invalidation. During Alpha, `Game.gd` still owns the actual state dictionary/schema.
@@ -85,16 +85,11 @@ Persistence transport only: JSON/file read-write, compatibility check, invalidat
 ### `scripts/ci/FFArchitectureSmoke.gd`
 Deterministic module-contract checks. Add cheap regression invariants here when important bugs teach the project something reusable.
 
-## Planned seams — do not create empty modules early
+## Frozen scope
 
-### Future `FFPets.gd`
-Expected owner for animal state/needs, bonds/trust, care outcomes, species/training roles, and pet-specific expedition state. It should consume camp/social/resource state; survivors care for pets autonomously when possible.
+The living **2D** camp is final presentation. Pets, vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI are deliberately cut. New code should complete/tune existing owners rather than create replacement feature pillars.
 
-### Future `FFVehicles.gd`
-Expected owner for vehicle definitions/state, fuel, condition/reliability, seats, cargo/storage, repairs, and noise. It feeds derived logistics into `FFExpeditionRules`. On tactical maps, the vehicle becomes the physical entry/exit anchor — the map’s “stairs.” No real-time driving subsystem is planned.
-
-### Future 3D camp presentation
-`FFCampView.gd` is now the working 2D foundation for this idea. A later 3D renderer may replace or extend that presentation if it materially improves the game, but it should consume the same authoritative survivor/camp/pet/vehicle state and must not become a second simulation.
+The hard population ceiling is 18; the mature-settlement milestone is 15+ survivors with all planned buildings and an elected leader, and it does not end the save.
 
 ## Tactical pause boundary
 
@@ -104,7 +99,7 @@ Detailed survivor/item inspection also pauses settlement simulation while the mo
 
 ## Save boundary
 
-Current schema: **6**. Alpha policy is clean invalidation on meaningful incompatibility rather than accumulating migrations.
+Current schema: **7**. Alpha policy is clean invalidation on meaningful incompatibility rather than accumulating migrations.
 
 The filename `user://first_fire_alpha01.json` remains intentionally for compatibility; its old name alone is not grounds for a save wipe.
 

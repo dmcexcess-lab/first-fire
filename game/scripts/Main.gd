@@ -32,7 +32,6 @@ var inspector_overlay: Control
 var expedition_overlay: ColorRect
 var expedition_title: Label
 var expedition_zone: OptionButton
-var expedition_companion: OptionButton
 var expedition_specials: VBoxContainer
 
 var reset_confirm: ConfirmationDialog
@@ -316,11 +315,6 @@ func _build_expedition_overlay():
     expedition_zone.custom_minimum_size = Vector2(0, 44)
     v.add_child(expedition_zone)
 
-    v.add_child(_make_label("Companion", 13))
-    expedition_companion = OptionButton.new()
-    expedition_companion.custom_minimum_size = Vector2(0, 44)
-    v.add_child(expedition_companion)
-
     var send = Button.new()
     send.text = "SEND"
     send.custom_minimum_size = Vector2(0, 48)
@@ -488,12 +482,13 @@ func _refresh_status():
     if status_label == null:
         return
     var pause_text = "PAUSED" if Game.sim_paused else "RUNNING"
-    status_label.text = "Day %d  %s  •  Food %d  Water %d  •  Pop %d/%d" % [
+    status_label.text = "Day %d  %s  •  Food %d  Water %d  •  Pop %d/%d  Beds %d" % [
         Game.day,
         Game.formatted_time(),
         int(Game.resources.get("Cooked Food", 0)),
         int(Game.resources.get("Clean Water", 0)),
         Game.population(),
+        Game.MAX_POPULATION,
         Game.shelter_capacity()
     ]
     pause_button.text = "PAUSE"
@@ -530,11 +525,12 @@ func _draw_camp():
     stats.columns = 2
     stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     var stat_pairs = [
-        ["Population", "%d / %d" % [Game.population(), Game.shelter_capacity()]],
+        ["Population", "%d / %d" % [Game.population(), Game.MAX_POPULATION]],
+        ["Shelter Beds", "%d" % Game.shelter_capacity()],
+        ["Settlement", "MATURE" if Game.settlement_mature else "GROWING"],
         ["Ready Food", str(int(Game.resources.get("Cooked Food", 0)))],
         ["Clean Water", str(int(Game.resources.get("Clean Water", 0)))],
-        ["Shelter", "FULL" if Game.population() >= Game.shelter_capacity() else "SPACE AVAILABLE"],
-        ["Threat", "LOW" if Game.buildings.get("Noise Line", false) else "MINIMAL"],
+                ["Threat", "LOW" if Game.buildings.get("Noise Line", false) else "MINIMAL"],
         ["Cohesion", _cohesion_label()]
     ]
     for pair in stat_pairs:
@@ -639,17 +635,22 @@ func _draw_craft():
             if not outputs.is_empty():
                 desc += "  →  " + ", ".join(outputs)
             v.add_child(_make_label(desc, 12))
+            var recipe_req_ok := true
+            if recipe.has("requires"):
+                v.add_child(_make_label("Requires: " + ", ".join(recipe["requires"]), 12))
+                for req in recipe["requires"]:
+                    if not Game.buildings.get(req, false): recipe_req_ok = false
             var b = Button.new()
             b.text = "CRAFT"
             b.custom_minimum_size = Vector2(0, 40)
-            b.disabled = selected_worker_id < 0 or not _can_pay_ui(recipe.get("cost", {}), recipe.get("component_cost", {}))
+            b.disabled = selected_worker_id < 0 or not recipe_req_ok or not _can_pay_ui(recipe.get("cost", {}), recipe.get("component_cost", {}))
             b.pressed.connect(_on_craft_pressed.bind(station, recipe["id"]))
             v.add_child(b)
             content_box.add_child(panel)
 
 func _draw_build():
     content_box.add_child(_heading("BUILD", 26))
-    content_box.add_child(_make_label("All Alpha 0.1 structures are shown here. Gray BUILD buttons mean you are missing materials, a worker, or a prerequisite.", 13))
+    content_box.add_child(_make_label("This is the final First Fire building tree. Gray BUILD buttons mean you are missing materials, a worker, or a prerequisite.", 13))
     content_box.add_child(_worker_picker())
     if Game.buildings.get("Garden Plot", false):
         var tend = Button.new()
@@ -672,6 +673,8 @@ func _draw_build():
             content_box.add_child(panel)
             continue
         var data = D.BUILDINGS[building]
+        if str(data.get("description", "")) != "":
+            v.add_child(_make_label(str(data["description"]), 12))
         v.add_child(_make_label(_format_cost(data.get("cost", {}), data.get("component_cost", {})) + "  •  %.0fs base" % float(data["time"]), 12))
         if data.has("requires"):
             v.add_child(_make_label("Requires: " + ", ".join(data["requires"]), 12))
@@ -813,13 +816,6 @@ func _open_expedition_overlay():
             var data = D.ZONES[zone]
             expedition_zone.add_item("%s — %.0fs — %s — Loot %s" % [zone, float(data["duration"]), data["danger"], Game.zone_loot_state(zone)])
             expedition_zone.set_item_metadata(expedition_zone.item_count - 1, zone)
-    expedition_companion.clear()
-    expedition_companion.add_item("None")
-    expedition_companion.set_item_metadata(0, -1)
-    for other in Game.available_survivors():
-        if int(other["id"]) == selected_survivor_id: continue
-        expedition_companion.add_item("%s" % other["name"])
-        expedition_companion.set_item_metadata(expedition_companion.item_count - 1, int(other["id"]))
     for child in expedition_specials.get_children():
         expedition_specials.remove_child(child)
         child.queue_free()
@@ -840,13 +836,11 @@ func _on_expedition_send():
     if expedition_zone.item_count == 0:
         return
     var zone = str(expedition_zone.get_item_metadata(expedition_zone.selected))
-    var companion = int(expedition_companion.get_item_metadata(expedition_companion.selected)) if expedition_companion.item_count > 0 else -1
-    if Game.start_expedition(selected_survivor_id, companion, zone):
+    if Game.start_expedition(selected_survivor_id, zone):
         expedition_overlay.visible = false
 
 func _on_special_site_pressed(site):
-    var companion = int(expedition_companion.get_item_metadata(expedition_companion.selected)) if expedition_companion.item_count > 0 else -1
-    if Game.start_special_site(selected_survivor_id, companion, site):
+    if Game.start_special_site(selected_survivor_id, site):
         expedition_overlay.visible = false
 
 func _refresh_event_overlay():

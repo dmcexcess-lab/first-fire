@@ -1,8 +1,6 @@
 extends RefCounted
 class_name FFExpeditionRules
 
-# Pure expedition rules live here so travel/logistics changes (especially vehicles)
-# do not spread back through Game.gd.
 const TACTICAL_EVENT_CHANCE := {
     "Camp Perimeter": 0.65,
     "Nearby Streets": 0.70,
@@ -19,19 +17,22 @@ const ZONE_CAPS := {
     "Industrial Edge": 7,
 }
 
-static func travel_duration(base_duration: float, average_survival: float, vehicle_speed_multiplier: float = 1.0) -> float:
-    var reduction: float = minf(0.20, average_survival * 0.025)
-    var speed: float = maxf(0.05, vehicle_speed_multiplier)
-    return (base_duration * (1.0 - reduction)) / speed
+static func travel_duration(base_duration: float, survival_skill: float) -> float:
+    var reduction: float = minf(0.20, survival_skill * 0.025)
+    return base_duration * (1.0 - reduction)
 
-static func should_force_recruit(population: int, shelter_capacity: int, eligible_count: int, recruit_eligible: bool) -> bool:
-    if not recruit_eligible or population >= shelter_capacity + 1:
+static func should_force_recruit(population: int, shelter_capacity: int, max_population: int, eligible_count: int, recruit_eligible: bool) -> bool:
+    if not recruit_eligible or population >= mini(shelter_capacity, max_population):
         return false
-    if population == 1:
-        return eligible_count >= 5
-    if population >= 2 and population < 5:
-        return eligible_count >= 7
-    return false
+    if population <= 1:
+        return eligible_count >= 4
+    if population < 5:
+        return eligible_count >= 6
+    if population < 10:
+        return eligible_count >= 8
+    if population < 15:
+        return eligible_count >= 10
+    return eligible_count >= 12
 
 static func tactical_event_chance(zone: String) -> float:
     return float(TACTICAL_EVENT_CHANCE.get(zone, 0.0))
@@ -47,7 +48,6 @@ static func zone_cap(zone: String) -> int:
 
 static func loot_item_target(zone: String, rng: RandomNumberGenerator) -> int:
     var r: float = rng.randf()
-    # Total routine items. Empty runs fall with distance while maximum haul rises.
     if zone == "Camp Perimeter":
         if r < 0.25: return 0
         if r < 0.70: return 1

@@ -51,6 +51,23 @@ static func weapon_visual(name: String) -> Dictionary:
         "Shotgun": return {"kind": "shotgun", "atlas": 199}
         _: return {"kind": "none", "atlas": -1}
 
+static func equipment_summary_lines(equipment: Dictionary) -> Array:
+    var primary: Array[String] = []
+    var utility: Array[String] = []
+    var weapon := str(equipment.get("Weapon", ""))
+    var secondary := str(equipment.get("Secondary", ""))
+    var tool := str(equipment.get("Tool", ""))
+    var clothing := str(equipment.get("Clothing", ""))
+    var pack := str(equipment.get("Pack", ""))
+    if weapon != "": primary.append("W " + weapon)
+    if secondary != "": primary.append("S " + secondary)
+    if tool != "": utility.append("T " + tool)
+    if clothing != "": utility.append("C " + clothing)
+    if pack != "": utility.append("P " + pack)
+    if primary.is_empty(): primary.append("W Bare Hands")
+    if utility.is_empty(): utility.append("No utility gear")
+    return [" | ".join(primary), " | ".join(utility)]
+
 static func _facing_index(facing: Vector2i) -> int:
     if facing == Vector2i(0, -1): return 0
     if facing == Vector2i(1, 0): return 1
