@@ -1,0 +1,42 @@
+name: Temporary tactical character integration
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tactical-character-integration
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Integrate Alpha 0.3A character graphics
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 .tmp/tactical_character_migrate.py
+          git diff --check
+          grep -q 'const SAVE_SCHEMA_VERSION := 4' game/scripts/Game.gd
+          grep -q 'TacticalVisuals.draw_survivor' game/scripts/FFCombat.gd
+          grep -q 'class_name FFTacticalVisuals' game/scripts/FFTacticalVisuals.gd
+          grep -q 'SAVE_SCHEMA_VERSION := 4' .github/workflows/pages.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add game .github/workflows/pages.yml README_SOPS.md README_CONTEXT.md ARCHITECTURE.md CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "No character integration changes needed."
+            exit 0
+          fi
+          git commit -m "Implement tactical character graphics 0.3A"
+          git push origin HEAD:main
