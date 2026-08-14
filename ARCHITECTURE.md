@@ -32,7 +32,13 @@ Shared declarative catalogs used across systems. Do not turn it into a universal
 Persistent state and orchestration facade: camp ticks, expedition sequencing, event/tactical transitions, and the fluid Alpha save-state schema. It may keep compatibility wrappers where removing them would add needless blast radius, but new durable rules should live in dedicated modules.
 
 ### `Main.gd`
-UI, presentation, input, menus, and transitions only.
+Top-level UI/input coordinator: persistent HUD, navigation, main menu, expedition launcher, event/tactical transitions, and mounting presentation modules. It should coordinate presentation rather than contain every detailed screen.
+
+### `FFSurvivorPanel.gd`
+Survivor-tab dashboard presentation. Owns the concise CAMP/OUT/BUSY/LOST summary, current away-party cards and remaining times, recent return summaries derived from persistent camp history, and the compact roster. It does not own survivor state or expedition rules.
+
+### `FFInspector.gd`
+Reusable modal inspection presentation for detailed survivor sheets and camp inventory/item information. It owns the inspection pause/restore behavior and item help text, while survivor/equipment actions still go through `Game.gd`. Inspection is intentionally schema-neutral and must not become a second inventory or survivor-state model.
 
 ### `FFCombat.gd`
 Tactical runtime once a physical scenario exists: board state, actors, movement/action timing, zombie behavior, vision/fog, facing, sound, doors/glass/hazards, melee/firearms, objectives, and completion.
@@ -72,6 +78,8 @@ A dedicated presentation scene/controller should **read** authoritative survivor
 ## Tactical pause boundary
 
 Entering a tactical field encounter pauses normal settlement simulation. Tactical turns and settlement time are different scales. Do not let tactical UI/scenario code advance food use, building, recovery, or unrelated camp events.
+
+Detailed survivor/item inspection also pauses settlement simulation while the modal is open, then restores the prior pause state. This is a UI inspection boundary, not tactical time and not a new simulation state.
 
 ## Save boundary
 
