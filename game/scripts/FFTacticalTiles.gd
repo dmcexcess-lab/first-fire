@@ -1,7 +1,7 @@
 extends RefCounted
 class_name FFTacticalTiles
 
-const ATLAS: Texture2D = preload("res://assets/tactical_atlas.svg")
+const ATLAS: Texture2D = preload("res://assets/tactical_atlas.png")
 const CELL := 32.0
 
 const GROUND := {
@@ -73,7 +73,7 @@ static func region(index: int) -> Rect2:
     return Rect2(float(posmod(index, 16)) * CELL, float(index / 16) * CELL, CELL, CELL)
 
 static func draw_region(canvas: CanvasItem, index: int, rect: Rect2, modulate := Color.WHITE) -> void:
-    canvas.draw_texture_rect_region(rect, ATLAS, region(index), modulate, false, true)
+    canvas.draw_texture_rect_region(ATLAS, rect, region(index), modulate, false, true)
 
 static func draw_ground(canvas: CanvasItem, rect: Rect2, kind: String) -> void:
     draw_region(canvas, int(GROUND.get(kind, 0)), rect)

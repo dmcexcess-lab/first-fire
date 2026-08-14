@@ -515,7 +515,7 @@ func step_forward():
 
 func step_backward():
     var keep: Vector2i = player.facing
-    var dest := player.pos - keep
+    var dest: Vector2i = player.pos - keep
     if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest):
         msg = "Blocked behind you."
         queue_redraw(); return
@@ -557,7 +557,7 @@ func try_move(dir: Vector2i):
 func check_objective_and_exit():
     var kind := str(context.get("kind", "ambush"))
     if not objective_done and (kind == "explore" or kind == "rescue"):
-        var target = rescue_cell if kind == "rescue" else objective_cell
+        var target: Vector2i = rescue_cell if kind == "rescue" else objective_cell
         if player.pos == target or (not ally.is_empty() and not ally.dead and ally.pos == target):
             objective_done = true
             if kind == "rescue":
@@ -597,7 +597,7 @@ func melee(target: Vector2i):
     var z: Dictionary = zombies[zi]
     var stealth := stealth_attack(z)
     var combat := int(player.skills.get("Combat", 0))
-    var chance := clamp(0.54 + combat * 0.055 - attack_penalty(player) + (0.30 if stealth else 0.0), 0.12, 0.97)
+    var chance: float = clampf(0.54 + combat * 0.055 - attack_penalty(player) + (0.30 if stealth else 0.0), 0.12, 0.97)
     if rng.randf() <= chance:
         var d := rng.randi_range(int(player.weapon.dmin), int(player.weapon.dmax)) + int(floor(combat / 3.0))
         if stealth: d = int(round(float(d + int(player.weapon.stealth) + combat) * 1.45))
@@ -625,7 +625,7 @@ func shoot(i: int):
     player.facing = dominant(z.pos - player.pos)
     var dist := manhattan(player.pos, z.pos)
     var combat := int(player.skills.get("Combat", 0))
-    var chance := clamp(0.52 + combat * 0.06 - max(0, dist - 3) * 0.035 - attack_penalty(player), 0.10, 0.95)
+    var chance: float = clampf(0.52 + combat * 0.06 - maxi(0, dist - 3) * 0.035 - attack_penalty(player), 0.10, 0.95)
     stats.shots += 1
     _flash_muzzle(player.pos, player.facing)
     if rng.randf() <= chance:
@@ -788,8 +788,8 @@ func zombie_act(i: int):
             moved = zombie_move(i, z.target)
     else:
         if rng.randf() < 0.30:
-            var d := DIRS[rng.randi_range(0,3)]
-            var p := z.pos + d
+            var d: Vector2i = DIRS[rng.randi_range(0,3)]
+            var p: Vector2i = z.pos + d
             z.facing = d
             if not blocked(p) and zombie_at(p) == -1 and p != player.pos and not ally_at(p):
                 z.pos = p; moved = true
@@ -813,7 +813,7 @@ func choose_zombie_target(z) -> Dictionary:
 
 func zombie_attack(i: int, target_actor: Dictionary):
     var defense := int(target_actor.skills.get("Combat", 0)) * 0.02 + int(target_actor.skills.get("Survival", 0)) * 0.012
-    var hit := clamp(0.67 - defense + (0.08 if float(target_actor.fatigue) >= 80 else 0.0), 0.25, 0.82)
+    var hit: float = clampf(0.67 - defense + (0.08 if float(target_actor.fatigue) >= 80 else 0.0), 0.25, 0.82)
     if rng.randf() <= hit:
         var dmg := rng.randi_range(2, 5)
         var protection := clothing_protection(target_actor.clothing)
@@ -882,7 +882,7 @@ func maybe_emit_ambient_sound() -> void:
     if rng.randf() >= 0.12: return
     var profile: Dictionary = TacticalSound.ambient_profile(TacticalEnvironments.theme_name(environment_id), scene_time, power_on, rng)
     if profile.is_empty(): return
-    var source := player.pos
+    var source: Vector2i = player.pos
     var candidates: Array = []
     for source_value in light_sources:
         var light_source: Dictionary = source_value
@@ -1037,10 +1037,10 @@ func any_zombie_sees_player() -> bool:
     return false
 
 func line_clear(a: Vector2i, b: Vector2i) -> bool:
-    var x0 := a.x; var y0 := a.y; var x1 := b.x; var y1 := b.y
-    var dx := abs(x1-x0); var sx := 1 if x0<x1 else -1
-    var dy := -abs(y1-y0); var sy := 1 if y0<y1 else -1
-    var err := dx+dy
+    var x0: int = a.x; var y0: int = a.y; var x1: int = b.x; var y1: int = b.y
+    var dx: int = absi(x1-x0); var sx: int = 1 if x0<x1 else -1
+    var dy: int = -absi(y1-y0); var sy: int = 1 if y0<y1 else -1
+    var err: int = dx+dy
     while true:
         var p := Vector2i(x0,y0)
         if p != a and p != b:
@@ -1048,7 +1048,7 @@ func line_clear(a: Vector2i, b: Vector2i) -> bool:
             # doors do not. Movement still treats all obstacles/glass separately.
             if walls.has(p) or opaque_obstacles.has(p) or (doors.has(p) and not doors[p]): return false
         if x0==x1 and y0==y1: break
-        var e2 := 2*err
+        var e2: int = 2*err
         if e2>=dy: err+=dy; x0+=sx
         if e2<=dx: err+=dx; y0+=sy
     return true
