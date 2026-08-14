@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  migrate:
+  finish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,98 +21,49 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Materialize canonical Godot project
+      - name: Fix Godot 4.7 strict inference exposed by startup smoke
         shell: bash
         run: |
           set -euxo pipefail
-
-          # Idempotent after the one-time migration. This matters because a later
-          # connector-authored cleanup commit may briefly trigger this workflow again.
-          if test -f game/project.godot && ! test -f first_fire_alpha01_web_ready.zip; then
-            echo "Canonical game source already exists."
-            exit 0
-          fi
-
-          test -f first_fire_alpha01_web_ready.zip
-          test -f .razor/refactor.patch
-          test -f .deploy/combat/FFCombat.gd.gz.b64
-
-          rm -rf /tmp/ff-src game
-          mkdir -p /tmp/ff-src
-          unzip -q -o first_fire_alpha01_web_ready.zip -d /tmp/ff-src
-          root=/tmp/ff-src/first_fire_alpha01_web_ready
-          test -f "$root/project.godot"
-
-          cat .deploy/alpha01_patch_00.part \
-              .deploy/alpha01_patch_01.part \
-              .deploy/alpha01_patch_02.part \
-              .deploy/alpha01_patch_03.part \
-              .deploy/alpha01_patch_04.part > /tmp/alpha.patch
-          cat .deploy/combat/combat_integration_00.b64 \
-              .deploy/combat/combat_integration_01.b64 \
-              .deploy/combat/combat_integration_02.b64 \
-              .deploy/combat/combat_integration_03.b64 > /tmp/combat.b64
-          test "$(wc -c < /tmp/combat.b64)" -eq 7528
-          base64 -d < /tmp/combat.b64 | gzip -dc > /tmp/combat.patch
-          base64 -d < .deploy/combat/FFCombat.gd.gz.b64 | gzip -dc > /tmp/FFCombat.gd
-
-          (
-            cd "$root"
-            patch -p0 --batch < /tmp/alpha.patch
-            patch -p0 --batch < "$GITHUB_WORKSPACE/.deploy/balance_pass.patch"
-            patch -p0 --batch < "$GITHUB_WORKSPACE/.deploy/save_schema_reset.patch"
-            patch -p0 --batch < /tmp/combat.patch
-            cp /tmp/FFCombat.gd scripts/FFCombat.gd
-
-            patch -p0 --batch < "$GITHUB_WORKSPACE/.razor/refactor.patch"
-            cp "$GITHUB_WORKSPACE/.razor/FFExpeditionRules.gd" scripts/
-            cp "$GITHUB_WORKSPACE/.razor/FFTacticalScenarios.gd" scripts/
-            cp "$GITHUB_WORKSPACE/.razor/FFFieldEventsLegacy.gd" scripts/
-            cp "$GITHUB_WORKSPACE/.razor/FFSaveCodec.gd" scripts/
-            cp "$GITHUB_WORKSPACE/.razor/FFCampLifeRules.gd" scripts/
-            cp "$GITHUB_WORKSPACE/.razor/FFCampSocial.gd" scripts/
-            mkdir -p scripts/ci
-            cp "$GITHUB_WORKSPACE/.razor/FFArchitectureSmoke.gd" scripts/ci/
-
-            sed -i 's#vram_texture_compression/for_mobile=true#vram_texture_compression/for_mobile=false#' export_presets.cfg
-          )
-
-          mkdir game
-          cp -a "$root/assets" game/
-          cp -a "$root/scripts" game/
-          cp "$root/main.tscn" game/
-          cp "$root/project.godot" game/
-          cp "$root/export_presets.cfg" game/
-
-          # Structural assertions before removing the old reconstruction inputs.
           test -f game/scripts/FFCombat.gd
-          test -f game/scripts/FFExpeditionRules.gd
-          test -f game/scripts/FFTacticalScenarios.gd
-          test -f game/scripts/FFFieldEventsLegacy.gd
-          test -f game/scripts/FFSaveCodec.gd
-          test -f game/scripts/FFCampLifeRules.gd
-          test -f game/scripts/FFCampSocial.gd
-          test -f game/scripts/ci/FFArchitectureSmoke.gd
-          grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
-          grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
-          grep -q 'const SAVE_SCHEMA_VERSION := 3' game/scripts/Game.gd
-          grep -q 'sim_paused = true' game/scripts/Game.gd
-          grep -q 'signal encounter_finished' game/scripts/FFCombat.gd
-          grep -q 'pointing/emulate_mouse_from_touch=false' game/project.godot
-          grep -q 'vram_texture_compression/for_mobile=false' game/export_presets.cfg
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("game/scripts/FFCombat.gd")
+          text = path.read_text()
+          replacements = [
+              (
+                  '    var count := {"Camp Perimeter": 3, "Nearby Streets": 4, "Residential Blocks": 5, "Commercial Fringe": 6, "Industrial Edge": 7}.get(zone, 4)',
+                  '    var count: int = int({"Camp Perimeter": 3, "Nearby Streets": 4, "Residential Blocks": 5, "Commercial Fringe": 6, "Industrial Edge": 7}.get(zone, 4))',
+              ),
+              ('    var dmg := max(2, 13 - d * 4)', '    var dmg: int = maxi(2, 13 - d * 4)'),
+              ('    var x := clamp(ideal_x, SCREEN_W - map_width, 0.0)', '    var x: float = clampf(ideal_x, SCREEN_W - map_width, 0.0)'),
+          ]
+          changed = False
+          for old, new in replacements:
+              count = text.count(old)
+              if count == 1:
+                  text = text.replace(old, new)
+                  changed = True
+              elif new in text:
+                  # Idempotent if this temporary workflow runs once more before deletion.
+                  continue
+              else:
+                  raise SystemExit(f"Expected FFCombat line not found: {old}")
+          if changed:
+              path.write_text(text)
+          PY
 
-          # Git already preserves history; the runtime repo no longer needs the
-          # old reconstruction chain once canonical source is materialized.
-          git rm -r .deploy
-          git rm first_fire_alpha01_web_ready.zip
-          rm -rf .razor
-          git add -A
+          grep -q 'var count: int = int(' game/scripts/FFCombat.gd
+          grep -q 'var dmg: int = maxi(' game/scripts/FFCombat.gd
+          grep -q 'var x: float = clampf(' game/scripts/FFCombat.gd
+          git diff --check
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add game/scripts/FFCombat.gd
           if git diff --cached --quiet; then
-            echo "Nothing to migrate."
+            echo "Strict-inference fixes already present."
             exit 0
           fi
-          git commit -m "Materialize canonical modular Godot source"
+          git commit -m "Fix strict Godot combat type inference"
           git push origin HEAD:main
