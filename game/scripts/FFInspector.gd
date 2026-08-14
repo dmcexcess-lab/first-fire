@@ -32,7 +32,7 @@ const ITEM_DESCRIPTIONS := {
     "Hatchet": "Compact chopping weapon with stronger melee performance than basic improvised tools.",
     "Pistol": "Compact firearm. Strong combat value but consumes shared Ammo when fired tactically.",
     "Shotgun": "Powerful close-range firearm with high combat value and heavier ammunition use.",
-    "Flashlight": "Portable light source for dark or obscured situations.",
+    "Flashlight": "Portable directional field light. Equip it in Secondary so a survivor can carry it alongside both a weapon and a general Tool. Tactical maps render its beam and extended view range.",
     "Screwdriver Set": "Compact technical toolkit that improves Technical capability.",
     "Bolt Cutters": "Specialized cutting tool for chains, wire, and similar physical barriers.",
     "Toolbox": "General-purpose field toolkit that improves Technical capability.",
@@ -207,8 +207,15 @@ func _render_survivor() -> void:
     body.add_child(_heading("LOADOUT", 18))
     body.add_child(_make_label("Survivors currently carry equipped gear; expedition loot returns to camp storage.", 11))
     var equipment: Dictionary = survivor.get("equipment", {})
-    for slot in ["Weapon", "Clothing", "Pack", "Tool"]:
+    var legacy_secondary: String = ""
+    if str(equipment.get("Secondary", "")) == "" and str(equipment.get("Tool", "")) == "Flashlight":
+        legacy_secondary = "Flashlight"
+    for slot in ["Weapon", "Secondary", "Tool", "Clothing", "Pack"]:
         var gear_name: String = str(equipment.get(slot, ""))
+        if slot == "Secondary" and gear_name == "" and legacy_secondary != "":
+            gear_name = legacy_secondary
+        elif slot == "Tool" and gear_name == "Flashlight" and legacy_secondary != "":
+            gear_name = ""
         if gear_name == "":
             body.add_child(_make_label("%s: None" % slot, 13))
         else:
@@ -371,6 +378,8 @@ func _render_item() -> void:
             body.add_child(_make_label("Ammo per tactical shot: %d" % int(data.get("ammo", 0)), 13))
         if data.has("tool"):
             body.add_child(_make_label("Tool tag: %s" % str(data.get("tool", "")), 13))
+        if data.has("light"):
+            body.add_child(_make_label("Directional light: %.0f-tile reach  •  View range +%d" % [float(data.get("light_range", 0.0)), int(data.get("view_bonus", 0))], 13))
         body.add_child(_make_label("Inventory size: %d" % int(data.get("size", 0)), 13))
     elif Game.components.has(current_item):
         body.add_child(_separator())

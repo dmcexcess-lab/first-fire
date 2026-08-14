@@ -5,6 +5,7 @@ signal encounter_finished(result)
 const D = preload("res://scripts/FFData.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 const TacticalEnvironments = preload("res://scripts/FFTacticalEnvironments.gd")
+const TacticalLighting = preload("res://scripts/FFTacticalLighting.gd")
 
 const SCREEN_W := 390.0
 const SCREEN_H := 844.0
@@ -31,6 +32,9 @@ var doors := {}
 var barrels := {}
 var props := {}
 var ground := {}
+var light_sources: Array = []
+var light_levels := {}
+var light_tints := {}
 var base_glass := {}
 var base_barrels := {}
 var visible_cells := {}
@@ -61,6 +65,7 @@ var muzzle_flash_cell := Vector2i(-1, -1)
 var muzzle_flash_facing := Vector2i(1, 0)
 var muzzle_flash_until_ms := -1
 var fx_active_last_frame := false
+var lighting_redraw_accum := 0.0
 
 var btn_turn_left := Rect2(8, 700, 136, 78)
 var btn_crouch := Rect2(28, 788, 96, 42)
@@ -75,12 +80,17 @@ func _ready():
     set_process(true)
     visible = false
 
-func _process(_delta):
+func _process(delta):
     if not initialized:
         return
     var now := Time.get_ticks_msec()
     var active := now < hit_flash_until_ms or now < muzzle_flash_until_ms
-    if active or fx_active_last_frame:
+    lighting_redraw_accum += float(delta)
+    var lighting_animation_due := false
+    if lighting_redraw_accum >= 0.12 and TacticalLighting.has_animated_sources(light_sources):
+        lighting_redraw_accum = 0.0
+        lighting_animation_due = true
+    if active or fx_active_last_frame or lighting_animation_due:
         queue_redraw()
     fx_active_last_frame = active
 
@@ -103,6 +113,7 @@ func start_encounter(data: Dictionary):
     muzzle_flash_cell = Vector2i(-1, -1)
     muzzle_flash_until_ms = -1
     fx_active_last_frame = false
+    lighting_redraw_accum = 0.0
     tick = int(runtime.get("tick", 0))
     var legacy_layout := int(context.get("layout", 0))
     environment_id = str(context.get("environment_id", TacticalEnvironments.legacy_environment(legacy_layout, str(context.get("zone", "Nearby Streets")))))
@@ -149,6 +160,8 @@ func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
     if s == null:
         return {}
     var max_hp := condition_max_hp(str(s.get("condition", "Healthy")))
+    var equipment: Dictionary = s.get("equipment", {}).duplicate(true)
+    var secondary_item: String = TacticalLighting.secondary_item_from_equipment(equipment)
     var actor = {
         "id": int(s.get("id", -1)),
         "name": str(s.get("name", "Survivor")),
@@ -157,12 +170,13 @@ func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
         "fatigue": float(s.get("fatigue", 0.0)),
         "stress": float(s.get("stress", 0.0)),
         "condition": str(s.get("condition", "Healthy")),
-        "equipment": s.get("equipment", {}).duplicate(true),
+        "equipment": equipment,
         "appearance": s.get("appearance", TacticalVisuals.default_survivor_appearance(int(s.get("id", -1)))).duplicate(true),
-        "weapon": weapon_profile(str(s.get("equipment", {}).get("Weapon", ""))),
-        "clothing": str(s.get("equipment", {}).get("Clothing", "")),
-        "tool": str(s.get("equipment", {}).get("Tool", "")),
-        "pack": str(s.get("equipment", {}).get("Pack", "")),
+        "weapon": weapon_profile(str(equipment.get("Weapon", ""))),
+        "clothing": str(equipment.get("Clothing", "")),
+        "tool": str(equipment.get("Tool", "")),
+        "secondary": secondary_item,
+        "pack": str(equipment.get("Pack", "")),
         "hp": max_hp,
         "max_hp": max_hp,
         "pos": pos,
@@ -205,7 +219,7 @@ func weapon_profile(name: String) -> Dictionary:
 
 func build_map(new_environment_id: String, variant: int):
     environment_id = new_environment_id
-    walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); exit_cells.clear()
+    walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); exit_cells.clear(); light_sources.clear(); light_levels.clear(); light_tints.clear()
     for x in range(W):
         walls[Vector2i(x, 0)] = true
         walls[Vector2i(x, H - 1)] = true
@@ -233,6 +247,10 @@ func build_map(new_environment_id: String, variant: int):
     for entry in spec.get("doors", []): doors[entry[0]] = bool(entry[1])
     for p in spec.get("barrels", []): barrels[p] = true
     for entry in spec.get("props", []): props[entry[0]] = str(entry[1])
+    for entry_value in spec.get("lights", []):
+        var light_entry: Array = entry_value
+        var light_pos: Vector2i = light_entry[0]
+        light_sources.append(TacticalLighting.make_source(light_pos, str(light_entry[1]), light_sources.size()))
 
     base_glass = glass.duplicate(true)
     base_barrels = barrels.duplicate(true)
@@ -819,7 +837,7 @@ func emit_noise(source: Vector2i, intensity: int, label: String, player_made: bo
     if not player_made:
         var heard = intensity - int(costs.get(player.pos, 99999))
         var awareness = float(player.skills.get("Survival", 0))
-        if player.tool == "Flashlight": awareness += 0.5
+        if TacticalLighting.item_emits_light(str(player.get("secondary", ""))): awareness += 0.5
         if heard + awareness * 2.0 >= 14:
             var fuzz := 4
             if awareness >= 2: fuzz = 3
@@ -848,7 +866,47 @@ func sound_map(source: Vector2i, intensity: int) -> Dictionary:
                 cost[n] = nc; queue.append(n)
     return cost
 
+func recalc_lighting():
+    light_levels.clear()
+    light_tints.clear()
+    var theme: String = TacticalEnvironments.theme_name(environment_id)
+    var ambient: float = TacticalLighting.ambient_level(theme)
+    var player_light: String = str(player.get("secondary", ""))
+    var ally_light: String = str(ally.get("secondary", "")) if not ally.is_empty() and not bool(ally.get("dead", false)) else ""
+    for y in range(H):
+        for x in range(W):
+            var cell := Vector2i(x, y)
+            var level: float = ambient
+            var strongest: float = 0.0
+            var tint_hex := ""
+            for source_value in light_sources:
+                var source: Dictionary = source_value
+                var source_pos: Vector2i = source.get("pos", Vector2i(-99, -99))
+                if not line_clear(source_pos, cell):
+                    continue
+                var contribution: float = TacticalLighting.radial_contribution(cell, source)
+                level = maxf(level, contribution)
+                if contribution > strongest:
+                    strongest = contribution
+                    tint_hex = str(source.get("color", "ffffff"))
+            if TacticalLighting.item_emits_light(player_light) and line_clear(player.pos, cell):
+                var flashlight_level: float = TacticalLighting.cone_contribution(player.pos, player.facing, cell, player_light)
+                level = maxf(level, flashlight_level)
+                if flashlight_level > strongest:
+                    strongest = flashlight_level
+                    tint_hex = str(D.GEAR[player_light].get("light_color", "edf5d6"))
+            if ally_light != "" and TacticalLighting.item_emits_light(ally_light) and line_clear(ally.pos, cell):
+                var ally_flashlight_level: float = TacticalLighting.cone_contribution(ally.pos, ally.facing, cell, ally_light)
+                level = maxf(level, ally_flashlight_level)
+                if ally_flashlight_level > strongest:
+                    strongest = ally_flashlight_level
+                    tint_hex = str(D.GEAR[ally_light].get("light_color", "edf5d6"))
+            light_levels[cell] = clampf(level, 0.0, 1.0)
+            if tint_hex != "":
+                light_tints[cell] = tint_hex
+
 func recalc_visibility():
+    recalc_lighting()
     visible_cells.clear()
     var vr := view_range()
     for y in range(H):
@@ -867,7 +925,7 @@ func recalc_visibility():
 
 func view_range() -> int:
     var r := 6 + int(floor(int(player.skills.get("Survival",0)) / 3.0))
-    if player.tool == "Flashlight": r += 2
+    r += TacticalLighting.item_view_bonus(str(player.get("secondary", "")))
     if float(player.fatigue) >= 80: r -= 1
     return clamp(r, 5, 10)
 
@@ -992,6 +1050,8 @@ func _draw():
     draw_set_transform(origin)
     draw_map()
     draw_units()
+    draw_lighting()
+    draw_light_source_glows()
     draw_fog()
     draw_escape_markers()
     draw_sounds()
@@ -1162,6 +1222,38 @@ func draw_character_fx():
     if muzzle_flash_cell != Vector2i(-1, -1):
         TacticalVisuals.draw_muzzle_flash(self, cell_center(muzzle_flash_cell), muzzle_flash_facing, now, muzzle_flash_until_ms)
 
+func draw_lighting():
+    var theme: String = TacticalEnvironments.theme_name(environment_id)
+    var dark_tint: Color = TacticalLighting.ambient_tint(theme)
+    var ambient: float = TacticalLighting.ambient_level(theme)
+    for y in range(H):
+        for x in range(W):
+            var cell := Vector2i(x, y)
+            var r := Rect2(x * TILE, y * TILE, TILE, TILE)
+            var level: float = float(light_levels.get(cell, ambient))
+            var darkness: float = TacticalLighting.darkness_alpha(level)
+            draw_rect(r, Color(dark_tint.r, dark_tint.g, dark_tint.b, darkness))
+            if light_tints.has(cell):
+                var tint := Color(str(light_tints[cell]))
+                var wash: float = TacticalLighting.color_wash_alpha(level)
+                if wash > 0.0:
+                    draw_rect(r.grow(-1), Color(tint.r, tint.g, tint.b, wash))
+
+func draw_light_source_glows():
+    var now: int = Time.get_ticks_msec()
+    for source_value in light_sources:
+        var source: Dictionary = source_value
+        var source_pos: Vector2i = source.get("pos", Vector2i(-99, -99))
+        if not inside(source_pos):
+            continue
+        var c := cell_center(source_pos)
+        var source_color := Color(str(source.get("color", "ffffff")))
+        var visual_strength: float = TacticalLighting.visual_strength(source, now)
+        draw_circle(c, 15.0, Color(source_color.r, source_color.g, source_color.b, 0.035 * visual_strength))
+        draw_circle(c, 9.0, Color(source_color.r, source_color.g, source_color.b, 0.075 * visual_strength))
+        draw_circle(c, 3.0, Color(source_color.r, source_color.g, source_color.b, 0.72 * visual_strength))
+        draw_circle(c, 3.0, Color(1.0, 1.0, 1.0, 0.55 * visual_strength), false, 1.0)
+
 func draw_fog():
     for y in range(H):
         for x in range(W):
@@ -1184,6 +1276,7 @@ func draw_hud():
     var gear_line="%s"%player.weapon.name
     if bool(player.weapon.gun): gear_line += "  |  Ammo %d"%int(Game.resources.get("Ammo",0))
     if player.clothing!="": gear_line += "  |  %s"%player.clothing
+    if TacticalLighting.item_emits_light(str(player.get("secondary", ""))): gear_line += "  |  LIGHT"
     draw_string(font,Vector2(10,69),gear_line,HORIZONTAL_ALIGNMENT_LEFT,370,11,Color(.82,.84,.82))
     if not ally.is_empty():
         draw_string(font,Vector2(10,90),"With: %s  HP %d/%d  %s"%[ally.name,int(ally.hp),int(ally.max_hp),"DOWN" if ally.dead else ally.weapon.name],HORIZONTAL_ALIGNMENT_LEFT,370,10,Color(.76,.64,.90))

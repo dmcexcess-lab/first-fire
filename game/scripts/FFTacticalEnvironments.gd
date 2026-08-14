@@ -186,6 +186,13 @@ static func validate_layout(spec: Dictionary) -> bool:
         blocked[p] = true
     if blocked.has(spawn):
         return false
+    for entry_value in spec.get("lights", []):
+        var entry: Array = entry_value
+        if entry.size() < 2:
+            return false
+        var light_pos: Vector2i = entry[0]
+        if not _inside(light_pos):
+            return false
     var seen := {spawn: true}
     var queue: Array = [spawn]
     while not queue.is_empty():
@@ -214,6 +221,7 @@ static func _spec(default_ground_kind: String, player_spawn: Vector2i, ally_spaw
         "doors": [],
         "barrels": [],
         "props": [],
+        "lights": [],
         "player_spawn": player_spawn,
         "ally_spawn": ally_spawn,
         "exit_cells": exits,
@@ -250,6 +258,9 @@ static func _obstacle(spec: Dictionary, p: Vector2i, prop_kind := "crate") -> vo
 static func _prop(spec: Dictionary, p: Vector2i, prop_kind: String) -> void:
     spec["props"].append([p, prop_kind])
 
+static func _light(spec: Dictionary, p: Vector2i, light_kind: String) -> void:
+    spec["lights"].append([p, light_kind])
+
 static func _back_alley(variant: int) -> Dictionary:
     var exits: Array = [Vector2i(9, 16)]
     if variant == 1:
@@ -268,6 +279,8 @@ static func _back_alley(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(14, 11), "dumpster")
     _obstacle(spec, Vector2i(12, 4), "trash")
     _prop(spec, Vector2i(14, 3), "neon_sign")
+    _light(spec, Vector2i(14, 3), "neon_pink")
+    _light(spec, Vector2i(9, 7), "security")
     spec["barrels"].append(Vector2i(6, 12))
     return spec
 
@@ -297,6 +310,10 @@ static func _gas_station(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(16, 7), "store_shelf")
     _obstacle(spec, Vector2i(3, 3), "gas_sign")
     _obstacle(spec, Vector2i(10, 10), "ice_box")
+    _light(spec, Vector2i(6, 4), "canopy")
+    _light(spec, Vector2i(9, 4), "canopy")
+    _light(spec, Vector2i(14, 6), "fluorescent")
+    _light(spec, Vector2i(3, 3), "neon_cyan")
     spec["barrels"].append(Vector2i(17, 8))
     return spec
 
@@ -331,6 +348,8 @@ static func _house(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(14, 4), "kitchen")
     _obstacle(spec, Vector2i(15, 4), "kitchen")
     _obstacle(spec, Vector2i(16, 6), "fridge")
+    _light(spec, Vector2i(8, 6), "warm")
+    _light(spec, Vector2i(15, 6), "fluorescent")
     return spec
 
 static func _apartment(variant: int) -> Dictionary:
@@ -362,6 +381,10 @@ static func _apartment(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(14, 12), "bed")
     _obstacle(spec, Vector2i(16, 6), "washer")
     _prop(spec, Vector2i(9, 3), "apt_sign")
+    _light(spec, Vector2i(9, 4), "fluorescent")
+    _light(spec, Vector2i(9, 11), "fluorescent")
+    if variant == 1:
+        _light(spec, Vector2i(14, 12), "warm")
     return spec
 
 static func _corner_store(variant: int) -> Dictionary:
@@ -388,6 +411,9 @@ static func _corner_store(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(6, 6), "counter")
     _obstacle(spec, Vector2i(17, 11), "vending")
     _prop(spec, Vector2i(10, 4), "shop_sign")
+    _light(spec, Vector2i(10, 4), "neon_cyan")
+    _light(spec, Vector2i(10, 6), "fluorescent")
+    _light(spec, Vector2i(14, 9), "fluorescent")
     spec["barrels"].append(Vector2i(17, 4))
     return spec
 
@@ -413,6 +439,8 @@ static func _warehouse_yard(variant: int) -> Dictionary:
     spec["barrels"].append(Vector2i(12, 8))
     spec["barrels"].append(Vector2i(17, 13))
     _prop(spec, Vector2i(12, 3), "warehouse_sign")
+    _light(spec, Vector2i(9, 12), "flood")
+    _light(spec, Vector2i(16, 8), "warning_red")
     return spec
 
 static func _drainage_wash(variant: int) -> Dictionary:

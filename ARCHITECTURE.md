@@ -49,6 +49,9 @@ Tactical objective/catalog ownership: encounter-kind weights and combination of 
 ### `FFTacticalEnvironments.gd`
 Authored tactical place ownership: recognizable 20×18 environment templates, zone compatibility, ground/theme metadata, props, party entry positions, and one-or-multiple escape routes. Current families include back alley, gas station, residential house, apartment, corner store, warehouse yard, and drainage wash. Geometry must keep every declared exit reachable from the authored party spawn.
 
+### `FFTacticalLighting.gd`
+Tactical lighting rules/presentation helper. Owns ambient low-light profiles, fixed-light falloff/color presets, data-driven Secondary light-item cone math, and cheap glow animation rules. `FFTacticalEnvironments.gd` owns fixed light placement; `FFCombat.gd` owns occlusion, light-map recalculation, fog/vision, and draw order. Lighting does not advance settlement simulation.
+
 ### `FFTacticalVisuals.gd`
 Tactical character presentation owner. Generates persistent survivor appearance dictionaries, zone-weighted infected visual families, weapon silhouettes, and the procedural character/corpse/impact drawing used by `FFCombat.gd`. It is presentation-only: infected visual families do not imply different stats or AI unless a future gameplay change explicitly adds them.
 

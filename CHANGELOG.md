@@ -2,6 +2,29 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Alpha 0.3C — Tactical Lighting & Secondary Gear — 2026-08-13
+
+### Lighting Overhaul
+- Tactical boards now render through a real low-light pass instead of uniform flat brightness.
+- Added authored fixed lighting to the 0.3B environments: alley neon/security light, gas-station canopy/store light, house lamps, apartment fluorescents, shop neon/fluorescents, and warehouse flood/warning lights. Drainage washes intentionally remain mostly dark.
+- Fixed light color and falloff are data-driven and respect tactical wall/door/obstacle occlusion.
+- Neon/fluorescent/warning emitters get subtle low-refresh flicker/glow animation while the more expensive light map only recalculates when tactical state changes, keeping the Web/mobile path lightweight.
+- Darkness overlays both environment and characters, while visible light sources add colored wash so pink/cyan neon, warm interiors, cold fluorescents, and flashlights read differently.
+
+### Flashlights / Secondary Slot
+- Flashlight moved from the general Tool slot to a new **Secondary** equipment slot, allowing Weapon + Secondary + Tool to coexist.
+- The existing slot-driven equipment backend handles Secondary generically, leaving room for future radios, binoculars, detectors, or other field utility items without special-case inventory code.
+- Equipped flashlights cast an occluded directional cone from the survivor's facing and retain a +2 tactical view-range benefit.
+- Companion flashlights illuminate from the companion's own position/facing too.
+- Existing schema-4 saves remain valid; an older survivor who already had Flashlight in Tool is recognized as carrying the light without rewriting the save.
+- Flashlights can still be scavenged and are now craftable at a Workbench from Plastic, Scrap Metal, and Hardware.
+- Survivor inspection now shows Secondary separately and displays implemented light reach/view data.
+
+### Architecture / Performance
+- Added `FFTacticalLighting.gd` as the durable owner for ambient profiles, light-source presets/falloff, Secondary light-item cone math, and glow animation rules.
+- `FFTacticalEnvironments.gd` owns authored fixed-light placement; `FFCombat.gd` owns occlusion, recalculation timing, and render integration.
+- Save schema remains **4**; Secondary is an optional equipment dictionary key and therefore does not require a reset.
+
 ## Alpha 0.3B — Tactical Environments & Escape Routes — 2026-08-13
 
 ### Recognizable Tactical Places

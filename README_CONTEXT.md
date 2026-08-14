@@ -8,7 +8,7 @@ This file records durable product/design context. `README_SOPS.md` records how t
 
 **First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game. It mixes menu-driven camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
 
-Current milestone: **Alpha 0.3B — Tactical Environments & Escape Routes**.
+Current milestone: **Alpha 0.3C — Tactical Lighting & Secondary Gear**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
@@ -56,6 +56,8 @@ Wounds, deaths, fatigue, stress, ammunition use, and Combat XP return to camp st
 Objective and place are now separate: rescue/search/ambush situations can occur across compatible back alleys, gas stations, residential houses, apartments, corner stores, warehouse yards, and drainage washes. Every tactical map declares at least one reachable exit; some have one route and some have multiple. Reaching any exit is always a valid retreat even when the optional rescue/search objective was not completed.
 
 Survivors keep persistent modular tactical appearances. Zombies use varied civilian/worker/service/medical/decayed/heavy visual families, while those families remain cosmetic until a future gameplay change explicitly says otherwise. Equipped weapons are drawn as separate readable silhouettes beside survivors.
+
+Alpha 0.3C adds low-light tactical rendering with authored neon, canopy, fluorescent, warm, security, flood, and warning-light sources. Lighting occlusion is recalculated only when tactical state changes; cheap source glow animation redraws at low refresh for phone/Web performance. Flashlights now use a real **Secondary** equipment slot independent of Weapon and Tool, cast an occluded directional cone, tint/brighten the board, and preserve their existing view-range benefit. An old schema-4 survivor with Flashlight still stored in Tool is recognized without mutating the save.
 
 ## Expedition logistics
 

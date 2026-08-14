@@ -1,8 +1,10 @@
 extends SceneTree
 
+const D = preload("res://scripts/FFData.gd")
 const ExpeditionRules = preload("res://scripts/FFExpeditionRules.gd")
 const TacticalScenarios = preload("res://scripts/FFTacticalScenarios.gd")
 const TacticalEnvironments = preload("res://scripts/FFTacticalEnvironments.gd")
+const TacticalLighting = preload("res://scripts/FFTacticalLighting.gd")
 const LegacyFieldEvents = preload("res://scripts/FFFieldEventsLegacy.gd")
 const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
@@ -24,6 +26,12 @@ func _init() -> void:
     if not _check(TacticalEnvironments.display_name("gas_station") == "Gas Station", "gas station environment"): return
     if not _check(TacticalEnvironments.exit_count("house", 0) == 1, "single-exit house variant"): return
     if not _check(TacticalEnvironments.exit_count("gas_station", 1) >= 3, "multi-exit gas station variant"): return
+    if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary slot"): return
+    if not _check(TacticalLighting.secondary_item_from_equipment({"Secondary": "Flashlight", "Tool": ""}) == "Flashlight", "secondary light lookup"): return
+    if not _check(TacticalLighting.secondary_item_from_equipment({"Tool": "Flashlight"}) == "Flashlight", "legacy flashlight compatibility"): return
+    if not _check(TacticalLighting.cone_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(10, 5), "Flashlight") > 0.0, "flashlight forward cone"): return
+    if not _check(TacticalLighting.cone_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(2, 5), "Flashlight") == 0.0, "flashlight rear cutoff"): return
+    if not _check(TacticalEnvironments.build_layout("gas_station", 0).get("lights", []).size() >= 3, "gas station authored lights"): return
     for environment_id in TacticalEnvironments.all_ids():
         for variant in range(TacticalEnvironments.variant_count(str(environment_id))):
             if not _check(TacticalEnvironments.validate_layout(TacticalEnvironments.build_layout(str(environment_id), variant)), "reachable exits: %s v%d" % [environment_id, variant]): return

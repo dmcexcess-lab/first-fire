@@ -64,6 +64,7 @@ Important current owners:
 
 - `FFCombat.gd` — tactical runtime mechanics.
 - `FFTacticalVisuals.gd` — tactical character appearance, zombie variation, weapon silhouettes, and character drawing; presentation only.
+- `FFTacticalLighting.gd` — tactical light profiles/falloff and Secondary light-item beam rules; environments place fixed sources and combat owns occlusion/draw integration.
 - `FFTacticalScenarios.gd` — tactical scenario/location/layout selection and future physical field-event definitions.
 - `FFExpeditionRules.gd` — travel/logistics/recruit protection/haul rules; vehicle integration seam.
 - `FFCampLifeRules.gd` — camp-life cadence/recovery/general camp-state tuning.
