@@ -8,7 +8,7 @@ This file records durable product/design context. `README_SOPS.md` records how t
 
 **First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game. It mixes menu-driven camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
 
-Current milestone: **Alpha 0.2 — Tactical Expedition Encounters**.
+Current milestone: **Alpha 0.3A — Tactical Character Graphics**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
@@ -50,7 +50,9 @@ Current tactical encounter types include:
 
 Wounds, deaths, fatigue, stress, ammunition use, and Combat XP return to camp state. Active tactical encounters persist across browser reloads.
 
-`FFCombat.gd` owns tactical runtime mechanics. `FFTacticalScenarios.gd` owns what kind of physical situation/location/layout is created and is the intended Alpha 0.3/0.4 expansion seam.
+`FFCombat.gd` owns tactical runtime mechanics. `FFTacticalScenarios.gd` owns what kind of physical situation/location/layout is created and is the intended Alpha 0.3/0.4 expansion seam. `FFTacticalVisuals.gd` owns persistent survivor appearance generation, zombie visual families, weapon silhouettes, and character rendering; tactical mechanics remain in `FFCombat.gd`.
+
+Survivors now keep persistent modular tactical appearances. Zombies use varied civilian/worker/service/medical/decayed/heavy visual families, while those families remain cosmetic until a future gameplay change explicitly says otherwise. Equipped weapons are drawn as separate readable silhouettes beside survivors.
 
 ## Expedition logistics
 
@@ -89,7 +91,7 @@ Loot priority is approximately **Dirty Water → Raw Food → materials → Clea
 
 Alpha save compatibility is **not sacred**. Use explicit save schema versions and invalidate old saves cleanly when meaningful schema/system changes occur instead of accumulating migrations.
 
-Current save schema: **3**.
+Current save schema: **4**.
 
 The save filename remains `user://first_fire_alpha01.json` intentionally for compatibility. Its legacy name alone is not a reason to wipe a working Alpha save.
 

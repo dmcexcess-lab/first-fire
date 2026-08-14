@@ -2,6 +2,30 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Alpha 0.3A — Tactical Character Graphics — 2026-08-13
+
+### Survivors
+- Tactical survivors now use persistent modular appearances generated when the survivor is created, including body build, skin tone, hair, clothing palette, accent color, and optional headwear.
+- The same survivor keeps the same tactical identity across encounters instead of reverting to a generic colored circle.
+- Lead and companion survivors retain distinct selection rings, readable facing, backpacks when equipped, and now render as small top-down people rather than tokens.
+- Equipped weapons render as separate silhouettes floating beside the survivor and rotate with facing. Knives, clubs/bats, hammer, spear, crowbar, hatchet, pistol, and shotgun have distinct shapes.
+
+### Infected
+- Infected now vary visually across civilian, worker, service/retail, medical, decayed, and heavy silhouettes.
+- Zone weighting makes industrial areas favor worker/heavy looks, commercial areas favor service looks, and residential areas favor civilian/decayed looks.
+- These are cosmetic families only in 0.3A; zombie combat behavior/stats were not rebalanced.
+- Dead infected now remain as visible corpse silhouettes rather than red X markers.
+
+### Combat Feedback
+- Melee/firearm hits get a brief impact flash.
+- Firearms get a short muzzle-flash effect.
+- Companion attacks and infected hits use the same visual feedback language.
+- Character art is procedural/vector-style for now, keeping Web/mobile payload small while allowing authored sprite layers later.
+
+### Persistence / Architecture
+- Added `FFTacticalVisuals.gd` as the presentation-data owner for survivor appearance, zombie visual families, and weapon silhouettes.
+- Survivor appearance is now persistent state, so save schema advanced to **4**. Older Alpha saves are intentionally invalidated rather than migrated.
+
 ## Alpha 0.2 — Survivor Dashboard & Inspection Pass — 2026-08-13
 
 ### Survivors

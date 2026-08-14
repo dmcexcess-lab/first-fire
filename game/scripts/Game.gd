@@ -13,9 +13,10 @@ const LegacyFieldEvents = preload("res://scripts/FFFieldEventsLegacy.gd")
 const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
 const CampSocial = preload("res://scripts/FFCampSocial.gd")
+const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 # Legacy filename is intentionally preserved so this behavior-only refactor does not reset Alpha saves.
 const SAVE_PATH := "user://first_fire_alpha01.json"
-const SAVE_SCHEMA_VERSION := 3
+const SAVE_SCHEMA_VERSION := 4
 const DAY_SECONDS := 120.0
 
 var rng := RandomNumberGenerator.new()
@@ -233,6 +234,7 @@ func _generate_survivor(founder = false, preferred_background = ""):
         "status": "Available",
         "task": {},
         "equipment": {"Weapon": "", "Clothing": "", "Pack": "", "Tool": ""},
+        "appearance": {},
         "relationships": {},
         "reputation": 0,
         "leader_support": 0,
@@ -242,6 +244,7 @@ func _generate_survivor(founder = false, preferred_background = ""):
     }
     next_survivor_id += 1
     s["name"] = "%s %s" % [D.FIRST_NAMES[rng.randi_range(0, D.FIRST_NAMES.size() - 1)], D.LAST_NAMES[rng.randi_range(0, D.LAST_NAMES.size() - 1)]]
+    s["appearance"] = TacticalVisuals.survivor_appearance(rng)
     var background_names = D.BACKGROUNDS.keys()
     if preferred_background != "" and D.BACKGROUNDS.has(preferred_background):
         s["background"] = preferred_background
@@ -2489,7 +2492,7 @@ func save_game():
     if not initialized and survivors.is_empty():
         return
     var data = {
-        "version": "0.2.0",
+        "version": "0.3.0",
         "save_schema": SAVE_SCHEMA_VERSION,
         "day": day, "day_elapsed": day_elapsed,
         "resources": resources, "components": components, "inventory_gear": inventory_gear,

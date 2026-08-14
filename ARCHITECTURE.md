@@ -46,6 +46,9 @@ Tactical runtime once a physical scenario exists: board state, actors, movement/
 ### `FFTacticalScenarios.gd`
 Tactical scenario/catalog ownership: encounter-kind weights, location catalogs, and layout selection. Alpha 0.3/0.4 should grow this toward data-driven physical versions of all outside-world events, authored chunks, objective combinations, hazards, human/survivor situations, and optional objectives.
 
+### `FFTacticalVisuals.gd`
+Tactical character presentation owner. Generates persistent survivor appearance dictionaries, zone-weighted infected visual families, weapon silhouettes, and the procedural character/corpse/impact drawing used by `FFCombat.gd`. It is presentation-only: infected visual families do not imply different stats or AI unless a future gameplay change explicitly adds them.
+
 ### `FFFieldEventsLegacy.gd`
 Temporary Alpha 0.2 compatibility owner for remaining **outside-world text-event selection only**. Delete it when Alpha 0.3 has tactical equivalents for every field event and no caller needs the text field path. Camp stories/politics remain valid narrative events.
 
@@ -83,7 +86,7 @@ Detailed survivor/item inspection also pauses settlement simulation while the mo
 
 ## Save boundary
 
-Current schema: **3**. Alpha policy is clean invalidation on meaningful incompatibility rather than accumulating migrations.
+Current schema: **4**. Alpha policy is clean invalidation on meaningful incompatibility rather than accumulating migrations.
 
 The filename `user://first_fire_alpha01.json` remains intentionally for compatibility; its old name alone is not grounds for a save wipe.
 

@@ -6,6 +6,7 @@ const LegacyFieldEvents = preload("res://scripts/FFFieldEventsLegacy.gd")
 const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
 const CampSocial = preload("res://scripts/FFCampSocial.gd")
+const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 
 func _init() -> void:
     if not _check(ExpeditionRules.zone_cap("Camp Perimeter") == 3, "perimeter cap"): return
@@ -18,6 +19,13 @@ func _init() -> void:
     var rates := CampLifeRules.idle_recovery_rates(true, false)
     if not _check(rates.x > 0.0 and rates.y > 0.0, "camp recovery rules"): return
     if not _check(CampSocial.relationship_label(70) == "Close", "social relationship bands"): return
+    var visual_rng := RandomNumberGenerator.new()
+    visual_rng.seed = 12345
+    var survivor_look: Dictionary = TacticalVisuals.survivor_appearance(visual_rng)
+    if not _check(survivor_look.has("skin") and survivor_look.has("top") and survivor_look.has("body"), "survivor visual identity"): return
+    var zombie_look: Dictionary = TacticalVisuals.zombie_appearance(visual_rng, "Industrial Edge")
+    if not _check(str(zombie_look.get("family", "")) != "", "zombie visual family"): return
+    if not _check(str(TacticalVisuals.weapon_visual("Pistol").get("kind", "")) == "pistol", "weapon visual catalog"): return
 
     var path := "user://ff_architecture_smoke.json"
     var payload := {"save_schema": 99, "ok": true}

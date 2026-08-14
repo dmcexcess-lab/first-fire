@@ -63,6 +63,7 @@ Preferred dependency direction:
 Important current owners:
 
 - `FFCombat.gd` — tactical runtime mechanics.
+- `FFTacticalVisuals.gd` — tactical character appearance, zombie variation, weapon silhouettes, and character drawing; presentation only.
 - `FFTacticalScenarios.gd` — tactical scenario/location/layout selection and future physical field-event definitions.
 - `FFExpeditionRules.gd` — travel/logistics/recruit protection/haul rules; vehicle integration seam.
 - `FFCampLifeRules.gd` — camp-life cadence/recovery/general camp-state tuning.
@@ -132,7 +133,7 @@ While a tactical encounter is active, do not advance unrelated food consumption,
 
 ## 8. Save policy
 
-Current schema: **3**.
+Current schema: **4**.
 
 Alpha policy:
 

@@ -3,6 +3,7 @@ extends Control
 signal encounter_finished(result)
 
 const D = preload("res://scripts/FFData.gd")
+const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 
 const SCREEN_W := 390.0
 const SCREEN_H := 844.0
@@ -48,6 +49,12 @@ var active_touch_ids := {}
 var last_guard_action := ""
 var last_guard_ms := -10000
 var initialized := false
+var hit_flash_cell := Vector2i(-1, -1)
+var hit_flash_until_ms := -1
+var muzzle_flash_cell := Vector2i(-1, -1)
+var muzzle_flash_facing := Vector2i(1, 0)
+var muzzle_flash_until_ms := -1
+var fx_active_last_frame := false
 
 var btn_turn_left := Rect2(8, 700, 136, 78)
 var btn_crouch := Rect2(28, 788, 96, 42)
@@ -59,7 +66,17 @@ func _ready():
     font = ThemeDB.fallback_font
     mouse_filter = Control.MOUSE_FILTER_STOP
     set_process_input(true)
+    set_process(true)
     visible = false
+
+func _process(_delta):
+    if not initialized:
+        return
+    var now := Time.get_ticks_msec()
+    var active := now < hit_flash_until_ms or now < muzzle_flash_until_ms
+    if active or fx_active_last_frame:
+        queue_redraw()
+    fx_active_last_frame = active
 
 func start_encounter(data: Dictionary):
     context = data.duplicate(true)
@@ -75,6 +92,11 @@ func start_encounter(data: Dictionary):
     active_touch_ids.clear()
     last_guard_action = ""
     last_guard_ms = -10000
+    hit_flash_cell = Vector2i(-1, -1)
+    hit_flash_until_ms = -1
+    muzzle_flash_cell = Vector2i(-1, -1)
+    muzzle_flash_until_ms = -1
+    fx_active_last_frame = false
     tick = int(runtime.get("tick", 0))
     location_name = str(context.get("location_name", "Field Encounter"))
     build_map(int(context.get("layout", 0)))
@@ -127,6 +149,7 @@ func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
         "stress": float(s.get("stress", 0.0)),
         "condition": str(s.get("condition", "Healthy")),
         "equipment": s.get("equipment", {}).duplicate(true),
+        "appearance": s.get("appearance", TacticalVisuals.default_survivor_appearance(int(s.get("id", -1)))).duplicate(true),
         "weapon": weapon_profile(str(s.get("equipment", {}).get("Weapon", ""))),
         "clothing": str(s.get("equipment", {}).get("Clothing", "")),
         "tool": str(s.get("equipment", {}).get("Tool", "")),
@@ -271,7 +294,8 @@ func spawn_zombies():
             "hp": rng.randi_range(8, 13), "state": state,
             "target": Vector2i(2, H - 2) if state == "INVESTIGATE" else Vector2i(-1,-1),
             "heard": Vector2i(2, H - 2) if state == "INVESTIGATE" else Vector2i(-1,-1),
-            "next": rng.randi_range(65, 170), "dead": false
+            "next": rng.randi_range(65, 170), "dead": false,
+            "look": TacticalVisuals.zombie_appearance(rng, zone)
         })
 
 func restore_runtime():
@@ -314,6 +338,8 @@ func restore_runtime():
             zombies[i]["target"] = Vector2i(int(zsave.get("tx", -1)), int(zsave.get("ty", -1)))
             zombies[i]["heard"] = Vector2i(int(zsave.get("hx", -1)), int(zsave.get("hy", -1)))
             zombies[i]["next"] = int(zsave.get("next", zombies[i].next))
+            if zsave.has("look"):
+                zombies[i]["look"] = zsave["look"].duplicate(true)
 
 func arr_to_v2i(value, fallback: Vector2i) -> Vector2i:
     if value is Array and value.size() >= 2:
@@ -329,7 +355,7 @@ func persist_runtime():
             "x": z.pos.x, "y": z.pos.y, "fx": z.facing.x, "fy": z.facing.y,
             "hp": int(z.hp), "dead": bool(z.dead), "state": str(z.state),
             "tx": z.target.x, "ty": z.target.y, "hx": z.heard.x, "hy": z.heard.y,
-            "next": int(z.next)
+            "next": int(z.next), "look": z.get("look", {}).duplicate(true)
         })
     var open_doors := []
     for p in doors.keys():
@@ -531,6 +557,7 @@ func melee(target: Vector2i):
         var d = rng.randi_range(int(player.weapon.dmin), int(player.weapon.dmax)) + int(floor(combat / 3.0))
         if stealth: d = int(round(float(d + int(player.weapon.stealth) + combat) * 1.45))
         zombies[zi].hp -= d
+        _flash_hit(z.pos, int(zombies[zi].hp) <= 0)
         msg = "%s hit for %d%s." % [player.weapon.name, d, " — STEALTH" if stealth else ""]
         if int(zombies[zi].hp) <= 0: kill_zombie(zi, stealth)
         elif int(player.weapon.push) > 0: push_zombie(zi, player.facing)
@@ -552,10 +579,12 @@ func shoot(i: int):
     var combat := int(player.skills.get("Combat", 0))
     var chance = clamp(0.52 + combat * 0.06 - max(0, dist - 3) * 0.035 - attack_penalty(player), 0.10, 0.95)
     stats.shots += 1
+    _flash_muzzle(player.pos, player.facing)
     if rng.randf() <= chance:
         var d = rng.randi_range(int(player.weapon.gmin), int(player.weapon.gmax)) + int(floor(combat / 2.0))
         if player.weapon.name == "Shotgun" and dist <= 3: d += 4
         zombies[i].hp -= d
+        _flash_hit(z.pos, int(zombies[i].hp) <= 0)
         msg = "%s hits for %d." % [player.weapon.name, d]
         if int(zombies[i].hp) <= 0: kill_zombie(i, false)
     else:
@@ -570,6 +599,8 @@ func shoot_barrel(cell: Vector2i):
         msg = "No ammunition."; queue_redraw(); return
     barrels.erase(cell)
     stats.shots += 1
+    _flash_muzzle(player.pos, player.facing)
+    _flash_hit(cell, true)
     msg = "The container erupts."
     for i in range(zombies.size()):
         if zombies[i].dead: continue
@@ -661,6 +692,7 @@ func companion_melee(i: int):
     if rng.randf() <= chance:
         var d = rng.randi_range(int(ally.weapon.dmin), int(ally.weapon.dmax)) + int(floor(combat / 3.0))
         zombies[i].hp -= d
+        _flash_hit(zombies[i].pos, int(zombies[i].hp) <= 0)
         if zombies[i].hp <= 0: kill_zombie(i, false)
     emit_noise(ally.pos, int(ally.weapon.noise), "melee", true)
 
@@ -729,6 +761,7 @@ func zombie_attack(i: int, target_actor: Dictionary):
         if rng.randf() < protection:
             dmg = max(1, dmg - 2)
         target_actor.hp -= dmg
+        _flash_hit(target_actor.pos, int(target_actor.hp) <= 0)
         if target_actor.controlled:
             stats.damage += dmg
             msg = "The infected hits you for %d." % dmg
@@ -958,6 +991,7 @@ func _draw():
     draw_units()
     draw_fog()
     draw_sounds()
+    draw_character_fx()
     draw_set_transform(Vector2.ZERO)
     draw_hud()
 
@@ -987,42 +1021,57 @@ func draw_map():
 func draw_units():
     for key in last_seen.keys():
         var i := int(key)
-        if i<0 or i>=zombies.size() or zombies[i].dead or visible_cells.has(zombies[i].pos): continue
-        var c=cell_center(last_seen[i])
-        draw_circle(c,8,Color(.55,.58,.55,.5),false,2)
-        draw_string(font,c+Vector2(-10,-11),"LAST",HORIZONTAL_ALIGNMENT_LEFT,-1,7,Color(.65,.68,.65,.75))
+        if i < 0 or i >= zombies.size() or zombies[i].dead or visible_cells.has(zombies[i].pos):
+            continue
+        var c := cell_center(last_seen[i])
+        draw_circle(c, 8, Color(.55, .58, .55, .5), false, 2)
+        draw_string(font, c + Vector2(-10, -11), "LAST", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(.65, .68, .65, .75))
+
     for i in range(zombies.size()):
-        var z=zombies[i]
+        var z: Dictionary = zombies[i]
         if z.dead:
             if visible_cells.has(z.pos):
-                var dc=cell_center(z.pos)
-                draw_line(dc+Vector2(-7,-5),dc+Vector2(7,5),Color(.32,.08,.08),3)
-                draw_line(dc+Vector2(-7,5),dc+Vector2(7,-5),Color(.32,.08,.08),3)
+                TacticalVisuals.draw_zombie_corpse(self, cell_center(z.pos), z)
             continue
-        if not visible_cells.has(z.pos): continue
-        var c=cell_center(z.pos)
-        draw_circle(c,9,Color(.33,.52,.30))
-        draw_arrow(c,z.facing,Color(.76,.90,.70),10)
-        if zombie_sees_actor(z,player):
-            draw_circle(c,12,Color(1,.17,.12,.92),false,2)
+        if not visible_cells.has(z.pos):
+            continue
+        TacticalVisuals.draw_zombie(self, cell_center(z.pos), z)
+        var c := cell_center(z.pos)
+        if zombie_sees_actor(z, player):
+            draw_circle(c, 12, Color(1, .17, .12, .92), false, 2)
         else:
-            var it=str(intent_reads.get(i,"?"))
-            if it!="": draw_string(font,c+Vector2(-16,-12),it,HORIZONTAL_ALIGNMENT_LEFT,-1,8,Color(1,.84,.35))
-    if not ally.is_empty() and not ally.dead and visible_cells.has(ally.pos):
-        var ac=cell_center(ally.pos)
-        draw_circle(ac,9,Color(.60,.36,.82))
-        draw_arrow(ac,ally.facing,Color.WHITE,10)
-    var pc=cell_center(player.pos)
-    draw_circle(pc,10,Color(.24,.55,.90))
-    draw_arrow(pc,player.facing,Color.WHITE,12)
-    if player.crouched: draw_circle(pc,12,Color(.55,.75,1),false,1)
+            var intent_text := str(intent_reads.get(i, "?"))
+            if intent_text != "":
+                draw_string(font, c + Vector2(-16, -12), intent_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, .84, .35))
 
-func draw_arrow(c: Vector2, dir: Vector2i, color: Color, length: float):
-    var end=c+Vector2(dir)*length
-    draw_line(c,end,color,2)
-    var side=Vector2(-dir.y,dir.x)
-    draw_line(end,end-Vector2(dir)*4+side*3,color,2)
-    draw_line(end,end-Vector2(dir)*4-side*3,color,2)
+    if not ally.is_empty() and visible_cells.has(ally.pos):
+        if ally.dead:
+            TacticalVisuals.draw_survivor_corpse(self, cell_center(ally.pos), ally)
+        else:
+            TacticalVisuals.draw_survivor(self, cell_center(ally.pos), ally, false)
+
+    if not player.is_empty():
+        TacticalVisuals.draw_survivor(self, cell_center(player.pos), player, true)
+
+func _flash_hit(cell: Vector2i, lethal := false):
+    hit_flash_cell = cell
+    hit_flash_until_ms = Time.get_ticks_msec() + (170 if lethal else 110)
+    fx_active_last_frame = true
+    queue_redraw()
+
+func _flash_muzzle(cell: Vector2i, facing: Vector2i):
+    muzzle_flash_cell = cell
+    muzzle_flash_facing = facing
+    muzzle_flash_until_ms = Time.get_ticks_msec() + 90
+    fx_active_last_frame = true
+    queue_redraw()
+
+func draw_character_fx():
+    var now := Time.get_ticks_msec()
+    if hit_flash_cell != Vector2i(-1, -1):
+        TacticalVisuals.draw_hit_flash(self, cell_center(hit_flash_cell), now, hit_flash_until_ms)
+    if muzzle_flash_cell != Vector2i(-1, -1):
+        TacticalVisuals.draw_muzzle_flash(self, cell_center(muzzle_flash_cell), muzzle_flash_facing, now, muzzle_flash_until_ms)
 
 func draw_fog():
     for y in range(H):
