@@ -44,7 +44,10 @@ Reusable modal inspection presentation for detailed survivor sheets and camp inv
 Tactical runtime once a physical scenario exists: board state, actors, movement/action timing, zombie behavior, vision/fog, facing, sound, doors/glass/hazards, melee/firearms, objectives, and completion.
 
 ### `FFTacticalScenarios.gd`
-Tactical scenario/catalog ownership: encounter-kind weights, location catalogs, and layout selection. Alpha 0.3/0.4 should grow this toward data-driven physical versions of all outside-world events, authored chunks, objective combinations, hazards, human/survivor situations, and optional objectives.
+Tactical objective/catalog ownership: encounter-kind weights and combination of an objective with a compatible physical environment. Objective and place are intentionally separate so the same location can host rescue, search, or ambush situations.
+
+### `FFTacticalEnvironments.gd`
+Authored tactical place ownership: recognizable 20×18 environment templates, zone compatibility, ground/theme metadata, props, party entry positions, and one-or-multiple escape routes. Current families include back alley, gas station, residential house, apartment, corner store, warehouse yard, and drainage wash. Geometry must keep every declared exit reachable from the authored party spawn.
 
 ### `FFTacticalVisuals.gd`
 Tactical character presentation owner. Generates persistent survivor appearance dictionaries, zone-weighted infected visual families, weapon silhouettes, and the procedural character/corpse/impact drawing used by `FFCombat.gd`. It is presentation-only: infected visual families do not imply different stats or AI unless a future gameplay change explicitly adds them.

@@ -4,6 +4,7 @@ signal encounter_finished(result)
 
 const D = preload("res://scripts/FFData.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
+const TacticalEnvironments = preload("res://scripts/FFTacticalEnvironments.gd")
 
 const SCREEN_W := 390.0
 const SCREEN_H := 844.0
@@ -11,8 +12,8 @@ const INFO_H := 145.0
 const MAP_TOP := 152.0
 const CONTROL_TOP := 648.0
 const TILE := 26
-const W := 20
-const H := 18
+const W := TacticalEnvironments.BOARD_W
+const H := TacticalEnvironments.BOARD_H
 const DIRS := [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]
 const DIR_NAMES := ["N", "E", "S", "W"]
 
@@ -28,6 +29,8 @@ var obstacles := {}
 var glass := {}
 var doors := {}
 var barrels := {}
+var props := {}
+var ground := {}
 var base_glass := {}
 var base_barrels := {}
 var visible_cells := {}
@@ -36,7 +39,10 @@ var last_seen := {}
 var intent_reads := {}
 var sound_marks: Array = []
 var tick := 0
-var exit_cell := Vector2i(1, H - 2)
+var exit_cells: Array = []
+var player_spawn := Vector2i(2, H - 2)
+var ally_spawn := Vector2i(2, H - 3)
+var environment_id := "back_alley"
 var objective_cell := Vector2i(W - 3, 3)
 var rescue_cell := Vector2i(W - 3, 4)
 var objective_done := false
@@ -98,8 +104,11 @@ func start_encounter(data: Dictionary):
     muzzle_flash_until_ms = -1
     fx_active_last_frame = false
     tick = int(runtime.get("tick", 0))
-    location_name = str(context.get("location_name", "Field Encounter"))
-    build_map(int(context.get("layout", 0)))
+    var legacy_layout := int(context.get("layout", 0))
+    environment_id = str(context.get("environment_id", TacticalEnvironments.legacy_environment(legacy_layout, str(context.get("zone", "Nearby Streets")))))
+    var environment_variant := int(context.get("environment_variant", legacy_layout))
+    location_name = str(context.get("location_name", TacticalEnvironments.display_name(environment_id)))
+    build_map(environment_id, environment_variant)
     make_party()
     spawn_zombies()
     restore_runtime()
@@ -128,12 +137,12 @@ func stop_encounter():
 func make_party():
     var ids: Array = context.get("survivor_ids", [])
     var lead = Game.get_survivor(ids[0]) if not ids.is_empty() else null
-    player = make_actor(lead, Vector2i(2, H - 2), true)
+    player = make_actor(lead, player_spawn, true)
     ally = {}
     if ids.size() > 1:
         var companion = Game.get_survivor(ids[1])
         if companion != null and companion.get("condition", "Dead") != "Dead":
-            ally = make_actor(companion, Vector2i(2, H - 3), false)
+            ally = make_actor(companion, ally_spawn, false)
             ally["next"] = 85
 
 func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
@@ -194,8 +203,9 @@ func weapon_profile(name: String) -> Dictionary:
         _:
             return {"name": "Bare Hands", "dmin": 2, "dmax": 4, "time": 105, "noise": 5, "push": 0, "stealth": 0, "gun": false, "ammo": 0}
 
-func build_map(layout: int):
-    walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear()
+func build_map(new_environment_id: String, variant: int):
+    environment_id = new_environment_id
+    walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); exit_cells.clear()
     for x in range(W):
         walls[Vector2i(x, 0)] = true
         walls[Vector2i(x, H - 1)] = true
@@ -203,53 +213,26 @@ func build_map(layout: int):
         walls[Vector2i(0, y)] = true
         walls[Vector2i(W - 1, y)] = true
 
-    if layout % 3 == 0:
-        # Small storefront with aisles and two entries.
-        for x in range(6, 19):
-            walls[Vector2i(x, 2)] = true
-            walls[Vector2i(x, 13)] = true
-        for y in range(2, 14):
-            walls[Vector2i(6, y)] = true
-            walls[Vector2i(18, y)] = true
-        walls.erase(Vector2i(11, 13)); doors[Vector2i(11, 13)] = false
-        walls.erase(Vector2i(18, 6)); doors[Vector2i(18, 6)] = false
-        for x in range(8, 11): obstacles[Vector2i(x, 5)] = true
-        for x in range(13, 17): obstacles[Vector2i(x, 5)] = true
-        for x in range(8, 11): obstacles[Vector2i(x, 8)] = true
-        for x in range(13, 17): obstacles[Vector2i(x, 8)] = true
-        for x in range(8, 11): obstacles[Vector2i(x, 11)] = true
-        glass[Vector2i(8, 13)] = true
-        glass[Vector2i(9, 13)] = true
-        walls.erase(Vector2i(8, 13)); walls.erase(Vector2i(9, 13))
-        barrels[Vector2i(17, 11)] = true
-    elif layout % 3 == 1:
-        # House / office: rooms create blind corners and door decisions.
-        for x in range(5, 19):
-            walls[Vector2i(x, 2)] = true
-            walls[Vector2i(x, 14)] = true
-        for y in range(2, 15):
-            walls[Vector2i(5, y)] = true
-            walls[Vector2i(18, y)] = true
-        walls.erase(Vector2i(10, 14)); doors[Vector2i(10, 14)] = false
-        for x in range(6, 18): walls[Vector2i(x, 8)] = true
-        walls.erase(Vector2i(9, 8)); doors[Vector2i(9, 8)] = false
-        walls.erase(Vector2i(15, 8)); doors[Vector2i(15, 8)] = false
-        for y in range(3, 8): walls[Vector2i(12, y)] = true
-        walls.erase(Vector2i(12, 5)); doors[Vector2i(12, 5)] = false
-        obstacles[Vector2i(7, 4)] = true; obstacles[Vector2i(8, 4)] = true
-        obstacles[Vector2i(15, 4)] = true; obstacles[Vector2i(16, 4)] = true
-        obstacles[Vector2i(7, 11)] = true; obstacles[Vector2i(15, 11)] = true
-        glass[Vector2i(6, 14)] = true; walls.erase(Vector2i(6, 14))
-        barrels[Vector2i(17, 3)] = true
-    else:
-        # Alley / loading yard with staggered cover.
-        for p in [Vector2i(5,4),Vector2i(6,4),Vector2i(5,5),Vector2i(6,5),Vector2i(10,3),Vector2i(10,4),Vector2i(10,5),Vector2i(14,6),Vector2i(15,6),Vector2i(16,6),Vector2i(8,10),Vector2i(9,10),Vector2i(13,12),Vector2i(14,12),Vector2i(15,12)]:
-            obstacles[p] = true
-        for y in range(2, 10): walls[Vector2i(18, y)] = true
-        walls.erase(Vector2i(18, 6)); doors[Vector2i(18, 6)] = false
-        glass[Vector2i(18, 5)] = true; walls.erase(Vector2i(18, 5))
-        barrels[Vector2i(12, 7)] = true
-        barrels[Vector2i(17, 13)] = true
+    var spec: Dictionary = TacticalEnvironments.build_layout(environment_id, variant)
+    player_spawn = spec.get("player_spawn", Vector2i(2, H - 2))
+    ally_spawn = spec.get("ally_spawn", Vector2i(2, H - 3))
+    exit_cells = spec.get("exit_cells", [Vector2i(1, H - 2)]).duplicate()
+    var default_ground := str(spec.get("default_ground", TacticalEnvironments.default_ground(environment_id)))
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            ground[Vector2i(x, y)] = default_ground
+    for entry in spec.get("ground_rects", []):
+        var gx := int(entry[0]); var gy := int(entry[1]); var gw := int(entry[2]); var gh := int(entry[3]); var ground_kind := str(entry[4])
+        for y in range(gy, gy + gh):
+            for x in range(gx, gx + gw):
+                var gp := Vector2i(x, y)
+                if inside(gp): ground[gp] = ground_kind
+    for p in spec.get("walls", []): walls[p] = true
+    for p in spec.get("obstacles", []): obstacles[p] = true
+    for p in spec.get("glass", []): glass[p] = true
+    for entry in spec.get("doors", []): doors[entry[0]] = bool(entry[1])
+    for p in spec.get("barrels", []): barrels[p] = true
+    for entry in spec.get("props", []): props[entry[0]] = str(entry[1])
 
     base_glass = glass.duplicate(true)
     base_barrels = barrels.duplicate(true)
@@ -257,14 +240,31 @@ func build_map(layout: int):
     rescue_cell = objective_cell
 
 func choose_far_open_cell() -> Vector2i:
-    var candidates := []
-    for y in range(2, H - 2):
-        for x in range(2, W - 2):
-            var p = Vector2i(x, y)
-            if not blocked(p) and manhattan(Vector2i(2, H - 2), p) >= 13:
-                candidates.append(p)
+    # Objectives are selected only from cells physically reachable from the
+    # authored party spawn. Closed doors/glass count as traversable because the
+    # tactical rules let the player open/break them.
+    var distances := {player_spawn: 0}
+    var queue: Array = [player_spawn]
+    while not queue.is_empty():
+        var p: Vector2i = queue.pop_front()
+        var base_distance := int(distances[p])
+        for d in DIRS:
+            var n := p + d
+            if not inside(n) or walls.has(n) or obstacles.has(n) or distances.has(n):
+                continue
+            distances[n] = base_distance + 1
+            queue.append(n)
+    var farthest := 0
+    for p in distances.keys():
+        if not exit_cells.has(p):
+            farthest = maxi(farthest, int(distances[p]))
+    var candidates: Array = []
+    var threshold := maxi(6, farthest - 3)
+    for p in distances.keys():
+        if not exit_cells.has(p) and int(distances[p]) >= threshold:
+            candidates.append(p)
     if candidates.is_empty():
-        return Vector2i(W - 3, 3)
+        return player_spawn
     return candidates[rng.randi_range(0, candidates.size() - 1)]
 
 func spawn_zombies():
@@ -276,9 +276,9 @@ func spawn_zombies():
     for y in range(1, H - 1):
         for x in range(1, W - 1):
             var p = Vector2i(x, y)
-            if blocked(p) or p == player.get("pos", Vector2i(2, H - 2)) or p == ally.get("pos", Vector2i(-1,-1)):
+            if blocked(p) or p == player.get("pos", player_spawn) or p == ally.get("pos", Vector2i(-1,-1)):
                 continue
-            var d = manhattan(Vector2i(2, H - 2), p)
+            var d = manhattan(player_spawn, p)
             if context.get("kind", "") == "ambush":
                 if d >= 4 and d <= 11: candidates.append(p)
             elif d >= 7:
@@ -292,8 +292,8 @@ func spawn_zombies():
         zombies.append({
             "id": i, "pos": p, "facing": DIRS[rng.randi_range(0,3)],
             "hp": rng.randi_range(8, 13), "state": state,
-            "target": Vector2i(2, H - 2) if state == "INVESTIGATE" else Vector2i(-1,-1),
-            "heard": Vector2i(2, H - 2) if state == "INVESTIGATE" else Vector2i(-1,-1),
+            "target": player_spawn if state == "INVESTIGATE" else Vector2i(-1,-1),
+            "heard": player_spawn if state == "INVESTIGATE" else Vector2i(-1,-1),
             "next": rng.randi_range(65, 170), "dead": false,
             "look": TacticalVisuals.zombie_appearance(rng, zone)
         })
@@ -519,16 +519,19 @@ func check_objective_and_exit():
         if player.pos == target or (not ally.is_empty() and not ally.dead and ally.pos == target):
             objective_done = true
             if kind == "rescue":
-                msg = "Survivor found. Get everyone back to the exit."
+                msg = "Survivor found. Reach any exit."
                 emit_noise(target, 9, "struggle", true)
             else:
-                msg = "Search complete. Get back to the exit."
+                msg = "Search complete. Reach any exit."
                 emit_noise(target, 10, "rummaging", true)
-    if player.pos == exit_cell:
+    if exit_cells.has(player.pos):
         if objective_done:
-            finish_encounter("escaped")
+            msg = "You made it out."
+        elif kind == "ambush":
+            msg = "You broke contact and escaped."
         else:
-            msg = "You still have something to do here."
+            msg = "You abandon the objective and get out alive."
+        finish_encounter("escaped")
 
 func interact():
     var p: Vector2i = player.pos + player.facing
@@ -990,33 +993,119 @@ func _draw():
     draw_map()
     draw_units()
     draw_fog()
+    draw_escape_markers()
     draw_sounds()
     draw_character_fx()
     draw_set_transform(Vector2.ZERO)
     draw_hud()
 
 func draw_map():
+    var wall_color := TacticalEnvironments.wall_color(environment_id)
+    var grid_color := TacticalEnvironments.grid_color(environment_id)
     for y in range(H):
         for x in range(W):
-            var p=Vector2i(x,y)
-            var r=Rect2(x*TILE,y*TILE,TILE,TILE)
-            draw_rect(r, Color(.10,.12,.11))
-            draw_rect(r, Color(.17,.19,.18), false, 1)
-            if walls.has(p): draw_rect(r, Color(.25,.27,.25))
-            elif obstacles.has(p): draw_rect(r.grow(-3), Color(.28,.23,.17))
-            elif glass.has(p):
-                draw_line(r.position+Vector2(3,TILE-4), r.position+Vector2(TILE-3,4), Color(.55,.75,.82), 2)
+            var p := Vector2i(x,y)
+            var r := Rect2(x*TILE,y*TILE,TILE,TILE)
+            var ground_kind := str(ground.get(p, TacticalEnvironments.default_ground(environment_id)))
+            draw_rect(r, TacticalEnvironments.ground_color(ground_kind))
+            draw_rect(r, grid_color, false, 1)
+            if walls.has(p):
+                draw_rect(r, wall_color)
+                draw_rect(r.grow(-3), wall_color.lightened(0.08), false, 1)
             elif doors.has(p):
                 draw_rect(r.grow(-4), Color(.34,.24,.14) if not doors[p] else Color(.18,.15,.11), false, 3)
+            elif glass.has(p):
+                draw_line(r.position+Vector2(3,TILE-4), r.position+Vector2(TILE-3,4), Color(.55,.75,.82), 2)
+                draw_line(r.position+Vector2(3,4), r.position+Vector2(TILE-3,TILE-4), Color(.40,.62,.70,.65), 1)
             elif barrels.has(p):
                 draw_circle(cell_center(p), 8, Color(.55,.25,.10))
-    draw_rect(Rect2(exit_cell.x*TILE+4,exit_cell.y*TILE+4,TILE-8,TILE-8), Color(.18,.58,.30), false, 3)
+                draw_circle(cell_center(p), 8, Color(.85,.48,.16), false, 2)
+            elif props.has(p):
+                draw_environment_prop(p, str(props[p]))
+            elif obstacles.has(p):
+                draw_rect(r.grow(-3), Color(.30,.25,.18))
     var kind := str(context.get("kind","ambush"))
     if kind == "explore" and not objective_done:
         draw_rect(Rect2(objective_cell.x*TILE+5,objective_cell.y*TILE+5,TILE-10,TILE-10), Color(.95,.75,.20), false, 3)
     elif kind == "rescue" and not objective_done:
         draw_circle(cell_center(rescue_cell), 8, Color(.95,.75,.20), false, 3)
         draw_string(font, cell_center(rescue_cell)+Vector2(-9,-12), "SOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(.95,.8,.35))
+
+func draw_escape_markers():
+    for p in exit_cells:
+        var c := cell_center(p)
+        var known := visible_cells.has(p) or memory.has(p)
+        var alpha := 1.0 if known else 0.72
+        var color := Color(0.18, 0.82, 0.38, alpha)
+        draw_rect(Rect2(p.x*TILE+3,p.y*TILE+3,TILE-6,TILE-6), color, false, 3)
+        draw_line(c + Vector2(-6, 0), c + Vector2(5, 0), color, 2)
+        draw_line(c + Vector2(1, -4), c + Vector2(6, 0), color, 2)
+        draw_line(c + Vector2(1, 4), c + Vector2(6, 0), color, 2)
+        draw_string(font, c + Vector2(-12,-10), "EXIT", HORIZONTAL_ALIGNMENT_CENTER, 24, 7, color)
+
+func draw_environment_prop(p: Vector2i, kind: String):
+    var r := Rect2(p.x*TILE,p.y*TILE,TILE,TILE)
+    var c := cell_center(p)
+    match kind:
+        "dumpster":
+            draw_rect(r.grow(-3), Color("304b3d"))
+            draw_line(r.position+Vector2(4,7), r.position+Vector2(TILE-4,7), Color("6d806f"), 2)
+        "trash":
+            draw_circle(c, 7, Color("4c4941")); draw_line(c-Vector2(5,3), c+Vector2(5,3), Color("827966"), 1)
+        "neon_sign":
+            draw_rect(r.grow(-5), Color("5a243f")); draw_rect(r.grow(-7), TacticalEnvironments.accent_color(environment_id), false, 2)
+            draw_string(font, c+Vector2(-9,3), "OPEN", HORIZONTAL_ALIGNMENT_CENTER, 18, 6, Color("f3a8cd"))
+        "gas_pump":
+            draw_rect(r.grow(-5), Color("d9d6c8")); draw_rect(Rect2(r.position+Vector2(7,5),Vector2(12,7)),Color("30383b"))
+            draw_circle(c+Vector2(7,4),2,Color("d9b14b"))
+        "car":
+            draw_rect(r.grow(-2), Color("4a5961")); draw_rect(r.grow(-6), Color("9bb1b8")); draw_circle(c+Vector2(-7,8),2,Color("141718")); draw_circle(c+Vector2(7,8),2,Color("141718"))
+        "counter":
+            draw_rect(r.grow(-3), Color("735a3f")); draw_line(r.position+Vector2(3,7),r.position+Vector2(TILE-3,7),Color("b09a76"),2)
+        "store_shelf":
+            draw_rect(r.grow(-4), Color("595b58")); draw_line(r.position+Vector2(4,9),r.position+Vector2(TILE-4,9),Color("b0a77d"),2); draw_line(r.position+Vector2(4,16),r.position+Vector2(TILE-4,16),Color("8e9b7d"),2)
+        "gas_sign":
+            draw_rect(r.grow(-4), Color("383b3b")); draw_string(font,c+Vector2(-9,4),"GAS",HORIZONTAL_ALIGNMENT_CENTER,18,8,Color("ead25d"))
+        "ice_box":
+            draw_rect(r.grow(-3), Color("d9e4e4")); draw_string(font,c+Vector2(-8,4),"ICE",HORIZONTAL_ALIGNMENT_CENTER,16,7,Color("507b9b"))
+        "couch":
+            draw_rect(r.grow(-3), Color("765344")); draw_rect(r.grow(-7), Color("9a705c"), false, 2)
+        "table":
+            draw_circle(c,8,Color("765b3e")); draw_circle(c,8,Color("b08b62"),false,2)
+        "bed":
+            draw_rect(r.grow(-3), Color("738291")); draw_rect(Rect2(r.position+Vector2(4,4),Vector2(TILE-8,6)),Color("d6d4c6"))
+        "kitchen":
+            draw_rect(r.grow(-3), Color("8b8b83")); draw_circle(c,4,Color("272b2c"),false,2)
+        "fridge":
+            draw_rect(r.grow(-3), Color("c6c9c5")); draw_line(c+Vector2(0,-8),c+Vector2(0,8),Color("7c807d"),1)
+        "washer":
+            draw_rect(r.grow(-3), Color("b9bbb6")); draw_circle(c,6,Color("4e6268"),false,2)
+        "apt_sign":
+            draw_rect(r.grow(-5), Color("4e5660")); draw_string(font,c+Vector2(-8,4),"APT",HORIZONTAL_ALIGNMENT_CENTER,16,7,Color("c5d0db"))
+        "vending":
+            draw_rect(r.grow(-3), Color("87443d")); draw_rect(r.grow(-7),Color("e6c770"),false,2)
+        "shop_sign":
+            draw_rect(r.grow(-5), Color("315d59")); draw_string(font,c+Vector2(-10,4),"SHOP",HORIZONTAL_ALIGNMENT_CENTER,20,7,Color("9fe0d8"))
+        "crate":
+            draw_rect(r.grow(-3), Color("7a5d3a")); draw_line(r.position+Vector2(4,4),r.end-Vector2(4,4),Color("b18a58"),1); draw_line(Vector2(r.end.x-4,r.position.y+4),Vector2(r.position.x+4,r.end.y-4),Color("b18a58"),1)
+        "pallet":
+            draw_rect(r.grow(-4), Color("765c3d"), false, 3); draw_line(r.position+Vector2(6,4),r.position+Vector2(6,TILE-4),Color("a88658"),2); draw_line(r.position+Vector2(13,4),r.position+Vector2(13,TILE-4),Color("a88658"),2)
+        "forklift":
+            draw_rect(r.grow(-3), Color("c98d2d")); draw_line(c+Vector2(8,-8),c+Vector2(8,8),Color("2b2c2b"),2)
+        "machine":
+            draw_rect(r.grow(-3), Color("4e5b58")); draw_circle(c,5,Color("202626")); draw_rect(Rect2(r.position+Vector2(5,4),Vector2(5,3)),Color("d58d36"))
+        "warehouse_sign":
+            draw_rect(r.grow(-5), Color("51595a")); draw_string(font,c+Vector2(-9,4),"BAY",HORIZONTAL_ALIGNMENT_CENTER,18,7,Color("e2a04f"))
+        "scrub":
+            draw_circle(c+Vector2(-4,2),6,Color("667047")); draw_circle(c+Vector2(4,-2),6,Color("55623d"))
+        "shopping_cart":
+            draw_rect(r.grow(-5), Color("8d9390"), false, 2); draw_circle(c+Vector2(-6,8),2,Color("242727")); draw_circle(c+Vector2(6,8),2,Color("242727"))
+        "culvert_debris":
+            draw_circle(c,9,Color("5a5148")); draw_line(c-Vector2(8,5),c+Vector2(8,5),Color("8b7355"),2)
+        "wash_sign":
+            draw_rect(r.grow(-6), Color("867253")); draw_string(font,c+Vector2(-8,4),"WASH",HORIZONTAL_ALIGNMENT_CENTER,16,6,Color("e2c695"))
+        _:
+            draw_rect(r.grow(-3), Color(.30,.25,.18))
 
 func draw_units():
     for key in last_seen.keys():
@@ -1102,6 +1191,7 @@ func draw_hud():
     match str(context.get("kind","ambush")):
         "rescue": objective_text = "RESCUE + ESCAPE" if not objective_done else "ESCAPE WITH SURVIVOR"
         "explore": objective_text = "SEARCH + ESCAPE" if not objective_done else "ESCAPE"
+    objective_text += "  |  Exits %d" % exit_cells.size()
     draw_string(font,Vector2(10,112),"Objective: %s"%objective_text,HORIZONTAL_ALIGNMENT_LEFT,370,11,Color(.96,.80,.34))
     draw_string(font,Vector2(10,133),msg,HORIZONTAL_ALIGNMENT_LEFT,370,10,Color(.93,.94,.90))
     if any_zombie_sees_player():

@@ -733,9 +733,6 @@ func start_special_site(primary_id, companion_id, site):
 func _pick_tactical_kind(zone):
     return TacticalScenarios.pick_kind(str(zone), rng)
 
-func _combat_location_name(zone, kind):
-    return TacticalScenarios.location_name(str(zone), str(kind), rng)
-
 func _combat_condition_hp(s):
     if s == null: return 0
     match str(s.get("condition", "Healthy")):
@@ -763,14 +760,18 @@ func _begin_tactical_encounter(exp):
     var companion_hp = -1
     if ids.size() > 1:
         companion_hp = _combat_condition_hp(get_survivor(ids[1]))
+    var combat_kind := str(exp.get("combat_kind", "ambush"))
+    var environment_id := TacticalScenarios.pick_environment(str(exp["zone"]), combat_kind, rng)
+    var environment_variant := TacticalScenarios.environment_variant(environment_id, rng)
     current_combat = {
         "uid": "%d-%d-%d" % [day, int(exp["id"]), rng.randi_range(1000, 999999)],
         "expedition_id": int(exp["id"]),
         "survivor_ids": ids.duplicate(true),
         "zone": str(exp["zone"]),
-        "kind": str(exp.get("combat_kind", "ambush")),
-        "location_name": _combat_location_name(str(exp["zone"]), str(exp.get("combat_kind", "ambush"))),
-        "layout": TacticalScenarios.layout_index(rng),
+        "kind": combat_kind,
+        "environment_id": environment_id,
+        "environment_variant": environment_variant,
+        "location_name": TacticalScenarios.environment_name(environment_id),
         "seed": rng.randi_range(1, 2147483000),
         "runtime": {
             "lead_hp": _combat_condition_hp(lead),
@@ -893,8 +894,10 @@ func resolve_combat(result):
     elif kind == "explore" and bool(result.get("objective_done", false)):
         var reward = _grant_tactical_explore_reward(exp, lead)
         _queue_field_result(event, "%s Searched" % place, "You searched the place under real pressure and got back out. Extra find: %s." % reward, "The party searched %s tactically and escaped." % place)
+    elif kind in ["rescue", "explore"] and not bool(result.get("objective_done", false)):
+        _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the objective. The expedition can continue, but the opportunity here is gone.", "The party withdrew from %s before completing the tactical objective." % place)
     else:
-        _queue_field_result(event, "Broke Contact", "The ambush never became a stand-up fight. You made space, found the exit, and got away from %s." % place, "The party escaped a tactical ambush at %s." % place)
+        _queue_field_result(event, "Broke Contact", "The ambush never became a stand-up fight. You made space, found an exit, and got away from %s." % place, "The party escaped a tactical ambush at %s." % place)
     save_game()
     state_changed.emit()
 

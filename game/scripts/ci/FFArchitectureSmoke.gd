@@ -2,6 +2,7 @@ extends SceneTree
 
 const ExpeditionRules = preload("res://scripts/FFExpeditionRules.gd")
 const TacticalScenarios = preload("res://scripts/FFTacticalScenarios.gd")
+const TacticalEnvironments = preload("res://scripts/FFTacticalEnvironments.gd")
 const LegacyFieldEvents = preload("res://scripts/FFFieldEventsLegacy.gd")
 const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
@@ -20,7 +21,12 @@ func _init() -> void:
     if not _check(abs(ExpeditionRules.tactical_event_chance("Industrial Edge") - 0.90) < 0.001, "industrial tactical pop rate"): return
     if not _check(TacticalScenarios.KIND_WEIGHTS.has("Residential Blocks"), "scenario catalog"): return
     if not _check(TacticalScenarios.KIND_WEIGHTS.has("Camp Perimeter"), "starting zone scenario catalog"): return
-    if not _check(TacticalScenarios.LOCATIONS_BY_ZONE.has("Camp Perimeter"), "starting zone tactical locations"): return
+    if not _check(TacticalEnvironments.display_name("gas_station") == "Gas Station", "gas station environment"): return
+    if not _check(TacticalEnvironments.exit_count("house", 0) == 1, "single-exit house variant"): return
+    if not _check(TacticalEnvironments.exit_count("gas_station", 1) >= 3, "multi-exit gas station variant"): return
+    for environment_id in TacticalEnvironments.all_ids():
+        for variant in range(TacticalEnvironments.variant_count(str(environment_id))):
+            if not _check(TacticalEnvironments.validate_layout(TacticalEnvironments.build_layout(str(environment_id), variant)), "reachable exits: %s v%d" % [environment_id, variant]): return
     if not _check(LegacyFieldEvents.all_keys().has("injured_stranger"), "legacy field catalog"): return
     var rates := CampLifeRules.idle_recovery_rates(true, false)
     if not _check(rates.x > 0.0 and rates.y > 0.0, "camp recovery rules"): return

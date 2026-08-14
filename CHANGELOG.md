@@ -2,6 +2,25 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Alpha 0.3B — Tactical Environments & Escape Routes — 2026-08-13
+
+### Recognizable Tactical Places
+- Replaced the three generic board shapes with authored environment families that read as actual places: **Back Alley, Gas Station, Residential House, Apartment, Corner Store, Warehouse Yard, and Drainage Wash**.
+- Environments now carry distinct ground treatments, walls, room shapes, recognizable props, entry positions, and zone-appropriate selection pools.
+- Gas pumps/storefront, house rooms/furniture, apartment corridor/units, shop aisles, dumpsters/neon, warehouse pallets/machinery, and wash debris now visually identify the location before reading the HUD.
+- Tactical **objective and location are separate systems**: rescue, search, and ambush objectives are combined with compatible physical places instead of selecting a generic layout from the objective.
+
+### Universal Escape
+- Every tactical environment now declares at least one reachable escape point.
+- Some layouts have a single escape route; others have two or three exits.
+- Reaching **any EXIT** immediately allows the party to leave, even if a rescue/search objective is unfinished. Survival is always a legitimate choice.
+- Leaving before an optional objective completes forfeits that tactical opportunity/reward but does not count as a tactical disaster.
+- Exit markers remain readable through fog and the tactical HUD shows the number of available routes.
+- Added deterministic CI checks that every authored environment variant has reachable exits from its party spawn.
+
+### Saves
+- Save schema remains **4**. New tactical contexts store environment ID/variant, while already-open older schema-4 tactical encounters fall back to equivalent environment families.
+
 ## Alpha 0.3A — Tactical Spawn & Expedition Simplification — 2026-08-13
 
 ### Tactical Encounter Reliability

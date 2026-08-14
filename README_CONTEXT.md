@@ -8,7 +8,7 @@ This file records durable product/design context. `README_SOPS.md` records how t
 
 **First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game. It mixes menu-driven camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
 
-Current milestone: **Alpha 0.3A — Tactical Character Graphics**.
+Current milestone: **Alpha 0.3B — Tactical Environments & Escape Routes**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
@@ -51,9 +51,11 @@ Current tactical encounter types include:
 
 Wounds, deaths, fatigue, stress, ammunition use, and Combat XP return to camp state. Active tactical encounters persist across browser reloads.
 
-`FFCombat.gd` owns tactical runtime mechanics. `FFTacticalScenarios.gd` owns what kind of physical situation/location/layout is created and is the intended Alpha 0.3/0.4 expansion seam. `FFTacticalVisuals.gd` owns persistent survivor appearance generation, zombie visual families, weapon silhouettes, and character rendering; tactical mechanics remain in `FFCombat.gd`.
+`FFCombat.gd` owns tactical runtime mechanics. `FFTacticalScenarios.gd` owns encounter objectives and combines them with a compatible place. `FFTacticalEnvironments.gd` owns recognizable authored tactical places, environment geometry, props, party entry points, and escape-route definitions. `FFTacticalVisuals.gd` owns persistent survivor appearance generation, zombie visual families, weapon silhouettes, and character rendering.
 
-Survivors now keep persistent modular tactical appearances. Zombies use varied civilian/worker/service/medical/decayed/heavy visual families, while those families remain cosmetic until a future gameplay change explicitly says otherwise. Equipped weapons are drawn as separate readable silhouettes beside survivors.
+Objective and place are now separate: rescue/search/ambush situations can occur across compatible back alleys, gas stations, residential houses, apartments, corner stores, warehouse yards, and drainage washes. Every tactical map declares at least one reachable exit; some have one route and some have multiple. Reaching any exit is always a valid retreat even when the optional rescue/search objective was not completed.
+
+Survivors keep persistent modular tactical appearances. Zombies use varied civilian/worker/service/medical/decayed/heavy visual families, while those families remain cosmetic until a future gameplay change explicitly says otherwise. Equipped weapons are drawn as separate readable silhouettes beside survivors.
 
 ## Expedition logistics
 
