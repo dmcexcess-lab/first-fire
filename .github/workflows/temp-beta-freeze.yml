@@ -1,0 +1,32 @@
+name: Temporary beta freeze integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/temp_beta_freeze_patch.py'
+      - '.github/scripts/temp_beta_freeze_trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply beta freeze patch
+        run: python3 .github/scripts/temp_beta_freeze_patch.py
+      - name: Commit game and docs changes only
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/scripts/temp_beta_freeze_patch.py .github/scripts/temp_beta_freeze_trigger.txt
+          git add -A
+          git commit -m "Freeze First Fire for beta"
+          git push origin HEAD:main
