@@ -1,0 +1,33 @@
+name: Temporary tactical trigger reliability guard
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply tactical trigger guard
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if grep -q 'Hold at the encounter point until the tactical board can open' game/scripts/Game.gd; then
+            echo 'Tactical trigger guard already applied.'
+            exit 0
+          fi
+          python3 .github/scripts/temp_tactical_trigger_guard.py
+          grep -q '"Camp Perimeter": \[\["explore"' game/scripts/FFTacticalScenarios.gd
+          grep -q 'Hold at the encounter point until the tactical board can open' game/scripts/Game.gd
+          grep -q 'starting zone scenario catalog' game/scripts/ci/FFArchitectureSmoke.gd
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game/scripts/FFTacticalScenarios.gd game/scripts/Game.gd game/scripts/ci/FFArchitectureSmoke.gd CHANGELOG.md
+          git commit -m 'Guarantee selected tactical encounters open'
+          git push origin HEAD:main
