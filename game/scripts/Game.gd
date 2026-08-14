@@ -937,7 +937,7 @@ func resolve_combat(result):
     if kind == "rescue" and bool(result.get("rescued", false)):
         _queue_recruit_offer(event, "A Survivor Makes It Out", "You get the stranger out of %s alive. Away from the infected and with a little room to breathe, they finally decide whether they trust First Fire enough to come back with you." % place, "tactical_rescue")
     elif kind == "explore" and bool(result.get("objective_done", false)):
-        var reward := _grant_tactical_explore_reward(exp, lead)
+        var reward: String = str(_grant_tactical_explore_reward(exp, lead))
         var recovered_gear := str(result.get("field_gear", ""))
         if recovered_gear != "" and D.GEAR.has(recovered_gear):
             inventory_gear.append(recovered_gear)
