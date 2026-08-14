@@ -2,6 +2,7 @@ extends RefCounted
 class_name FFTacticalVisuals
 
 const Tiles = preload("res://scripts/FFTacticalTiles.gd")
+const D = preload("res://scripts/FFData.gd")
 
 const SURVIVOR_ACCENTS := ["d89a3a", "b84e4e", "4f91b8", "7ca45a", "9b6fb3", "d5c261", "d08139", "70b0aa"]
 const ZOMBIE_FAMILIES_BY_ZONE := {
@@ -50,6 +51,20 @@ static func weapon_visual(name: String) -> Dictionary:
         "Pistol": return {"kind": "pistol", "atlas": 198}
         "Shotgun": return {"kind": "shotgun", "atlas": 199}
         _: return {"kind": "none", "atlas": -1}
+
+static func field_gear_visual(name: String) -> Dictionary:
+    var weapon := weapon_visual(name)
+    if int(weapon.get("atlas", -1)) >= 0:
+        return {"atlas": int(weapon["atlas"]), "badge": "W", "slot": "Weapon"}
+    var item_atlas := Tiles.item_region(name)
+    if item_atlas >= 0:
+        return {"atlas": item_atlas, "badge": "S", "slot": "Secondary"}
+    var slot := str(D.GEAR.get(name, {}).get("slot", ""))
+    return {
+        "atlas": -1,
+        "badge": {"Tool": "T", "Clothing": "C", "Pack": "P"}.get(slot, "?"),
+        "slot": slot,
+    }
 
 static func equipment_summary_lines(equipment: Dictionary) -> Array:
     var primary: Array[String] = []

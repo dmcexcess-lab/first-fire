@@ -31,7 +31,9 @@ This file tracks player-facing changes to the playable Alpha builds, plus major 
 ### Items / Crafting / Tactical Readability
 - Every current `FFData.GEAR` item now has a crafting recipe in the existing Workbench/Sewing Table system; firearms are late-camp Workbench recipes requiring the Armory.
 - Tactical HUD now exposes all five equipment slots—Weapon, Secondary, Tool, Clothing and Pack—so every equipped item is visible during field play.
-- Added deterministic smoke coverage that every gear catalog entry has a crafting path, final building count is complete, social chatter can resolve, and tactical equipment summaries expose all slots.
+- Explore encounters now place a **real named gear pickup** on the tactical board. The survivor must physically reach it and still escape alive to bring it home. Weapons/portable lights use authored atlas icons; Tool/Clothing/Pack finds use readable slot badges plus the real item name.
+- Every current gear item belongs to a zone-tiered physical tactical loot pool, from common perimeter tools/packs through late Commercial/Industrial firearms.
+- Added deterministic smoke coverage that every gear catalog entry has both a crafting path and a physical tactical loot path, final building count is complete, social chatter can resolve, and tactical equipment summaries expose all slots.
 
 ## Alpha 0.3E — Living Camp View — 2026-08-13
 

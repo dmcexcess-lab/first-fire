@@ -170,6 +170,24 @@ const GEAR := {
     "Reinforced Pack": {"slot": "Pack", "capacity": 12, "size": 0},
 }
 
+const TACTICAL_GEAR_UNLOCKS_BY_ZONE := {
+    "Camp Perimeter": [
+        "Utility Knife", "Kitchen Knife", "Wooden Club", "Flashlight", "Glow Stick",
+        "Road Flare", "Screwdriver Set", "Work Gloves", "Worn Backpack",
+        "School Backpack", "Improvised Pack"
+    ],
+    "Nearby Streets": [
+        "Baseball Bat", "Hammer", "Headlamp", "Lantern", "Pry Tool",
+        "Work Jacket", "Heavy Boots", "First Aid Kit"
+    ],
+    "Residential Blocks": [
+        "Crowbar", "Hatchet", "Toolbox", "Padded Jacket", "Leather Jacket",
+        "Hiking Pack"
+    ],
+    "Commercial Fringe": ["Bolt Cutters", "Reinforced Pack", "Pistol"],
+    "Industrial Edge": ["Shotgun"],
+}
+
 const RECIPES := {
     "Fire Pit": [
         {"id": "Cook Food", "time": 3.0, "cost": {"Raw Food": 1}, "gives_resource": {"Cooked Food": 2}},

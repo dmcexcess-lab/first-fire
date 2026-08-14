@@ -769,6 +769,22 @@ func start_special_site(primary_id, site):
 func _pick_tactical_kind(zone):
     return TacticalScenarios.pick_kind(str(zone), rng)
 
+func _tactical_gear_pool(zone: String) -> Array:
+    var pool: Array = []
+    var zone_index := D.ZONE_ORDER.find(zone)
+    if zone_index < 0:
+        zone_index = 0
+    for i in range(zone_index + 1):
+        var tier_zone := str(D.ZONE_ORDER[i])
+        pool.append_array(Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE.get(tier_zone, [])))
+    return pool
+
+func _pick_tactical_gear(zone: String) -> String:
+    var pool := _tactical_gear_pool(zone)
+    if pool.is_empty():
+        return ""
+    return str(pool[rng.randi_range(0, pool.size() - 1)])
+
 func _combat_condition_hp(s):
     if s == null: return 0
     match str(s.get("condition", "Healthy")):
@@ -808,6 +824,7 @@ func _begin_tactical_encounter(exp):
         "time_of_day": str(scene_state.get("time_of_day", "day")),
         "power_on": bool(scene_state.get("power_on", false)),
         "location_name": TacticalScenarios.environment_name(environment_id),
+        "field_gear": _pick_tactical_gear(str(exp["zone"])) if combat_kind == "explore" else "",
         "seed": rng.randi_range(1, 2147483000),
         "runtime": {
             "lead_hp": _combat_condition_hp(lead),
@@ -920,8 +937,12 @@ func resolve_combat(result):
     if kind == "rescue" and bool(result.get("rescued", false)):
         _queue_recruit_offer(event, "A Survivor Makes It Out", "You get the stranger out of %s alive. Away from the infected and with a little room to breathe, they finally decide whether they trust First Fire enough to come back with you." % place, "tactical_rescue")
     elif kind == "explore" and bool(result.get("objective_done", false)):
-        var reward = _grant_tactical_explore_reward(exp, lead)
-        _queue_field_result(event, "%s Searched" % place, "You searched the place under real pressure and got back out. Extra find: %s." % reward, "The party searched %s tactically and escaped." % place)
+        var reward := _grant_tactical_explore_reward(exp, lead)
+        var recovered_gear := str(result.get("field_gear", ""))
+        if recovered_gear != "" and D.GEAR.has(recovered_gear):
+            inventory_gear.append(recovered_gear)
+            reward = (reward + ", " if reward != "" else "") + recovered_gear
+        _queue_field_result(event, "%s Searched" % place, "You physically recovered the marked field loot and got back out. Find: %s." % reward, "The party searched %s tactically and escaped with %s." % [place, recovered_gear if recovered_gear != "" else "supplies"])
     elif kind in ["rescue", "explore"] and not bool(result.get("objective_done", false)):
         _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the objective. The expedition can continue, but the opportunity here is gone.", "The party withdrew from %s before completing the tactical objective." % place)
     else:

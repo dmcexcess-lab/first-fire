@@ -74,8 +74,17 @@ func _init() -> void:
         for recipe in D.RECIPES[station]:
             var gives := str(recipe.get("gives_gear", ""))
             if gives != "": craftable_gear[gives] = true
+    var field_gear := {}
+    for zone_name in D.TACTICAL_GEAR_UNLOCKS_BY_ZONE.keys():
+        for gear_name in D.TACTICAL_GEAR_UNLOCKS_BY_ZONE[zone_name]:
+            field_gear[str(gear_name)] = true
     for gear_name in D.GEAR.keys():
         if not _check(craftable_gear.has(gear_name), "craftable gear: %s" % gear_name): return
+        if not _check(field_gear.has(gear_name), "physical tactical gear: %s" % gear_name): return
+    if not _check(int(TacticalVisuals.field_gear_visual("Flashlight").get("atlas", -1)) >= 0, "field secondary sprite"): return
+    if not _check(str(TacticalVisuals.field_gear_visual("First Aid Kit").get("badge", "")) == "T", "field tool badge"): return
+    if not _check(str(TacticalVisuals.field_gear_visual("Leather Jacket").get("badge", "")) == "C", "field clothing badge"): return
+    if not _check(str(TacticalVisuals.field_gear_visual("Hiking Pack").get("badge", "")) == "P", "field pack badge"): return
     if not _check(D.BUILD_ORDER.size() == 15 and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory"), "final building tree"): return
 
     var chatter_rng := RandomNumberGenerator.new()

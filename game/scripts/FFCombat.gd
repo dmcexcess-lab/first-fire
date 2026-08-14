@@ -138,8 +138,9 @@ func start_encounter(data: Dictionary):
         msg = "Find the survivor, then get back out."
         submsg = "They will decide whether to join after you escape."
     elif context.get("kind", "ambush") == "explore":
-        msg = "Search the marked spot, then escape."
-        submsg = "This is extra opportunity, not a requirement to clear the map."
+        var field_gear := str(context.get("field_gear", "Field Loot"))
+        msg = "Recover %s, then escape." % field_gear
+        submsg = "You only keep it if you physically reach it and get out alive."
     else:
         msg = "You got jumped. Break contact and escape."
         submsg = "You do not need to kill anything."
@@ -559,7 +560,8 @@ func check_objective_and_exit():
                 msg = "Survivor found. Reach any exit."
                 emit_noise(target, 9, "struggle", true)
             else:
-                msg = "Search complete. Reach any exit."
+                var field_gear := str(context.get("field_gear", "field loot"))
+                msg = "Recovered %s. Reach any exit." % field_gear
                 emit_noise(target, 10, "rummaging", true)
     if exit_cells.has(player.pos):
         if objective_done:
@@ -1073,6 +1075,7 @@ func finish_encounter(outcome: String):
         "kind": str(context.get("kind", "ambush")),
         "objective_done": objective_done,
         "rescued": objective_done and str(context.get("kind", "")) == "rescue",
+        "field_gear": str(context.get("field_gear", "")) if objective_done and str(context.get("kind", "")) == "explore" else "",
         "lead_hp": int(player.get("hp",0)), "lead_max_hp": int(player.get("max_hp",18)),
         "companion_hp": int(ally.get("hp",-1)) if not ally.is_empty() else -1,
         "companion_max_hp": int(ally.get("max_hp",-1)) if not ally.is_empty() else -1,
@@ -1161,7 +1164,19 @@ func draw_map():
                 TacticalTiles.draw_prop(self, r, "crate")
     var kind := str(context.get("kind","ambush"))
     if kind == "explore" and not objective_done:
-        draw_rect(Rect2(objective_cell.x*TILE+4,objective_cell.y*TILE+4,TILE-8,TILE-8), Color(.95,.75,.20), false, 3)
+        var objective_rect := Rect2(objective_cell.x*TILE+3, objective_cell.y*TILE+3, TILE-6, TILE-6)
+        draw_rect(objective_rect, Color(.95,.75,.20), false, 3)
+        var field_gear := str(context.get("field_gear", ""))
+        var visual: Dictionary = TacticalVisuals.field_gear_visual(field_gear)
+        var atlas_index := int(visual.get("atlas", -1))
+        var center := cell_center(objective_cell)
+        if atlas_index >= 0:
+            TacticalTiles.draw_region(self, atlas_index, Rect2(center - Vector2(9,9), Vector2(18,18)))
+        else:
+            draw_circle(center, 8.0, Color(.08,.10,.09,.92))
+            draw_circle(center, 8.0, Color(.95,.75,.20), false, 1.5)
+            draw_string(font, center + Vector2(-6,3), str(visual.get("badge", "?")), HORIZONTAL_ALIGNMENT_CENTER, 12, 9, Color(.98,.92,.70))
+        draw_string(font, center + Vector2(-52,-14), field_gear, HORIZONTAL_ALIGNMENT_CENTER, 104, 7, Color(.98,.86,.40))
     elif kind == "rescue" and not objective_done:
         draw_circle(cell_center(rescue_cell), 9, Color(.95,.75,.20), false, 3)
         draw_string(font, cell_center(rescue_cell)+Vector2(-10,-12), "SOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(.95,.8,.35))
@@ -1298,7 +1313,9 @@ func draw_hud():
     var objective_text := "ESCAPE"
     match str(context.get("kind","ambush")):
         "rescue": objective_text = "RESCUE + ESCAPE" if not objective_done else "ESCAPE WITH SURVIVOR"
-        "explore": objective_text = "SEARCH + ESCAPE" if not objective_done else "ESCAPE"
+        "explore":
+            var field_gear := str(context.get("field_gear", "LOOT"))
+            objective_text = ("TAKE %s + ESCAPE" % field_gear) if not objective_done else "ESCAPE"
     objective_text += "  |  Exits %d" % exit_cells.size()
     draw_string(font,Vector2(10,112),"Objective: %s"%objective_text,HORIZONTAL_ALIGNMENT_LEFT,370,11,Color(.96,.80,.34))
     draw_string(font,Vector2(10,133),msg,HORIZONTAL_ALIGNMENT_LEFT,370,10,Color(.93,.94,.90))

@@ -73,7 +73,7 @@ Expeditions are permanently single-survivor. Multi-survivor dispatch, companion 
 
 The management menus now share a persistent **2D tactical-style living camp view** instead of separate decorative tab splash images. It uses the same tactical tile/character visual language while remaining presentation-only. Built structures appear at stable visual anchors; survivors physically move toward the station implied by their real task/status (crafting, building, tending, recovery), available survivors idle around camp, and expedition survivors are absent. The pause/main menu uses the same living camp as its background. Camp lighting follows the real settlement clock, with fire/cabin glow after dark.
 
-For Alpha 0.3E playtesting, every new founder starts with a **Flashlight equipped in Secondary** so day/night and blackout tactical lighting can always be exercised immediately. Save schema 7 is the final planned Alpha invalidation before Beta save stability. Every new founder still starts with a Flashlight equipped in Secondary.
+For Alpha/Beta-candidate playtesting, every new founder starts with a **Flashlight equipped in Secondary** so day/night and blackout tactical lighting can always be exercised immediately. Save schema 7 is the final planned Alpha invalidation before Beta save stability. Explore tactical objectives now expose real named gear pickups from a zone-tiered catalog; a pickup is only committed to camp inventory after the survivor reaches it and escapes alive.
 
 ## Autonomous camp life
 

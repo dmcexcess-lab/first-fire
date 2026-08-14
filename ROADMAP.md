@@ -55,7 +55,7 @@ Keep deepening the existing tactical language rather than adding another combat 
 
 Every current `FFData.GEAR` item must be represented in the finished equipment loop. All existing gear is craftable through the Fire Pit/Workbench/Sewing Table tree as appropriate; firearms are late-camp Workbench recipes gated by the Armory.
 
-The tactical HUD must expose all five equipment slots: Weapon, Secondary, Tool, Clothing and Pack.
+The tactical HUD exposes all five equipment slots: Weapon, Secondary, Tool, Clothing and Pack. Explore objectives also place a real named gear pickup on the board; it is only retained after physical recovery and successful escape. Every current gear catalog entry belongs to a zone-tiered field-loot pool.
 
 Future work here is balance/art/readability, not introducing a second inventory system.
 
