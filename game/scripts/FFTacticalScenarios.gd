@@ -4,6 +4,7 @@ class_name FFTacticalScenarios
 # Scenario selection/catalog is deliberately separate from FFCombat.gd. FFCombat
 # owns tactical runtime; this file owns what kind of physical situation is created.
 const KIND_WEIGHTS := {
+    "Camp Perimeter": [["explore", 0.65], ["ambush", 1.00]],
     "Nearby Streets": [["rescue", 0.35], ["explore", 0.70], ["ambush", 1.00]],
     "Residential Blocks": [["rescue", 0.30], ["explore", 0.75], ["ambush", 1.00]],
     "Commercial Fringe": [["rescue", 0.20], ["explore", 0.70], ["ambush", 1.00]],
@@ -12,6 +13,7 @@ const KIND_WEIGHTS := {
 
 const AMBUSH_LOCATIONS := ["Narrow Street", "Parking Cut", "Service Alley", "Blocked Intersection"]
 const LOCATIONS_BY_ZONE := {
+    "Camp Perimeter": ["Vacant Lot", "Drainage Wash", "Abandoned Shed", "Edge Street"],
     "Nearby Streets": ["Corner Store", "Abandoned Duplex", "Bus Stop Shops", "Detached Garage"],
     "Residential Blocks": ["Ransacked House", "Backyard Workshop", "Vacant Townhouse", "Neighborhood Market"],
     "Commercial Fringe": ["Pharmacy Annex", "Strip-Mall Office", "Loading Dock Store", "Closed Restaurant"],

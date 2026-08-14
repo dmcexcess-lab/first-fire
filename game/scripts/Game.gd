@@ -588,8 +588,14 @@ func _process_expeditions(delta):
         if exp.get("state", "") != "traveling":
             continue
         exp["remaining"] = max(0.0, float(exp["remaining"]) - delta)
-        if exp.get("combat_kind", "") != "" and not exp.get("combat_triggered", false) and float(exp["remaining"]) <= float(exp.get("combat_trigger_remaining", -1.0)) and current_combat.is_empty() and current_event.is_empty():
-            _begin_tactical_encounter(exp)
+        var tactical_due = exp.get("combat_kind", "") != "" and not exp.get("combat_triggered", false) and float(exp["remaining"]) <= float(exp.get("combat_trigger_remaining", -1.0))
+        if tactical_due:
+            if current_combat.is_empty() and current_event.is_empty():
+                _begin_tactical_encounter(exp)
+            else:
+                # Hold at the encounter point until the tactical board can open.
+                # Never silently finish a run that was already assigned combat.
+                exp["remaining"] = maxf(0.01, float(exp.get("combat_trigger_remaining", 0.01)))
             continue
         if exp.get("event_key", "") != "" and not exp.get("event_triggered", false) and float(exp["remaining"]) <= float(exp["event_trigger_remaining"]):
             exp["event_triggered"] = true

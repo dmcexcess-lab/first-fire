@@ -19,6 +19,8 @@ func _init() -> void:
     if not _check(abs(ExpeditionRules.tactical_event_chance("Nearby Streets") - 0.55) < 0.001, "nearby tactical pop rate"): return
     if not _check(abs(ExpeditionRules.tactical_event_chance("Industrial Edge") - 0.85) < 0.001, "industrial tactical pop rate"): return
     if not _check(TacticalScenarios.KIND_WEIGHTS.has("Residential Blocks"), "scenario catalog"): return
+    if not _check(TacticalScenarios.KIND_WEIGHTS.has("Camp Perimeter"), "starting zone scenario catalog"): return
+    if not _check(TacticalScenarios.LOCATIONS_BY_ZONE.has("Camp Perimeter"), "starting zone tactical locations"): return
     if not _check(LegacyFieldEvents.all_keys().has("injured_stranger"), "legacy field catalog"): return
     var rates := CampLifeRules.idle_recovery_rates(true, false)
     if not _check(rates.x > 0.0 and rates.y > 0.0, "camp recovery rules"): return

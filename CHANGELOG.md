@@ -8,6 +8,8 @@ This file tracks player-facing changes to the playable Alpha builds, plus major 
 - Fixed the starting-zone oversight that made **Camp Perimeter incapable of spawning tactical encounters** even though it is the only zone unlocked in a new run.
 - Tactical playtest rates are now 65% Camp Perimeter, 70% Nearby Streets, 75% Residential Blocks, 82% Commercial Fringe, and 90% Industrial Edge.
 - Added drought protection: after two consecutive normal field runs without tactical combat, the next normal run is forced tactical.
+- Camp Perimeter now has its own explore/ambush scenario mix and perimeter-specific location names instead of falling through to Industrial Edge content.
+- A tactical run that reaches its encounter point while another narrative overlay is open now waits there; it can no longer silently complete before the tactical board opens.
 
 ### Expedition Dispatch
 - Removed **Loot Focus** from the send-out screen. Expedition choice is now survivor, destination, and optional companion.
