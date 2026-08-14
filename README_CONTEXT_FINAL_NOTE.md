@@ -1,0 +1,1 @@
+The final main-branch change replaces README_CONTEXT.md with the corrected prompt-scoped rule. Staging-only files on this branch are not intended for main.
