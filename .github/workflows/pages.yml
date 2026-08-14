@@ -57,6 +57,8 @@ jobs:
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
           grep -q 'const TacticalVisuals = preload' game/scripts/Game.gd
           grep -q 'const CampView = preload' game/scripts/Main.gd
+          grep -Fq '"Workbench": Vector2i(10, 2)' game/scripts/FFCampView.gd
+          grep -Fq '"Cabin": Vector2i(12, 5)' game/scripts/FFCampView.gd
           grep -q 'const TacticalEnvironments = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalLighting = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalTiles = preload' game/scripts/FFCombat.gd
