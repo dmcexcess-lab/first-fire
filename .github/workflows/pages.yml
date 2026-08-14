@@ -52,26 +52,43 @@ jobs:
           test ! -e .github/scripts/temp_camp03e_patch.py
           test ! -e .github/scripts/temp_camp03e_trigger.txt
           test ! -e .github/workflows/temp-camp03e.yml
+          test ! -e .github/scripts/temp_beta_freeze_patch.py
+          test ! -e .github/scripts/temp_beta_freeze_trigger.txt
+          test ! -e .github/workflows/temp-beta-freeze.yml
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
           grep -q 'const TacticalVisuals = preload' game/scripts/Game.gd
+          grep -q 'signal camp_chatter_requested' game/scripts/Game.gd
+          grep -q 'const SAVE_SCHEMA_VERSION := 7' game/scripts/Game.gd
+          grep -q 'const MAX_POPULATION := 18' game/scripts/Game.gd
+          grep -Fq 'func start_expedition(primary_id, zone):' game/scripts/Game.gd
+          grep -Fq 'func start_special_site(primary_id, site):' game/scripts/Game.gd
+          if grep -q 'companion_id' game/scripts/Game.gd; then exit 1; fi
+          if grep -q 'expedition_companion' game/scripts/Main.gd; then exit 1; fi
+          grep -Fq 'founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight"' game/scripts/Game.gd
           grep -q 'const CampView = preload' game/scripts/Main.gd
           grep -Fq '"Workbench": Vector2i(10, 2)' game/scripts/FFCampView.gd
           grep -Fq '"Cabin": Vector2i(12, 5)' game/scripts/FFCampView.gd
+          grep -Fq '"Dormitory": Vector2i(10, 7)' game/scripts/FFCampView.gd
+          grep -q 'func _day_phase' game/scripts/FFCampView.gd
+          grep -q 'func _draw_chatter' game/scripts/FFCampView.gd
+          grep -q 'func roll_chatter' game/scripts/FFCampSocial.gd
+          grep -Fq '"Dormitory"' game/scripts/FFData.gd
+          grep -Fq '"Armory"' game/scripts/FFData.gd
+          grep -q 'equipment_summary_lines' game/scripts/FFTacticalVisuals.gd
           grep -q 'const TacticalEnvironments = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalLighting = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalTiles = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalTime = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalSound = preload' game/scripts/FFCombat.gd
           grep -q 'const Environments = preload' game/scripts/FFTacticalScenarios.gd
-          grep -q 'const SAVE_SCHEMA_VERSION := 6' game/scripts/Game.gd
-          grep -Fq 'founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight"' game/scripts/Game.gd
           grep -q 'var current_combat := {}' game/scripts/Game.gd
           grep -q 'func resolve_combat' game/scripts/Game.gd
           grep -q 'sim_paused = true' game/scripts/Game.gd
           grep -q 'signal encounter_finished' game/scripts/FFCombat.gd
           grep -q 'TacticalVisuals.draw_survivor' game/scripts/FFCombat.gd
+          grep -q 'TacticalVisuals.equipment_summary_lines' game/scripts/FFCombat.gd
           grep -q 'TacticalTime.movement_cost' game/scripts/FFCombat.gd
           grep -q 'TacticalSound.estimate_location' game/scripts/FFCombat.gd
           grep -q 'TacticalTiles.draw_ground' game/scripts/FFCombat.gd
