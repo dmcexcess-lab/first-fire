@@ -16,8 +16,8 @@ func _init() -> void:
     if not _check(ExpeditionRules.tactical_event_chance("Camp Perimeter") > 0.0, "starting zone tactical chance"): return
     if not _check(ExpeditionRules.should_force_tactical(2), "tactical drought protection"): return
     if not _check(not ExpeditionRules.should_force_recruit(1, 1, 4, true), "solo recruit threshold"): return
-    if not _check(abs(ExpeditionRules.tactical_event_chance("Nearby Streets") - 0.55) < 0.001, "nearby tactical pop rate"): return
-    if not _check(abs(ExpeditionRules.tactical_event_chance("Industrial Edge") - 0.85) < 0.001, "industrial tactical pop rate"): return
+    if not _check(abs(ExpeditionRules.tactical_event_chance("Nearby Streets") - 0.70) < 0.001, "nearby tactical pop rate"): return
+    if not _check(abs(ExpeditionRules.tactical_event_chance("Industrial Edge") - 0.90) < 0.001, "industrial tactical pop rate"): return
     if not _check(TacticalScenarios.KIND_WEIGHTS.has("Residential Blocks"), "scenario catalog"): return
     if not _check(TacticalScenarios.KIND_WEIGHTS.has("Camp Perimeter"), "starting zone scenario catalog"): return
     if not _check(TacticalScenarios.LOCATIONS_BY_ZONE.has("Camp Perimeter"), "starting zone tactical locations"): return
