@@ -6,6 +6,9 @@ const D = preload("res://scripts/FFData.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 const TacticalEnvironments = preload("res://scripts/FFTacticalEnvironments.gd")
 const TacticalLighting = preload("res://scripts/FFTacticalLighting.gd")
+const TacticalTiles = preload("res://scripts/FFTacticalTiles.gd")
+const TacticalTime = preload("res://scripts/FFTacticalTime.gd")
+const TacticalSound = preload("res://scripts/FFTacticalSound.gd")
 
 const SCREEN_W := 390.0
 const SCREEN_H := 844.0
@@ -32,6 +35,8 @@ var doors := {}
 var barrels := {}
 var props := {}
 var ground := {}
+var indoor_cells := {}
+var opaque_obstacles := {}
 var light_sources: Array = []
 var light_levels := {}
 var light_tints := {}
@@ -47,6 +52,8 @@ var exit_cells: Array = []
 var player_spawn := Vector2i(2, H - 2)
 var ally_spawn := Vector2i(2, H - 3)
 var environment_id := "back_alley"
+var scene_time := "day"
+var power_on := false
 var objective_cell := Vector2i(W - 3, 3)
 var rescue_cell := Vector2i(W - 3, 4)
 var objective_done := false
@@ -78,6 +85,7 @@ func _ready():
     mouse_filter = Control.MOUSE_FILTER_STOP
     set_process_input(true)
     set_process(true)
+    texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
     visible = false
 
 func _process(delta):
@@ -87,7 +95,7 @@ func _process(delta):
     var active := now < hit_flash_until_ms or now < muzzle_flash_until_ms
     lighting_redraw_accum += float(delta)
     var lighting_animation_due := false
-    if lighting_redraw_accum >= 0.12 and TacticalLighting.has_animated_sources(light_sources):
+    if lighting_redraw_accum >= 0.12 and TacticalLighting.has_animated_sources(light_sources, power_on):
         lighting_redraw_accum = 0.0
         lighting_animation_due = true
     if active or fx_active_last_frame or lighting_animation_due:
@@ -119,6 +127,8 @@ func start_encounter(data: Dictionary):
     environment_id = str(context.get("environment_id", TacticalEnvironments.legacy_environment(legacy_layout, str(context.get("zone", "Nearby Streets")))))
     var environment_variant := int(context.get("environment_variant", legacy_layout))
     location_name = str(context.get("location_name", TacticalEnvironments.display_name(environment_id)))
+    scene_time = str(context.get("time_of_day", "day"))
+    power_on = bool(context.get("power_on", false))
     build_map(environment_id, environment_variant)
     make_party()
     spawn_zombies()
@@ -219,7 +229,7 @@ func weapon_profile(name: String) -> Dictionary:
 
 func build_map(new_environment_id: String, variant: int):
     environment_id = new_environment_id
-    walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); exit_cells.clear(); light_sources.clear(); light_levels.clear(); light_tints.clear()
+    walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); indoor_cells.clear(); opaque_obstacles.clear(); exit_cells.clear(); light_sources.clear(); light_levels.clear(); light_tints.clear()
     for x in range(W):
         walls[Vector2i(x, 0)] = true
         walls[Vector2i(x, H - 1)] = true
@@ -241,16 +251,28 @@ func build_map(new_environment_id: String, variant: int):
             for x in range(gx, gx + gw):
                 var gp := Vector2i(x, y)
                 if inside(gp): ground[gp] = ground_kind
+    for entry in spec.get("indoor_rects", []):
+        for y in range(int(entry[1]), int(entry[1]) + int(entry[3])):
+            for x in range(int(entry[0]), int(entry[0]) + int(entry[2])):
+                var ip := Vector2i(x, y)
+                if inside(ip): indoor_cells[ip] = true
     for p in spec.get("walls", []): walls[p] = true
     for p in spec.get("obstacles", []): obstacles[p] = true
     for p in spec.get("glass", []): glass[p] = true
     for entry in spec.get("doors", []): doors[entry[0]] = bool(entry[1])
     for p in spec.get("barrels", []): barrels[p] = true
-    for entry in spec.get("props", []): props[entry[0]] = str(entry[1])
+    for entry in spec.get("props", []):
+        var prop_pos: Vector2i = entry[0]
+        var prop_kind := str(entry[1])
+        props[prop_pos] = prop_kind
+        if TacticalEnvironments.prop_blocks_sight(prop_kind): opaque_obstacles[prop_pos] = true
+    for p in obstacles.keys():
+        if not props.has(p): opaque_obstacles[p] = true
     for entry_value in spec.get("lights", []):
         var light_entry: Array = entry_value
         var light_pos: Vector2i = light_entry[0]
-        light_sources.append(TacticalLighting.make_source(light_pos, str(light_entry[1]), light_sources.size()))
+        var requires_power := bool(light_entry[2]) if light_entry.size() >= 3 else true
+        light_sources.append(TacticalLighting.make_source(light_pos, str(light_entry[1]), light_sources.size(), requires_power))
 
     base_glass = glass.duplicate(true)
     base_barrels = barrels.duplicate(true)
@@ -293,27 +315,30 @@ func spawn_zombies():
     var candidates := []
     for y in range(1, H - 1):
         for x in range(1, W - 1):
-            var p = Vector2i(x, y)
+            var p := Vector2i(x, y)
             if blocked(p) or p == player.get("pos", player_spawn) or p == ally.get("pos", Vector2i(-1,-1)):
                 continue
-            var d = manhattan(player_spawn, p)
+            var d := manhattan(player_spawn, p)
             if context.get("kind", "") == "ambush":
                 if d >= 4 and d <= 11: candidates.append(p)
             elif d >= 7:
                 candidates.append(p)
     for i in range(count):
         if candidates.is_empty(): break
-        var pick = rng.randi_range(0, candidates.size() - 1)
+        var pick := rng.randi_range(0, candidates.size() - 1)
         var p: Vector2i = candidates[pick]
         candidates.remove_at(pick)
-        var state = "INVESTIGATE" if context.get("kind", "") == "ambush" and i < 2 else "IDLE"
+        var state := "INVESTIGATE" if context.get("kind", "") == "ambush" and i < 2 else "IDLE"
+        var look: Dictionary = TacticalVisuals.zombie_appearance(rng, zone)
+        var timing: Dictionary = TacticalTime.zombie_profile(rng, look)
         zombies.append({
             "id": i, "pos": p, "facing": DIRS[rng.randi_range(0,3)],
             "hp": rng.randi_range(8, 13), "state": state,
             "target": player_spawn if state == "INVESTIGATE" else Vector2i(-1,-1),
             "heard": player_spawn if state == "INVESTIGATE" else Vector2i(-1,-1),
-            "next": rng.randi_range(65, 170), "dead": false,
-            "look": TacticalVisuals.zombie_appearance(rng, zone)
+            "pace": int(timing.get("pace", 125)), "attack_cost": int(timing.get("attack_cost", 135)), "mass": str(timing.get("mass", "MED")),
+            "next": rng.randi_range(45, int(timing.get("pace", 125))), "dead": false,
+            "look": look
         })
 
 func restore_runtime():
@@ -429,6 +454,7 @@ func _input(e):
             KEY_W, KEY_UP: step_forward()
             KEY_S, KEY_DOWN: step_backward()
             KEY_C: toggle_crouch()
+            KEY_F, KEY_SPACE: interact()
 
 func dispatch_point(pos: Vector2):
     if game_over: return
@@ -440,23 +466,17 @@ func dispatch_point(pos: Vector2):
     if btn_back.has_point(pos): step_backward(); return
     if btn_crouch.has_point(pos): toggle_crouch(); return
     if pos.y < MAP_TOP or pos.y >= CONTROL_TOP: return
-    var cell = screen_to_cell(pos)
+    var cell := screen_to_cell(pos)
     if not inside(cell): return
     var delta: Vector2i = cell - player.pos
     if manhattan(player.pos, cell) == 1:
         player.facing = delta
-        recalc_visibility(); refresh_intents()
         if zombie_at(cell) != -1: melee(cell); return
-        if doors.has(cell):
-            if not doors[cell]:
-                interact()
-            else:
-                try_move(delta)
-            return
+        if doors.has(cell): interact(); return
         if glass.has(cell): interact(); return
         try_move(delta); return
     if visible_cells.has(cell):
-        var zi = zombie_at(cell)
+        var zi := zombie_at(cell)
         if zi != -1:
             if bool(player.weapon.gun): shoot(zi)
             else:
@@ -480,7 +500,7 @@ func rotate_player(step: int):
     player.last_dir = Vector2i.ZERO
     player.move_state = "STILL"
     msg = "Turned %s." % DIR_NAMES[idx]
-    commit_action(20)
+    commit_action(TacticalTime.turn_cost(player))
 
 func step_forward():
     var cell: Vector2i = player.pos + player.facing
@@ -495,7 +515,7 @@ func step_forward():
 
 func step_backward():
     var keep: Vector2i = player.facing
-    var dest = player.pos - keep
+    var dest := player.pos - keep
     if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest):
         msg = "Blocked behind you."
         queue_redraw(); return
@@ -503,32 +523,36 @@ func step_backward():
     player.facing = keep
     player.last_dir = Vector2i.ZERO
     player.move_state = "CROUCH" if player.crouched else "WALK"
-    emit_noise(dest, 2 if player.crouched else 6, "steps", true)
+    var noise := 7 if player.crouched else 17
+    if player.clothing == "Heavy Boots": noise += 4
+    emit_noise(dest, noise, TacticalSound.surface_step_label(str(ground.get(dest, "asphalt")), bool(player.crouched)), true)
+    var breathing := TacticalTime.breath_noise(player)
+    if breathing > 0: emit_noise(dest, breathing, "breathing", true)
     check_objective_and_exit()
-    commit_action(145 if player.crouched else 115)
+    commit_action(TacticalTime.movement_cost(player, true))
 
 func toggle_crouch():
     player.crouched = not player.crouched
     player.move_state = "CROUCH" if player.crouched else "STILL"
     msg = "Crouched: quieter, slower." if player.crouched else "Standing."
-    recalc_visibility(); refresh_intents(); persist_runtime(); queue_redraw()
+    commit_action(TacticalTime.stance_cost(player))
 
 func try_move(dir: Vector2i):
     var dest: Vector2i = player.pos + dir
     player.facing = dir
-    recalc_visibility(); refresh_intents()
     if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest):
         msg = "Blocked."
-        queue_redraw(); return
+        recalc_visibility(); refresh_intents(); queue_redraw(); return
     player.pos = dest
     player.last_dir = dir
     player.move_state = "CROUCH" if player.crouched else "WALK"
-    var cost := 150 if player.crouched else 100
-    var noise := 2 if player.crouched else 7
-    if player.clothing == "Heavy Boots": noise += 2
-    emit_noise(dest, noise, "steps", true)
+    var noise := 7 if player.crouched else 19
+    if player.clothing == "Heavy Boots": noise += 4
+    emit_noise(dest, noise, TacticalSound.surface_step_label(str(ground.get(dest, "asphalt")), bool(player.crouched)), true)
+    var breathing := TacticalTime.breath_noise(player)
+    if breathing > 0: emit_noise(dest, breathing, "breathing", true)
     check_objective_and_exit()
-    commit_action(cost)
+    commit_action(TacticalTime.movement_cost(player, false))
 
 func check_objective_and_exit():
     var kind := str(context.get("kind", "ambush"))
@@ -556,13 +580,13 @@ func interact():
     if doors.has(p):
         doors[p] = not doors[p]
         msg = "Door opened." if doors[p] else "Door closed."
-        emit_noise(p, 7, "door", true)
-        commit_action(65); return
+        emit_noise(p, 20 if doors[p] else 16, "door open" if doors[p] else "door close", true)
+        commit_action(TacticalTime.interaction_cost(player, 60)); return
     if glass.has(p):
         glass.erase(p)
         msg = "Glass breaks. Loud."
-        emit_noise(p, 52, "breaking glass", true)
-        commit_action(100); return
+        emit_noise(p, 58, "breaking glass", true)
+        commit_action(TacticalTime.interaction_cost(player, 100)); return
     msg = "Nothing useful there."
     queue_redraw()
 
@@ -570,22 +594,25 @@ func melee(target: Vector2i):
     var zi := zombie_at(target)
     if zi == -1:
         msg = "Nothing in reach."; queue_redraw(); return
-    var z = zombies[zi]
+    var z: Dictionary = zombies[zi]
     var stealth := stealth_attack(z)
     var combat := int(player.skills.get("Combat", 0))
-    var chance = clamp(0.54 + combat * 0.055 - attack_penalty(player) + (0.30 if stealth else 0.0), 0.12, 0.97)
+    var chance := clamp(0.54 + combat * 0.055 - attack_penalty(player) + (0.30 if stealth else 0.0), 0.12, 0.97)
     if rng.randf() <= chance:
-        var d = rng.randi_range(int(player.weapon.dmin), int(player.weapon.dmax)) + int(floor(combat / 3.0))
+        var d := rng.randi_range(int(player.weapon.dmin), int(player.weapon.dmax)) + int(floor(combat / 3.0))
         if stealth: d = int(round(float(d + int(player.weapon.stealth) + combat) * 1.45))
         zombies[zi].hp -= d
         _flash_hit(z.pos, int(zombies[zi].hp) <= 0)
         msg = "%s hit for %d%s." % [player.weapon.name, d, " — STEALTH" if stealth else ""]
-        if int(zombies[zi].hp) <= 0: kill_zombie(zi, stealth)
-        elif int(player.weapon.push) > 0: push_zombie(zi, player.facing)
+        if int(zombies[zi].hp) <= 0:
+            kill_zombie(zi, stealth)
+        else:
+            reveal_melee_target(zi)
+            if int(player.weapon.push) > 0: push_zombie(zi, player.facing)
     else:
         msg = "%s misses." % player.weapon.name
-    emit_noise(player.pos, int(player.weapon.noise), "melee", true)
-    commit_action(int(player.weapon.time))
+    emit_noise(player.pos, maxi(8, int(player.weapon.noise)), "melee impact", true)
+    commit_action(TacticalTime.attack_cost(player, int(player.weapon.time)))
 
 func shoot(i: int):
     if not bool(player.weapon.gun):
@@ -593,25 +620,26 @@ func shoot(i: int):
     var ammo_cost := int(player.weapon.ammo)
     if not Game.consume_combat_ammo(ammo_cost):
         msg = "No ammunition."; queue_redraw(); return
-    var z = zombies[i]
+    var z: Dictionary = zombies[i]
     if z.dead or not visible_cells.has(z.pos): return
     player.facing = dominant(z.pos - player.pos)
     var dist := manhattan(player.pos, z.pos)
     var combat := int(player.skills.get("Combat", 0))
-    var chance = clamp(0.52 + combat * 0.06 - max(0, dist - 3) * 0.035 - attack_penalty(player), 0.10, 0.95)
+    var chance := clamp(0.52 + combat * 0.06 - max(0, dist - 3) * 0.035 - attack_penalty(player), 0.10, 0.95)
     stats.shots += 1
     _flash_muzzle(player.pos, player.facing)
     if rng.randf() <= chance:
-        var d = rng.randi_range(int(player.weapon.gmin), int(player.weapon.gmax)) + int(floor(combat / 2.0))
+        var d := rng.randi_range(int(player.weapon.gmin), int(player.weapon.gmax)) + int(floor(combat / 2.0))
         if player.weapon.name == "Shotgun" and dist <= 3: d += 4
         zombies[i].hp -= d
         _flash_hit(z.pos, int(zombies[i].hp) <= 0)
         msg = "%s hits for %d." % [player.weapon.name, d]
         if int(zombies[i].hp) <= 0: kill_zombie(i, false)
+        else: reveal_melee_target(i)
     else:
         msg = "%s misses." % player.weapon.name
     emit_noise(player.pos, int(player.weapon.gnoise), "gunshot", true)
-    commit_action(int(player.weapon.gtime))
+    commit_action(TacticalTime.attack_cost(player, int(player.weapon.gtime)))
 
 func shoot_barrel(cell: Vector2i):
     if not bool(player.weapon.gun):
@@ -634,7 +662,7 @@ func shoot_barrel(cell: Vector2i):
     for p in glass.keys().duplicate():
         if manhattan(cell, p) <= 2: glass.erase(p)
     emit_noise(cell, 110, "explosion", true)
-    commit_action(150)
+    commit_action(TacticalTime.attack_cost(player, 150))
 
 func blast_actor(actor: Dictionary, cell: Vector2i):
     var d := manhattan(cell, actor.pos)
@@ -665,6 +693,9 @@ func kill_zombie(i: int, stealth: bool):
 
 func commit_action(cost: int):
     if game_over: return
+    # Player position/facing/doors may have changed before the timeline advances.
+    # Update light now so AI perception during this action sees the real state.
+    recalc_lighting()
     var target_tick := tick + cost
     while not game_over:
         var next_time := target_tick + 1
@@ -685,6 +716,7 @@ func commit_action(cost: int):
         player.hp = 0; player.dead = true
         finish_encounter("dead")
         return
+    maybe_emit_ambient_sound()
     recalc_visibility(); refresh_intents(); persist_runtime(); queue_redraw()
 
 func companion_act():
@@ -693,19 +725,20 @@ func companion_act():
     var best := 999
     for i in range(zombies.size()):
         if zombies[i].dead: continue
-        var d = manhattan(ally.pos, zombies[i].pos)
+        var d := manhattan(ally.pos, zombies[i].pos)
         if d < best: best = d; nearest = i
     if nearest != -1 and best == 1:
         companion_melee(nearest)
-        ally.next = tick + int(ally.weapon.time)
+        ally.next = tick + TacticalTime.attack_cost(ally, int(ally.weapon.time))
         return
     if manhattan(ally.pos, player.pos) > 1:
-        var step = best_step_toward(ally.pos, player.pos, true)
+        var step := best_step_toward(ally.pos, player.pos, true)
         if step != Vector2i.ZERO:
             ally.facing = step
             ally.pos += step
-            emit_noise(ally.pos, 6, "steps", true)
-    ally.next = tick + 105
+            emit_noise(ally.pos, 16, TacticalSound.surface_step_label(str(ground.get(ally.pos, "asphalt")), false), true)
+            if TacticalLighting.item_emits_light(str(ally.get("secondary", ""))): recalc_lighting()
+    ally.next = tick + TacticalTime.movement_cost(ally, false)
 
 func companion_melee(i: int):
     var combat := int(ally.skills.get("Combat", 0))
@@ -719,16 +752,19 @@ func companion_melee(i: int):
 
 func zombie_act(i: int):
     if zombies[i].dead: return
-    var z = zombies[i]
+    var z: Dictionary = zombies[i]
     var target_actor: Dictionary = choose_zombie_target(z)
     var sees := not target_actor.is_empty()
     if sees:
         z.state = "CHASE"
         z.target = target_actor.pos
         z.heard = target_actor.pos
+        zombies[i] = z
+        alert_zombie_group(i, target_actor.pos, 4)
     elif z.state == "CHASE":
         z.state = "INVESTIGATE"
         z.target = z.heard
+        zombies[i] = z
 
     if sees and manhattan(z.pos, target_actor.pos) == 1:
         z.facing = target_actor.pos - z.pos
@@ -752,16 +788,18 @@ func zombie_act(i: int):
             moved = zombie_move(i, z.target)
     else:
         if rng.randf() < 0.30:
-            var d = DIRS[rng.randi_range(0,3)]
-            var p = z.pos + d
+            var d := DIRS[rng.randi_range(0,3)]
+            var p := z.pos + d
             z.facing = d
             if not blocked(p) and zombie_at(p) == -1 and p != player.pos and not ally_at(p):
                 z.pos = p; moved = true
         zombies[i] = z
-        if rng.randf() < 0.055:
-            emit_noise(z.pos, 24, "moan", false)
+        if rng.randf() < 0.08:
+            emit_noise(z.pos, 25, "moan", false)
+    if moved and rng.randf() < 0.42:
+        emit_noise(zombies[i].pos, 14, "shuffle", false)
     if not zombies[i].dead:
-        zombies[i].next = tick + (125 if moved else 160)
+        zombies[i].next = tick + (TacticalTime.zombie_move_cost(zombies[i]) if moved else TacticalTime.zombie_move_cost(zombies[i]) + 30)
 
 func choose_zombie_target(z) -> Dictionary:
     var candidates := []
@@ -774,13 +812,12 @@ func choose_zombie_target(z) -> Dictionary:
     return best
 
 func zombie_attack(i: int, target_actor: Dictionary):
-    var defense = int(target_actor.skills.get("Combat", 0)) * 0.02 + int(target_actor.skills.get("Survival", 0)) * 0.012
-    var hit = clamp(0.67 - defense + (0.08 if float(target_actor.fatigue) >= 80 else 0.0), 0.25, 0.82)
+    var defense := int(target_actor.skills.get("Combat", 0)) * 0.02 + int(target_actor.skills.get("Survival", 0)) * 0.012
+    var hit := clamp(0.67 - defense + (0.08 if float(target_actor.fatigue) >= 80 else 0.0), 0.25, 0.82)
     if rng.randf() <= hit:
         var dmg := rng.randi_range(2, 5)
         var protection := clothing_protection(target_actor.clothing)
-        if rng.randf() < protection:
-            dmg = max(1, dmg - 2)
+        if rng.randf() < protection: dmg = max(1, dmg - 2)
         target_actor.hp -= dmg
         _flash_hit(target_actor.pos, int(target_actor.hp) <= 0)
         if target_actor.controlled:
@@ -790,9 +827,9 @@ func zombie_attack(i: int, target_actor: Dictionary):
             msg = "%s gets hit." % target_actor.name
         if target_actor.hp <= 0:
             target_actor.hp = 0; target_actor.dead = true
-    else:
-        if target_actor.controlled: msg = "You avoid the grab."
-    zombies[i].next = tick + 125
+    elif target_actor.controlled:
+        msg = "You avoid the grab."
+    zombies[i].next = tick + TacticalTime.zombie_attack_cost(zombies[i])
 
 func clothing_protection(name: String) -> float:
     if name != "" and D.GEAR.has(name):
@@ -824,29 +861,57 @@ func best_step_toward(from: Vector2i, goal: Vector2i, for_ally: bool) -> Vector2
             best_d = dist; best = d
     return best
 
+func alert_zombie_group(source_index: int, target_pos: Vector2i, radius: int) -> void:
+    if source_index < 0 or source_index >= zombies.size() or zombies[source_index].dead: return
+    var origin: Vector2i = zombies[source_index].pos
+    for i in range(zombies.size()):
+        if i == source_index or zombies[i].dead: continue
+        if manhattan(origin, zombies[i].pos) <= radius and zombies[i].state != "CHASE":
+            zombies[i].state = "INVESTIGATE"
+            zombies[i].heard = target_pos
+            zombies[i].target = target_pos
+
+func reveal_melee_target(index: int) -> void:
+    if index < 0 or index >= zombies.size() or zombies[index].dead: return
+    zombies[index].state = "CHASE"
+    zombies[index].heard = player.pos
+    zombies[index].target = player.pos
+    alert_zombie_group(index, player.pos, 3)
+
+func maybe_emit_ambient_sound() -> void:
+    if rng.randf() >= 0.12: return
+    var profile: Dictionary = TacticalSound.ambient_profile(TacticalEnvironments.theme_name(environment_id), scene_time, power_on, rng)
+    if profile.is_empty(): return
+    var source := player.pos
+    var candidates: Array = []
+    for source_value in light_sources:
+        var light_source: Dictionary = source_value
+        if TacticalLighting.source_active(light_source, power_on): candidates.append(light_source.get("pos", player.pos))
+    if candidates.is_empty(): candidates = props.keys()
+    if not candidates.is_empty(): source = candidates[rng.randi_range(0, candidates.size() - 1)]
+    emit_noise(source, int(profile.get("intensity", 18)), str(profile.get("label", "noise")), false)
+
 func emit_noise(source: Vector2i, intensity: int, label: String, player_made: bool):
     stats.noise = max(int(stats.noise), intensity)
-    var costs = sound_map(source, intensity)
+    var costs := sound_map(source, intensity)
     for i in range(zombies.size()):
         if zombies[i].dead: continue
-        var received = intensity - int(costs.get(zombies[i].pos, 99999))
-        if received >= 12 and zombies[i].state != "CHASE":
+        var received := intensity - int(costs.get(zombies[i].pos, 99999))
+        if received >= 8 and zombies[i].state != "CHASE":
+            var error := TacticalSound.zombie_location_error(received)
+            var estimate := TacticalSound.estimate_location(source, zombies[i].pos, error, rng, W, H)
             zombies[i].state = "INVESTIGATE"
-            zombies[i].heard = source
-            zombies[i].target = source
+            zombies[i].heard = estimate
+            zombies[i].target = estimate
     if not player_made:
-        var heard = intensity - int(costs.get(player.pos, 99999))
-        var awareness = float(player.skills.get("Survival", 0))
+        var heard := intensity - int(costs.get(player.pos, 99999))
+        var awareness := float(player.skills.get("Survival", 0))
         if TacticalLighting.item_emits_light(str(player.get("secondary", ""))): awareness += 0.5
-        if heard + awareness * 2.0 >= 14:
-            var fuzz := 4
-            if awareness >= 2: fuzz = 3
-            if awareness >= 4: fuzz = 2
-            if awareness >= 6: fuzz = 1
-            if awareness >= 8: fuzz = 0
-            var approx = source + Vector2i(rng.randi_range(-fuzz,fuzz), rng.randi_range(-fuzz,fuzz))
-            sound_marks.append({"pos": clamp_cell(approx), "source": source, "label": label.to_lower(), "time": tick})
-            while sound_marks.size() > 5: sound_marks.pop_front()
+        if heard + awareness * 2.0 >= 12:
+            var error := TacticalSound.player_location_error(awareness, heard, manhattan(player.pos, source))
+            var approx := TacticalSound.estimate_location(source, player.pos, error, rng, W, H)
+            sound_marks.append({"pos": approx, "source": source, "label": label, "time": tick})
+            while sound_marks.size() > 6: sound_marks.pop_front()
 
 func sound_map(source: Vector2i, intensity: int) -> Dictionary:
     var cost := {source: 0}
@@ -869,41 +934,48 @@ func sound_map(source: Vector2i, intensity: int) -> Dictionary:
 func recalc_lighting():
     light_levels.clear()
     light_tints.clear()
-    var theme: String = TacticalEnvironments.theme_name(environment_id)
-    var ambient: float = TacticalLighting.ambient_level(theme)
-    var player_light: String = str(player.get("secondary", ""))
-    var ally_light: String = str(ally.get("secondary", "")) if not ally.is_empty() and not bool(ally.get("dead", false)) else ""
+    var theme := TacticalEnvironments.theme_name(environment_id)
+    var player_light := str(player.get("secondary", ""))
+    var ally_light := str(ally.get("secondary", "")) if not ally.is_empty() and not bool(ally.get("dead", false)) else ""
     for y in range(H):
         for x in range(W):
             var cell := Vector2i(x, y)
-            var level: float = ambient
-            var strongest: float = 0.0
+            var indoors := indoor_cells.has(cell)
+            var level := TacticalLighting.ambient_level(theme, scene_time, indoors)
+            var strongest := 0.0
             var tint_hex := ""
             for source_value in light_sources:
                 var source: Dictionary = source_value
+                if not TacticalLighting.source_active(source, power_on): continue
                 var source_pos: Vector2i = source.get("pos", Vector2i(-99, -99))
-                if not line_clear(source_pos, cell):
-                    continue
-                var contribution: float = TacticalLighting.radial_contribution(cell, source)
+                if not line_clear(source_pos, cell): continue
+                var contribution := TacticalLighting.radial_contribution(cell, source)
                 level = maxf(level, contribution)
                 if contribution > strongest:
                     strongest = contribution
                     tint_hex = str(source.get("color", "ffffff"))
+            if scene_time == "day" and indoors:
+                for window_pos in glass.keys():
+                    if not line_clear(window_pos, cell): continue
+                    var daylight := TacticalLighting.window_daylight_contribution(window_pos, cell)
+                    level = maxf(level, daylight)
+                    if daylight > strongest:
+                        strongest = daylight
+                        tint_hex = "fff1c5"
             if TacticalLighting.item_emits_light(player_light) and line_clear(player.pos, cell):
-                var flashlight_level: float = TacticalLighting.cone_contribution(player.pos, player.facing, cell, player_light)
-                level = maxf(level, flashlight_level)
-                if flashlight_level > strongest:
-                    strongest = flashlight_level
+                var player_level := TacticalLighting.item_contribution(player.pos, player.facing, cell, player_light)
+                level = maxf(level, player_level)
+                if player_level > strongest:
+                    strongest = player_level
                     tint_hex = str(D.GEAR[player_light].get("light_color", "edf5d6"))
             if ally_light != "" and TacticalLighting.item_emits_light(ally_light) and line_clear(ally.pos, cell):
-                var ally_flashlight_level: float = TacticalLighting.cone_contribution(ally.pos, ally.facing, cell, ally_light)
-                level = maxf(level, ally_flashlight_level)
-                if ally_flashlight_level > strongest:
-                    strongest = ally_flashlight_level
+                var ally_level := TacticalLighting.item_contribution(ally.pos, ally.facing, cell, ally_light)
+                level = maxf(level, ally_level)
+                if ally_level > strongest:
+                    strongest = ally_level
                     tint_hex = str(D.GEAR[ally_light].get("light_color", "edf5d6"))
             light_levels[cell] = clampf(level, 0.0, 1.0)
-            if tint_hex != "":
-                light_tints[cell] = tint_hex
+            if tint_hex != "": light_tints[cell] = tint_hex
 
 func recalc_visibility():
     recalc_lighting()
@@ -911,8 +983,14 @@ func recalc_visibility():
     var vr := view_range()
     for y in range(H):
         for x in range(W):
-            var p = Vector2i(x,y)
-            if p == player.pos or (manhattan(player.pos,p) <= vr and in_cone(player.pos, player.facing, p, vr, -0.10) and line_clear(player.pos,p)):
+            var p := Vector2i(x, y)
+            var dist := manhattan(player.pos, p)
+            if p == player.pos or dist <= 1:
+                visible_cells[p] = true; memory[p] = true; continue
+            if dist > vr or not in_cone(player.pos, player.facing, p, vr, 0.14) or not line_clear(player.pos, p):
+                continue
+            var light := float(light_levels.get(p, 0.0))
+            if TacticalLighting.visible_at_distance(light, dist, vr):
                 visible_cells[p] = true
                 memory[p] = true
     for i in range(zombies.size()):
@@ -924,10 +1002,10 @@ func recalc_visibility():
             last_seen.erase(i)
 
 func view_range() -> int:
-    var r := 6 + int(floor(int(player.skills.get("Survival",0)) / 3.0))
+    var r := 5 + int(floor(int(player.skills.get("Survival", 0)) / 4.0))
     r += TacticalLighting.item_view_bonus(str(player.get("secondary", "")))
     if float(player.fatigue) >= 80: r -= 1
-    return clamp(r, 5, 10)
+    return clampi(r, 4, 8)
 
 func refresh_intents():
     intent_reads.clear()
@@ -946,9 +1024,12 @@ func refresh_intents():
 func zombie_sees_actor(z, actor: Dictionary) -> bool:
     if actor.is_empty() or actor.get("dead", false): return false
     var dist := manhattan(z.pos, actor.pos)
-    if dist > 6: return false
-    if actor.get("crouched", false) and dist > 3: return false
-    return in_cone(z.pos, z.facing, actor.pos, 6, 0.0) and line_clear(z.pos, actor.pos)
+    var target_light := float(light_levels.get(actor.pos, 0.0))
+    var sight_range := 3 + int(round(target_light * 3.0))
+    if actor.get("crouched", false): sight_range -= 1
+    sight_range = clampi(sight_range, 2, 6)
+    if dist > sight_range: return false
+    return in_cone(z.pos, z.facing, actor.pos, sight_range, 0.0) and line_clear(z.pos, actor.pos)
 
 func any_zombie_sees_player() -> bool:
     for z in zombies:
@@ -956,16 +1037,18 @@ func any_zombie_sees_player() -> bool:
     return false
 
 func line_clear(a: Vector2i, b: Vector2i) -> bool:
-    var x0=a.x; var y0=a.y; var x1=b.x; var y1=b.y
-    var dx=abs(x1-x0); var sx=1 if x0<x1 else -1
-    var dy=-abs(y1-y0); var sy=1 if y0<y1 else -1
-    var err=dx+dy
+    var x0 := a.x; var y0 := a.y; var x1 := b.x; var y1 := b.y
+    var dx := abs(x1-x0); var sx := 1 if x0<x1 else -1
+    var dy := -abs(y1-y0); var sy := 1 if y0<y1 else -1
+    var err := dx+dy
     while true:
-        var p=Vector2i(x0,y0)
+        var p := Vector2i(x0,y0)
         if p != a and p != b:
-            if walls.has(p) or obstacles.has(p) or glass.has(p) or (doors.has(p) and not doors[p]): return false
+            # Windows transmit sight/light. Tall physical obstacles and closed
+            # doors do not. Movement still treats all obstacles/glass separately.
+            if walls.has(p) or opaque_obstacles.has(p) or (doors.has(p) and not doors[p]): return false
         if x0==x1 and y0==y1: break
-        var e2=2*err
+        var e2 := 2*err
         if e2>=dy: err+=dy; x0+=sx
         if e2<=dx: err+=dx; y0+=sy
     return true
@@ -1060,36 +1143,33 @@ func _draw():
     draw_hud()
 
 func draw_map():
-    var wall_color := TacticalEnvironments.wall_color(environment_id)
+    var theme := TacticalEnvironments.theme_name(environment_id)
     var grid_color := TacticalEnvironments.grid_color(environment_id)
     for y in range(H):
         for x in range(W):
             var p := Vector2i(x,y)
             var r := Rect2(x*TILE,y*TILE,TILE,TILE)
             var ground_kind := str(ground.get(p, TacticalEnvironments.default_ground(environment_id)))
-            draw_rect(r, TacticalEnvironments.ground_color(ground_kind))
+            TacticalTiles.draw_ground(self, r, ground_kind)
             draw_rect(r, grid_color, false, 1)
             if walls.has(p):
-                draw_rect(r, wall_color)
-                draw_rect(r.grow(-3), wall_color.lightened(0.08), false, 1)
+                TacticalTiles.draw_wall(self, r, theme)
             elif doors.has(p):
-                draw_rect(r.grow(-4), Color(.34,.24,.14) if not doors[p] else Color(.18,.15,.11), false, 3)
+                TacticalTiles.draw_door(self, r, bool(doors[p]))
             elif glass.has(p):
-                draw_line(r.position+Vector2(3,TILE-4), r.position+Vector2(TILE-3,4), Color(.55,.75,.82), 2)
-                draw_line(r.position+Vector2(3,4), r.position+Vector2(TILE-3,TILE-4), Color(.40,.62,.70,.65), 1)
+                TacticalTiles.draw_window(self, r)
             elif barrels.has(p):
-                draw_circle(cell_center(p), 8, Color(.55,.25,.10))
-                draw_circle(cell_center(p), 8, Color(.85,.48,.16), false, 2)
+                TacticalTiles.draw_barrel(self, r)
             elif props.has(p):
-                draw_environment_prop(p, str(props[p]))
+                TacticalTiles.draw_prop(self, r, str(props[p]))
             elif obstacles.has(p):
-                draw_rect(r.grow(-3), Color(.30,.25,.18))
+                TacticalTiles.draw_prop(self, r, "crate")
     var kind := str(context.get("kind","ambush"))
     if kind == "explore" and not objective_done:
-        draw_rect(Rect2(objective_cell.x*TILE+5,objective_cell.y*TILE+5,TILE-10,TILE-10), Color(.95,.75,.20), false, 3)
+        draw_rect(Rect2(objective_cell.x*TILE+4,objective_cell.y*TILE+4,TILE-8,TILE-8), Color(.95,.75,.20), false, 3)
     elif kind == "rescue" and not objective_done:
-        draw_circle(cell_center(rescue_cell), 8, Color(.95,.75,.20), false, 3)
-        draw_string(font, cell_center(rescue_cell)+Vector2(-9,-12), "SOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(.95,.8,.35))
+        draw_circle(cell_center(rescue_cell), 9, Color(.95,.75,.20), false, 3)
+        draw_string(font, cell_center(rescue_cell)+Vector2(-10,-12), "SOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(.95,.8,.35))
 
 func draw_escape_markers():
     for p in exit_cells:
@@ -1104,68 +1184,7 @@ func draw_escape_markers():
         draw_string(font, c + Vector2(-12,-10), "EXIT", HORIZONTAL_ALIGNMENT_CENTER, 24, 7, color)
 
 func draw_environment_prop(p: Vector2i, kind: String):
-    var r := Rect2(p.x*TILE,p.y*TILE,TILE,TILE)
-    var c := cell_center(p)
-    match kind:
-        "dumpster":
-            draw_rect(r.grow(-3), Color("304b3d"))
-            draw_line(r.position+Vector2(4,7), r.position+Vector2(TILE-4,7), Color("6d806f"), 2)
-        "trash":
-            draw_circle(c, 7, Color("4c4941")); draw_line(c-Vector2(5,3), c+Vector2(5,3), Color("827966"), 1)
-        "neon_sign":
-            draw_rect(r.grow(-5), Color("5a243f")); draw_rect(r.grow(-7), TacticalEnvironments.accent_color(environment_id), false, 2)
-            draw_string(font, c+Vector2(-9,3), "OPEN", HORIZONTAL_ALIGNMENT_CENTER, 18, 6, Color("f3a8cd"))
-        "gas_pump":
-            draw_rect(r.grow(-5), Color("d9d6c8")); draw_rect(Rect2(r.position+Vector2(7,5),Vector2(12,7)),Color("30383b"))
-            draw_circle(c+Vector2(7,4),2,Color("d9b14b"))
-        "car":
-            draw_rect(r.grow(-2), Color("4a5961")); draw_rect(r.grow(-6), Color("9bb1b8")); draw_circle(c+Vector2(-7,8),2,Color("141718")); draw_circle(c+Vector2(7,8),2,Color("141718"))
-        "counter":
-            draw_rect(r.grow(-3), Color("735a3f")); draw_line(r.position+Vector2(3,7),r.position+Vector2(TILE-3,7),Color("b09a76"),2)
-        "store_shelf":
-            draw_rect(r.grow(-4), Color("595b58")); draw_line(r.position+Vector2(4,9),r.position+Vector2(TILE-4,9),Color("b0a77d"),2); draw_line(r.position+Vector2(4,16),r.position+Vector2(TILE-4,16),Color("8e9b7d"),2)
-        "gas_sign":
-            draw_rect(r.grow(-4), Color("383b3b")); draw_string(font,c+Vector2(-9,4),"GAS",HORIZONTAL_ALIGNMENT_CENTER,18,8,Color("ead25d"))
-        "ice_box":
-            draw_rect(r.grow(-3), Color("d9e4e4")); draw_string(font,c+Vector2(-8,4),"ICE",HORIZONTAL_ALIGNMENT_CENTER,16,7,Color("507b9b"))
-        "couch":
-            draw_rect(r.grow(-3), Color("765344")); draw_rect(r.grow(-7), Color("9a705c"), false, 2)
-        "table":
-            draw_circle(c,8,Color("765b3e")); draw_circle(c,8,Color("b08b62"),false,2)
-        "bed":
-            draw_rect(r.grow(-3), Color("738291")); draw_rect(Rect2(r.position+Vector2(4,4),Vector2(TILE-8,6)),Color("d6d4c6"))
-        "kitchen":
-            draw_rect(r.grow(-3), Color("8b8b83")); draw_circle(c,4,Color("272b2c"),false,2)
-        "fridge":
-            draw_rect(r.grow(-3), Color("c6c9c5")); draw_line(c+Vector2(0,-8),c+Vector2(0,8),Color("7c807d"),1)
-        "washer":
-            draw_rect(r.grow(-3), Color("b9bbb6")); draw_circle(c,6,Color("4e6268"),false,2)
-        "apt_sign":
-            draw_rect(r.grow(-5), Color("4e5660")); draw_string(font,c+Vector2(-8,4),"APT",HORIZONTAL_ALIGNMENT_CENTER,16,7,Color("c5d0db"))
-        "vending":
-            draw_rect(r.grow(-3), Color("87443d")); draw_rect(r.grow(-7),Color("e6c770"),false,2)
-        "shop_sign":
-            draw_rect(r.grow(-5), Color("315d59")); draw_string(font,c+Vector2(-10,4),"SHOP",HORIZONTAL_ALIGNMENT_CENTER,20,7,Color("9fe0d8"))
-        "crate":
-            draw_rect(r.grow(-3), Color("7a5d3a")); draw_line(r.position+Vector2(4,4),r.end-Vector2(4,4),Color("b18a58"),1); draw_line(Vector2(r.end.x-4,r.position.y+4),Vector2(r.position.x+4,r.end.y-4),Color("b18a58"),1)
-        "pallet":
-            draw_rect(r.grow(-4), Color("765c3d"), false, 3); draw_line(r.position+Vector2(6,4),r.position+Vector2(6,TILE-4),Color("a88658"),2); draw_line(r.position+Vector2(13,4),r.position+Vector2(13,TILE-4),Color("a88658"),2)
-        "forklift":
-            draw_rect(r.grow(-3), Color("c98d2d")); draw_line(c+Vector2(8,-8),c+Vector2(8,8),Color("2b2c2b"),2)
-        "machine":
-            draw_rect(r.grow(-3), Color("4e5b58")); draw_circle(c,5,Color("202626")); draw_rect(Rect2(r.position+Vector2(5,4),Vector2(5,3)),Color("d58d36"))
-        "warehouse_sign":
-            draw_rect(r.grow(-5), Color("51595a")); draw_string(font,c+Vector2(-9,4),"BAY",HORIZONTAL_ALIGNMENT_CENTER,18,7,Color("e2a04f"))
-        "scrub":
-            draw_circle(c+Vector2(-4,2),6,Color("667047")); draw_circle(c+Vector2(4,-2),6,Color("55623d"))
-        "shopping_cart":
-            draw_rect(r.grow(-5), Color("8d9390"), false, 2); draw_circle(c+Vector2(-6,8),2,Color("242727")); draw_circle(c+Vector2(6,8),2,Color("242727"))
-        "culvert_debris":
-            draw_circle(c,9,Color("5a5148")); draw_line(c-Vector2(8,5),c+Vector2(8,5),Color("8b7355"),2)
-        "wash_sign":
-            draw_rect(r.grow(-6), Color("867253")); draw_string(font,c+Vector2(-8,4),"WASH",HORIZONTAL_ALIGNMENT_CENTER,16,6,Color("e2c695"))
-        _:
-            draw_rect(r.grow(-3), Color(.30,.25,.18))
+    TacticalTiles.draw_prop(self, Rect2(p.x*TILE,p.y*TILE,TILE,TILE), kind)
 
 func draw_units():
     for key in last_seen.keys():
@@ -1223,55 +1242,58 @@ func draw_character_fx():
         TacticalVisuals.draw_muzzle_flash(self, cell_center(muzzle_flash_cell), muzzle_flash_facing, now, muzzle_flash_until_ms)
 
 func draw_lighting():
-    var theme: String = TacticalEnvironments.theme_name(environment_id)
-    var dark_tint: Color = TacticalLighting.ambient_tint(theme)
-    var ambient: float = TacticalLighting.ambient_level(theme)
+    var theme := TacticalEnvironments.theme_name(environment_id)
+    var dark_tint := TacticalLighting.ambient_tint(theme, scene_time)
     for y in range(H):
         for x in range(W):
             var cell := Vector2i(x, y)
             var r := Rect2(x * TILE, y * TILE, TILE, TILE)
-            var level: float = float(light_levels.get(cell, ambient))
-            var darkness: float = TacticalLighting.darkness_alpha(level)
+            var ambient := TacticalLighting.ambient_level(theme, scene_time, indoor_cells.has(cell))
+            var level := float(light_levels.get(cell, ambient))
+            var darkness := TacticalLighting.darkness_alpha(level)
             draw_rect(r, Color(dark_tint.r, dark_tint.g, dark_tint.b, darkness))
             if light_tints.has(cell):
                 var tint := Color(str(light_tints[cell]))
-                var wash: float = TacticalLighting.color_wash_alpha(level)
-                if wash > 0.0:
-                    draw_rect(r.grow(-1), Color(tint.r, tint.g, tint.b, wash))
+                var wash := TacticalLighting.color_wash_alpha(level)
+                if wash > 0.0: draw_rect(r.grow(-1), Color(tint.r, tint.g, tint.b, wash))
 
 func draw_light_source_glows():
-    var now: int = Time.get_ticks_msec()
+    var now := Time.get_ticks_msec()
     for source_value in light_sources:
         var source: Dictionary = source_value
+        if not TacticalLighting.source_active(source, power_on): continue
         var source_pos: Vector2i = source.get("pos", Vector2i(-99, -99))
-        if not inside(source_pos):
-            continue
+        if not inside(source_pos): continue
         var c := cell_center(source_pos)
         var source_color := Color(str(source.get("color", "ffffff")))
-        var visual_strength: float = TacticalLighting.visual_strength(source, now)
-        draw_circle(c, 15.0, Color(source_color.r, source_color.g, source_color.b, 0.035 * visual_strength))
-        draw_circle(c, 9.0, Color(source_color.r, source_color.g, source_color.b, 0.075 * visual_strength))
-        draw_circle(c, 3.0, Color(source_color.r, source_color.g, source_color.b, 0.72 * visual_strength))
-        draw_circle(c, 3.0, Color(1.0, 1.0, 1.0, 0.55 * visual_strength), false, 1.0)
+        var strength := TacticalLighting.visual_strength(source, now)
+        draw_circle(c, 15.0, Color(source_color.r, source_color.g, source_color.b, 0.035 * strength))
+        draw_circle(c, 9.0, Color(source_color.r, source_color.g, source_color.b, 0.075 * strength))
+        draw_circle(c, 3.0, Color(source_color.r, source_color.g, source_color.b, 0.72 * strength))
 
 func draw_fog():
     for y in range(H):
         for x in range(W):
-            var p=Vector2i(x,y)
+            var p := Vector2i(x,y)
             if visible_cells.has(p): continue
-            var alpha=.50 if memory.has(p) else .92
-            draw_rect(Rect2(x*TILE,y*TILE,TILE,TILE),Color(0.01,0.015,0.015,alpha))
+            var alpha := .62 if memory.has(p) else .96
+            draw_rect(Rect2(x*TILE,y*TILE,TILE,TILE),Color(0.005,0.008,0.010,alpha))
 
 func draw_sounds():
     for s in sound_marks:
-        if tick-int(s.time)>650: continue
+        if tick-int(s.time)>750: continue
         if s.has("source") and visible_cells.has(s.source): continue
-        var c=cell_center(s.pos)
-        draw_string(font,c+Vector2(-20,4),str(s.label),HORIZONTAL_ALIGNMENT_CENTER,40,9,Color(.98,.85,.36))
+        var c := cell_center(s.pos)
+        var label := TacticalSound.display_label(str(s.label))
+        var box := Rect2(c.x - 54, c.y - 10, 108, 16)
+        draw_rect(box, Color(0.03,0.04,0.04,.78))
+        draw_rect(box, Color(.78,.68,.30,.78), false, 1)
+        draw_string(font,Vector2(box.position.x,c.y+2),label,HORIZONTAL_ALIGNMENT_CENTER,box.size.x,8,Color(.98,.86,.40))
 
 func draw_hud():
     draw_rect(Rect2(0,0,SCREEN_W,INFO_H),Color(.035,.045,.04,.99))
-    draw_string(font,Vector2(10,22),location_name,HORIZONTAL_ALIGNMENT_LEFT,370,17,Color.WHITE)
+    var scene_label := "%s  •  %s  •  %s" % [location_name, scene_time.to_upper(), "POWER" if power_on else "NO POWER"]
+    draw_string(font,Vector2(10,22),scene_label,HORIZONTAL_ALIGNMENT_LEFT,370,14,Color.WHITE)
     draw_string(font,Vector2(10,47),"%s  HP %d/%d  %s"%[player.name,int(player.hp),int(player.max_hp),str(player.condition).to_upper()],HORIZONTAL_ALIGNMENT_LEFT,370,13,Color(.70,.84,1))
     var gear_line="%s"%player.weapon.name
     if bool(player.weapon.gun): gear_line += "  |  Ammo %d"%int(Game.resources.get("Ammo",0))
@@ -1297,7 +1319,10 @@ func draw_hud():
     draw_button(btn_forward,"FORWARD",false,11)
     draw_button(btn_turn_right,"TURN R",false,17)
     draw_button(btn_back,"BACK",false,11)
-    draw_string(font,Vector2(148,724),"K %d\nT %d"%[int(stats.kills),tick],HORIZONTAL_ALIGNMENT_CENTER,98,9,Color(.55,.60,.56))
+    var step_cost := TacticalTime.movement_cost(player, false)
+    var load_label := TacticalTime.load_band(TacticalTime.equipment_weight(player))
+    draw_string(font,Vector2(148,716),"T %d  STEP %d"%[tick,step_cost],HORIZONTAL_ALIGNMENT_CENTER,98,8,Color(.62,.68,.64))
+    draw_string(font,Vector2(148,731),"K %d  %s"%[int(stats.kills),load_label],HORIZONTAL_ALIGNMENT_CENTER,98,8,Color(.55,.60,.56))
 
 func draw_button(rect: Rect2, text: String, active: bool, size: int):
     var fill=Color(.24,.30,.25,.96) if active else Color(.08,.10,.09,.94)

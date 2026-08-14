@@ -64,7 +64,10 @@ Important current owners:
 
 - `FFCombat.gd` — tactical runtime mechanics.
 - `FFTacticalVisuals.gd` — tactical character appearance, zombie variation, weapon silhouettes, and character drawing; presentation only.
-- `FFTacticalLighting.gd` — tactical light profiles/falloff and Secondary light-item beam rules; environments place fixed sources and combat owns occlusion/draw integration.
+- `FFTacticalLighting.gd` — tactical day/night/power light profiles, Secondary light-item math, window daylight, and light-dependent sight thresholds.
+- `FFTacticalTiles.gd` — tactical sprite/tile atlas-region rendering; physical geometry remains outside presentation.
+- `FFTacticalTime.gd` — pure derived tactical action timing from gear load, survivor state, and infected pace/mass.
+- `FFTacticalSound.gd` — pure tactical sound labeling/localization helpers; combat owns propagation and reactions.
 - `FFTacticalScenarios.gd` — tactical scenario/location/layout selection and future physical field-event definitions.
 - `FFExpeditionRules.gd` — travel/logistics/recruit protection/haul rules; vehicle integration seam.
 - `FFCampLifeRules.gd` — camp-life cadence/recovery/general camp-state tuning.
@@ -134,7 +137,7 @@ While a tactical encounter is active, do not advance unrelated food consumption,
 
 ## 8. Save policy
 
-Current schema: **4**.
+Current schema: **5**.
 
 Alpha policy:
 

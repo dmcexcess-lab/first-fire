@@ -2,6 +2,49 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Alpha 0.3D — Tactical Senses, Timing & Art — 2026-08-13
+
+### Sprite / Tile Overhaul
+- Replaced the flat tactical ground/prop primitives and procedural actor bodies with an original reusable tactical atlas covering ground materials, themed walls, open/closed doors, windows, furniture, shelves, vehicles, industrial clutter, survivors, infected, corpses, weapons, and Secondary light items.
+- Survivor appearance remains randomized/persistent but now selects from eight readable sprite identities; infected use eight sprite variants weighted by their existing environment families.
+- Equipped weapons and Secondary lighting gear remain visible beside the survivor, now as atlas art instead of tiny generic lines.
+- Doors and windows now read as actual structural tiles instead of ambiguous outlines, and authored layout validation checks both party spawns as well as exits.
+
+### Day / Night / Power
+- Every tactical encounter independently rolls day or night plus an environment-specific power state. The same Gas Station, House, Apartment, Store, Alley, or Warehouse can therefore appear under different lighting conditions.
+- Locations have different chances of retained power; Drainage Wash has none.
+- Authored interiors are now explicit physical metadata rather than inferred from floor color.
+- Daylight enters interiors through windows. Glass transmits sight and light, while walls, closed doors, and tall props block them.
+- Powered fixtures illuminate the same authored locations at night; blackout versions remain dark enough for portable lights to matter.
+
+### Light / Vision Interaction
+- Shortened the survivor vision cone and made actual cell light determine whether distant cells inside that cone are visible.
+- Bright fixtures, windows, flashlight beams, and radial lights can reveal pockets beyond surrounding darkness instead of lighting being merely a cosmetic overlay.
+- Infected vision now also depends on target illumination, so a lantern or flashlight can help you see while making you easier to spot.
+- Added Headlamp, Lantern, Glow Stick, and Road Flare Secondary gear alongside Flashlight, with directional vs radial light profiles and distinct colors/ranges.
+
+### Real Tactical Time
+- Tactical ticks now derive survivor movement/turn/stance/interaction/attack costs from equipped load, fatigue, wounds, skills, stance, and weapon timing.
+- Infected receive persistent pace, attack-speed, and mass profiles; different infected can match a survivor tile-for-tile, lose ground over successive moves, or remain persistently faster/slower.
+- Companion movement and attacks use the same derived timing rules instead of a fixed universal cadence.
+- HUD now exposes current tick, derived step cost, and load band so the scheduler is inspectable rather than hidden.
+
+### Sound / Awareness / Interaction
+- Footstep labels now reflect surface (creak/tap/rustle/scuff/etc.) and high fatigue/load can generate breathing noise.
+- Added more infected and environmental sounds including shuffle, moan, fixture hum/buzz, house creaks, pipe knocks, metal rattle, shelf ticks, wind, and gravel.
+- Off-screen sound estimates are now fuzzy within a bounded radius of the true source instead of a random square that could point somewhere unrelated.
+- Sound labels render in a wider bounded callout so longer words no longer clip off the tile.
+- Infected hearing also uses approximate locations for weaker sounds rather than perfect coordinates.
+- When one infected visually spots a survivor, nearby infected are alerted to the same vicinity instead of behaving as isolated units.
+- A nonlethal melee hit reveals the attacker to the struck infected even when the approach qualified as stealth.
+- Tapping/clicking an adjacent door now explicitly uses it, so open doors can be closed; the FORWARD control still handles movement through an already-open doorway.
+
+### Alpha Saves / Architecture
+- Save schema advanced to **5** and old Alpha saves are invalidated rather than migrated.
+- Removed the schema-4 Tool-slot Flashlight compatibility path.
+- Added `FFTacticalTiles.gd`, `FFTacticalTime.gd`, and `FFTacticalSound.gd` as durable owners for presentation atlas rendering, derived action timing, and sound-localization rules.
+- Added deterministic smoke checks proving encumbrance changes real movement cost and fuzzy sounds remain near their true source.
+
 ## Alpha 0.3C — Tactical Lighting & Secondary Gear — 2026-08-13
 
 ### Lighting Overhaul

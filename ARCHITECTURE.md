@@ -49,6 +49,15 @@ Tactical objective/catalog ownership: encounter-kind weights and combination of 
 ### `FFTacticalEnvironments.gd`
 Authored tactical place ownership: recognizable 20×18 environment templates, zone compatibility, ground/theme metadata, props, party entry positions, and one-or-multiple escape routes. Current families include back alley, gas station, residential house, apartment, corner store, warehouse yard, and drainage wash. Geometry must keep every declared exit reachable from the authored party spawn.
 
+### `FFTacticalTiles.gd`
+Tactical environment atlas renderer. Owns atlas-region lookup and drawing for ground, structural tiles, props, and carried-item icons. Physical geometry/occlusion remains authoritative in `FFTacticalEnvironments.gd` / `FFCombat.gd`.
+
+### `FFTacticalTime.gd`
+Pure tactical action-timing rules. Converts survivor equipment weight, fatigue, condition, skills, stance, and zombie pace/mass profiles into actual timeline costs used by `FFCombat.gd`.
+
+### `FFTacticalSound.gd`
+Pure tactical sound presentation/localization rules: surface-aware labels, bounded fuzzy source estimates, and ambient sound profiles. `FFCombat.gd` still owns propagation and AI reaction state.
+
 ### `FFTacticalLighting.gd`
 Tactical lighting rules/presentation helper. Owns ambient low-light profiles, fixed-light falloff/color presets, data-driven Secondary light-item cone math, and cheap glow animation rules. `FFTacticalEnvironments.gd` owns fixed light placement; `FFCombat.gd` owns occlusion, light-map recalculation, fog/vision, and draw order. Lighting does not advance settlement simulation.
 
@@ -92,7 +101,7 @@ Detailed survivor/item inspection also pauses settlement simulation while the mo
 
 ## Save boundary
 
-Current schema: **4**. Alpha policy is clean invalidation on meaningful incompatibility rather than accumulating migrations.
+Current schema: **5**. Alpha policy is clean invalidation on meaningful incompatibility rather than accumulating migrations.
 
 The filename `user://first_fire_alpha01.json` remains intentionally for compatibility; its old name alone is not grounds for a save wipe.
 

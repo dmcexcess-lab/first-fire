@@ -8,7 +8,7 @@ This file records durable product/design context. `README_SOPS.md` records how t
 
 **First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game. It mixes menu-driven camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
 
-Current milestone: **Alpha 0.3C — Tactical Lighting & Secondary Gear**.
+Current milestone: **Alpha 0.3D — Tactical Senses, Timing & Art**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
@@ -57,7 +57,11 @@ Objective and place are now separate: rescue/search/ambush situations can occur 
 
 Survivors keep persistent modular tactical appearances. Zombies use varied civilian/worker/service/medical/decayed/heavy visual families, while those families remain cosmetic until a future gameplay change explicitly says otherwise. Equipped weapons are drawn as separate readable silhouettes beside survivors.
 
-Alpha 0.3C adds low-light tactical rendering with authored neon, canopy, fluorescent, warm, security, flood, and warning-light sources. Lighting occlusion is recalculated only when tactical state changes; cheap source glow animation redraws at low refresh for phone/Web performance. Flashlights now use a real **Secondary** equipment slot independent of Weapon and Tool, cast an occluded directional cone, tint/brighten the board, and preserve their existing view-range benefit. An old schema-4 survivor with Flashlight still stored in Tool is recognized without mutating the save.
+Alpha 0.3D replaces the procedural tactical tokens/flat prop drawing with a reusable original sprite/tile atlas and adds randomized **day/night + powered/unpowered** scene states. The same authored place can therefore play in daylight, powered night light, or near-black blackout conditions. Daylight enters authored interiors through windows; glass transmits vision/light while walls, closed doors, and tall props occlude it.
+
+Player vision is now shorter and truly light-dependent instead of being a light-independent cone with a dark filter drawn afterward. Zombie sight also responds to how illuminated the target is, so carrying a bright radial light improves awareness while making the carrier easier to detect.
+
+Tactical action time is authoritative: equipped weight, fatigue, injuries, stance, survivor skill, weapon action time, and per-zombie pace/mass profiles feed the actual tick scheduler. Sound markers use bounded fuzzy localization near the true source, surface-specific footsteps and more ambient/infected noises, and nearby infected share awareness when one spots the party. A nonlethal melee hit reveals the attacker to that infected even when the approach was stealthy. Adjacent doors are now tap/click interactions, allowing explicit closing instead of treating an open door tap as movement.
 
 ## Expedition logistics
 
@@ -103,7 +107,7 @@ Loot priority is approximately **Dirty Water → Raw Food → materials → Clea
 
 Alpha save compatibility is **not sacred**. Use explicit save schema versions and invalidate old saves cleanly when meaningful schema/system changes occur instead of accumulating migrations.
 
-Current save schema: **4**.
+Current save schema: **5**.
 
 The save filename remains `user://first_fire_alpha01.json` intentionally for compatibility. Its legacy name alone is not a reason to wipe a working Alpha save.
 

@@ -5,6 +5,9 @@ const ExpeditionRules = preload("res://scripts/FFExpeditionRules.gd")
 const TacticalScenarios = preload("res://scripts/FFTacticalScenarios.gd")
 const TacticalEnvironments = preload("res://scripts/FFTacticalEnvironments.gd")
 const TacticalLighting = preload("res://scripts/FFTacticalLighting.gd")
+const TacticalTiles = preload("res://scripts/FFTacticalTiles.gd")
+const TacticalTime = preload("res://scripts/FFTacticalTime.gd")
+const TacticalSound = preload("res://scripts/FFTacticalSound.gd")
 const LegacyFieldEvents = preload("res://scripts/FFFieldEventsLegacy.gd")
 const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
@@ -28,10 +31,18 @@ func _init() -> void:
     if not _check(TacticalEnvironments.exit_count("gas_station", 1) >= 3, "multi-exit gas station variant"): return
     if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary slot"): return
     if not _check(TacticalLighting.secondary_item_from_equipment({"Secondary": "Flashlight", "Tool": ""}) == "Flashlight", "secondary light lookup"): return
-    if not _check(TacticalLighting.secondary_item_from_equipment({"Tool": "Flashlight"}) == "Flashlight", "legacy flashlight compatibility"): return
-    if not _check(TacticalLighting.cone_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(10, 5), "Flashlight") > 0.0, "flashlight forward cone"): return
-    if not _check(TacticalLighting.cone_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(2, 5), "Flashlight") == 0.0, "flashlight rear cutoff"): return
+    if not _check(TacticalLighting.item_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(10, 5), "Flashlight") > 0.0, "flashlight forward cone"): return
+    if not _check(TacticalLighting.item_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(2, 5), "Flashlight") == 0.0, "flashlight rear cutoff"): return
     if not _check(TacticalEnvironments.build_layout("gas_station", 0).get("lights", []).size() >= 3, "gas station authored lights"): return
+    if not _check(TacticalScenarios.pick_scene_state("gas_station", visual_rng).has("time_of_day"), "scene day night state"): return
+    if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
+    var light_actor := {"equipment": {"Weapon": "Utility Knife", "Secondary": "", "Tool": "", "Clothing": "", "Pack": ""}, "fatigue": 0.0, "condition": "Healthy", "skills": {"Survival": 3, "Combat": 2}, "crouched": false}
+    var heavy_actor := light_actor.duplicate(true)
+    heavy_actor["equipment"] = {"Weapon": "Shotgun", "Secondary": "Lantern", "Tool": "Toolbox", "Clothing": "Leather Jacket", "Pack": "Hiking Pack"}
+    if not _check(TacticalTime.movement_cost(heavy_actor, false) > TacticalTime.movement_cost(light_actor, false), "encumbrance changes timeline"): return
+    var sound_rng := RandomNumberGenerator.new(); sound_rng.seed = 7
+    var estimate := TacticalSound.estimate_location(Vector2i(10,10), Vector2i(2,2), 2, sound_rng, 20, 18)
+    if not _check(abs(estimate.x-10)+abs(estimate.y-10) <= 2, "sound stays in source vicinity"): return
     for environment_id in TacticalEnvironments.all_ids():
         for variant in range(TacticalEnvironments.variant_count(str(environment_id))):
             if not _check(TacticalEnvironments.validate_layout(TacticalEnvironments.build_layout(str(environment_id), variant)), "reachable exits: %s v%d" % [environment_id, variant]): return
@@ -43,7 +54,7 @@ func _init() -> void:
     var visual_rng := RandomNumberGenerator.new()
     visual_rng.seed = 12345
     var survivor_look: Dictionary = TacticalVisuals.survivor_appearance(visual_rng)
-    if not _check(survivor_look.has("skin") and survivor_look.has("top") and survivor_look.has("body"), "survivor visual identity"): return
+    if not _check(survivor_look.has("sprite") and survivor_look.has("accent"), "survivor sprite identity"): return
     var zombie_look: Dictionary = TacticalVisuals.zombie_appearance(visual_rng, "Industrial Edge")
     if not _check(str(zombie_look.get("family", "")) != "", "zombie visual family"): return
     if not _check(str(TacticalVisuals.weapon_visual("Pistol").get("kind", "")) == "pistol", "weapon visual catalog"): return

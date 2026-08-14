@@ -14,9 +14,9 @@ const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
 const CampSocial = preload("res://scripts/FFCampSocial.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
-# Legacy filename is intentionally preserved so this behavior-only refactor does not reset Alpha saves.
+# Alpha saves are disposable; the filename remains stable while schema changes invalidate old state cleanly.
 const SAVE_PATH := "user://first_fire_alpha01.json"
-const SAVE_SCHEMA_VERSION := 4
+const SAVE_SCHEMA_VERSION := 5
 const DAY_SECONDS := 120.0
 
 var rng := RandomNumberGenerator.new()
@@ -116,7 +116,7 @@ func new_game():
     camp_event_cooldown = CampLifeRules.NEW_GAME_EVENT_COOLDOWN
     sim_paused = false
     var founder = _generate_survivor(true)
-    founder["equipment"] = {"Weapon": "Utility Knife", "Clothing": "", "Pack": "Worn Backpack", "Tool": ""}
+    founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "", "Clothing": "", "Pack": "Worn Backpack", "Tool": ""}
     founder["history"].append("Day 1 — Established First Fire.")
     survivors.append(founder)
     _add_history("Day 1 — %s established First Fire." % founder["name"])
@@ -233,7 +233,7 @@ func _generate_survivor(founder = false, preferred_background = ""):
         "injury_remaining": 0.0,
         "status": "Available",
         "task": {},
-        "equipment": {"Weapon": "", "Clothing": "", "Pack": "", "Tool": ""},
+        "equipment": {"Weapon": "", "Secondary": "", "Clothing": "", "Pack": "", "Tool": ""},
         "appearance": {},
         "relationships": {},
         "reputation": 0,
@@ -763,6 +763,7 @@ func _begin_tactical_encounter(exp):
     var combat_kind := str(exp.get("combat_kind", "ambush"))
     var environment_id := TacticalScenarios.pick_environment(str(exp["zone"]), combat_kind, rng)
     var environment_variant := TacticalScenarios.environment_variant(environment_id, rng)
+    var scene_state: Dictionary = TacticalScenarios.pick_scene_state(environment_id, rng)
     current_combat = {
         "uid": "%d-%d-%d" % [day, int(exp["id"]), rng.randi_range(1000, 999999)],
         "expedition_id": int(exp["id"]),
@@ -771,6 +772,8 @@ func _begin_tactical_encounter(exp):
         "kind": combat_kind,
         "environment_id": environment_id,
         "environment_variant": environment_variant,
+        "time_of_day": str(scene_state.get("time_of_day", "day")),
+        "power_on": bool(scene_state.get("power_on", false)),
         "location_name": TacticalScenarios.environment_name(environment_id),
         "seed": rng.randi_range(1, 2147483000),
         "runtime": {
@@ -1194,13 +1197,13 @@ func _roll_gear(exp, party):
     if zone == "Camp Perimeter":
         pool = ["Work Gloves"]
     elif zone == "Nearby Streets":
-        pool = ["Kitchen Knife", "Work Gloves", "Heavy Boots", "School Backpack"]
+        pool = ["Kitchen Knife", "Work Gloves", "Heavy Boots", "School Backpack", "Glow Stick"]
     elif zone == "Residential Blocks":
-        pool = ["Kitchen Knife", "Baseball Bat", "Flashlight", "Screwdriver Set", "First Aid Kit", "School Backpack", "Leather Jacket"]
+        pool = ["Kitchen Knife", "Baseball Bat", "Flashlight", "Lantern", "Glow Stick", "Screwdriver Set", "First Aid Kit", "School Backpack", "Leather Jacket"]
     elif zone == "Commercial Fringe":
-        pool = ["Crowbar", "Hatchet", "Flashlight", "Bolt Cutters", "Toolbox", "First Aid Kit", "Pistol", "Hiking Pack", "Leather Jacket"]
+        pool = ["Crowbar", "Hatchet", "Flashlight", "Headlamp", "Lantern", "Road Flare", "Bolt Cutters", "Toolbox", "First Aid Kit", "Pistol", "Hiking Pack", "Leather Jacket"]
     else:
-        pool = ["Crowbar", "Hatchet", "Bolt Cutters", "Toolbox", "Pistol", "Shotgun", "Hiking Pack", "Heavy Boots", "Work Jacket"]
+        pool = ["Crowbar", "Hatchet", "Headlamp", "Glow Stick", "Road Flare", "Bolt Cutters", "Toolbox", "Pistol", "Shotgun", "Hiking Pack", "Heavy Boots", "Work Jacket"]
     return pool[rng.randi_range(0, pool.size() - 1)]
 
 func _check_zone_unlock(zone):

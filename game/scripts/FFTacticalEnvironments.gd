@@ -12,6 +12,7 @@ const CATALOG := {
         "theme": "alley",
         "zones": ["Camp Perimeter", "Nearby Streets", "Commercial Fringe", "Industrial Edge"],
         "kinds": ["ambush", "explore", "rescue"],
+        "power_chance": 0.28,
         "variants": 2,
     },
     "gas_station": {
@@ -19,6 +20,7 @@ const CATALOG := {
         "theme": "gas",
         "zones": ["Camp Perimeter", "Nearby Streets", "Commercial Fringe"],
         "kinds": ["ambush", "explore", "rescue"],
+        "power_chance": 0.52,
         "variants": 2,
     },
     "house": {
@@ -26,6 +28,7 @@ const CATALOG := {
         "theme": "house",
         "zones": ["Nearby Streets", "Residential Blocks"],
         "kinds": ["ambush", "explore", "rescue"],
+        "power_chance": 0.22,
         "variants": 2,
     },
     "apartment": {
@@ -33,6 +36,7 @@ const CATALOG := {
         "theme": "apartment",
         "zones": ["Nearby Streets", "Residential Blocks", "Commercial Fringe"],
         "kinds": ["ambush", "explore", "rescue"],
+        "power_chance": 0.42,
         "variants": 2,
     },
     "corner_store": {
@@ -40,6 +44,7 @@ const CATALOG := {
         "theme": "store",
         "zones": ["Nearby Streets", "Residential Blocks", "Commercial Fringe"],
         "kinds": ["ambush", "explore", "rescue"],
+        "power_chance": 0.48,
         "variants": 2,
     },
     "warehouse_yard": {
@@ -47,6 +52,7 @@ const CATALOG := {
         "theme": "industrial",
         "zones": ["Commercial Fringe", "Industrial Edge"],
         "kinds": ["ambush", "explore", "rescue"],
+        "power_chance": 0.30,
         "variants": 2,
     },
     "drainage_wash": {
@@ -54,6 +60,7 @@ const CATALOG := {
         "theme": "wash",
         "zones": ["Camp Perimeter", "Nearby Streets"],
         "kinds": ["ambush", "explore"],
+        "power_chance": 0.00,
         "variants": 2,
     },
 }
@@ -66,6 +73,8 @@ const ZONE_POOLS := {
     "Industrial Edge": ["warehouse_yard", "warehouse_yard", "back_alley"],
 }
 
+const OPAQUE_PROPS := ["dumpster", "car", "store_shelf", "fridge", "crate", "forklift", "machine", "ice_box"]
+
 static func all_ids() -> Array:
     return CATALOG.keys()
 
@@ -76,6 +85,13 @@ static func display_name(environment_id: String) -> String:
 static func theme_name(environment_id: String) -> String:
     var data: Dictionary = CATALOG.get(environment_id, CATALOG["back_alley"])
     return str(data.get("theme", "alley"))
+
+static func power_chance(environment_id: String) -> float:
+    var data: Dictionary = CATALOG.get(environment_id, CATALOG["back_alley"])
+    return clampf(float(data.get("power_chance", 0.0)), 0.0, 1.0)
+
+static func prop_blocks_sight(prop_kind: String) -> bool:
+    return OPAQUE_PROPS.has(prop_kind)
 
 static func variant_count(environment_id: String) -> int:
     var data: Dictionary = CATALOG.get(environment_id, CATALOG["back_alley"])
@@ -176,33 +192,39 @@ static func exit_count(environment_id: String, variant: int) -> int:
 
 static func validate_layout(spec: Dictionary) -> bool:
     var spawn: Vector2i = spec.get("player_spawn", Vector2i(-1, -1))
+    var ally_spawn: Vector2i = spec.get("ally_spawn", Vector2i(-1, -1))
     var exits: Array = spec.get("exit_cells", [])
-    if exits.is_empty() or not _inside(spawn):
+    if exits.is_empty() or not _inside(spawn) or not _inside(ally_spawn) or spawn == ally_spawn:
         return false
     var blocked := {}
-    for p in spec.get("walls", []):
-        blocked[p] = true
-    for p in spec.get("obstacles", []):
-        blocked[p] = true
-    if blocked.has(spawn):
+    for p in spec.get("walls", []): blocked[p] = true
+    for p in spec.get("obstacles", []): blocked[p] = true
+    for p in spec.get("glass", []): blocked[p] = true
+    if blocked.has(spawn) or blocked.has(ally_spawn):
         return false
+    for entry in spec.get("doors", []):
+        var door_pos: Vector2i = entry[0]
+        if door_pos == spawn or door_pos == ally_spawn:
+            return false
+    for exit_cell in exits:
+        if not _inside(exit_cell) or blocked.has(exit_cell):
+            return false
     for entry_value in spec.get("lights", []):
         var entry: Array = entry_value
-        if entry.size() < 2:
-            return false
-        var light_pos: Vector2i = entry[0]
-        if not _inside(light_pos):
+        if entry.size() < 2 or not _inside(entry[0]):
             return false
     var seen := {spawn: true}
     var queue: Array = [spawn]
     while not queue.is_empty():
         var p: Vector2i = queue.pop_front()
         for d in [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]:
-            var n: Vector2i = p + Vector2i(d)
-            if not _inside(n) or blocked.has(n) or seen.has(n):
+            var n: Vector2i = p + d
+            if not _inside(n) or spec.get("walls", []).has(n) or spec.get("obstacles", []).has(n) or seen.has(n):
                 continue
             seen[n] = true
             queue.append(n)
+    if not seen.has(ally_spawn):
+        return false
     for exit_cell in exits:
         if not seen.has(exit_cell):
             return false
@@ -215,6 +237,7 @@ static func _spec(default_ground_kind: String, player_spawn: Vector2i, ally_spaw
     return {
         "default_ground": default_ground_kind,
         "ground_rects": [],
+        "indoor_rects": [],
         "walls": [],
         "obstacles": [],
         "glass": [],
@@ -229,6 +252,9 @@ static func _spec(default_ground_kind: String, player_spawn: Vector2i, ally_spaw
 
 static func _ground(spec: Dictionary, x: int, y: int, w: int, h: int, kind: String) -> void:
     spec["ground_rects"].append([x, y, w, h, kind])
+
+static func _indoor(spec: Dictionary, x: int, y: int, w: int, h: int) -> void:
+    spec["indoor_rects"].append([x, y, w, h])
 
 static func _wall_x(spec: Dictionary, y: int, x0: int, x1: int) -> void:
     for x in range(x0, x1 + 1):
@@ -258,8 +284,8 @@ static func _obstacle(spec: Dictionary, p: Vector2i, prop_kind := "crate") -> vo
 static func _prop(spec: Dictionary, p: Vector2i, prop_kind: String) -> void:
     spec["props"].append([p, prop_kind])
 
-static func _light(spec: Dictionary, p: Vector2i, light_kind: String) -> void:
-    spec["lights"].append([p, light_kind])
+static func _light(spec: Dictionary, p: Vector2i, light_kind: String, requires_power := true) -> void:
+    spec["lights"].append([p, light_kind, requires_power])
 
 static func _back_alley(variant: int) -> Dictionary:
     var exits: Array = [Vector2i(9, 16)]
@@ -291,6 +317,7 @@ static func _gas_station(variant: int) -> Dictionary:
     var spec := _spec("asphalt", Vector2i(4, 14), Vector2i(5, 14), exits)
     _ground(spec, 1, 12, 18, 5, "road")
     _ground(spec, 11, 2, 8, 9, "tile")
+    _indoor(spec, 11, 2, 8, 9)
     _wall_x(spec, 2, 11, 18)
     _wall_x(spec, 10, 11, 18)
     _wall_y(spec, 11, 2, 10)
@@ -325,6 +352,7 @@ static func _house(variant: int) -> Dictionary:
     _ground(spec, 5, 2, 13, 13, "wood")
     _ground(spec, 6, 3, 6, 5, "carpet")
     _ground(spec, 13, 3, 4, 5, "linoleum")
+    _indoor(spec, 5, 2, 13, 13)
     _wall_x(spec, 2, 5, 17)
     _wall_x(spec, 14, 5, 17)
     _wall_y(spec, 5, 2, 14)
@@ -359,6 +387,7 @@ static func _apartment(variant: int) -> Dictionary:
     var spec := _spec("sidewalk", Vector2i(9, 13), Vector2i(10, 13), exits)
     _ground(spec, 3, 2, 15, 13, "carpet")
     _ground(spec, 8, 2, 3, 13, "concrete")
+    _indoor(spec, 3, 2, 15, 13)
     _wall_x(spec, 2, 3, 17)
     _wall_x(spec, 14, 3, 17)
     _wall_y(spec, 3, 2, 14)
@@ -393,6 +422,7 @@ static func _corner_store(variant: int) -> Dictionary:
         exits.append(Vector2i(18, 7))
     var spec := _spec("sidewalk", Vector2i(10, 12), Vector2i(9, 12), exits)
     _ground(spec, 4, 3, 15, 11, "tile")
+    _indoor(spec, 4, 3, 15, 11)
     _wall_x(spec, 3, 4, 18)
     _wall_x(spec, 13, 4, 18)
     _wall_y(spec, 4, 3, 13)
@@ -423,6 +453,7 @@ static func _warehouse_yard(variant: int) -> Dictionary:
         exits.append(Vector2i(1, 8))
     var spec := _spec("concrete", Vector2i(4, 14), Vector2i(5, 14), exits)
     _ground(spec, 10, 2, 9, 9, "concrete")
+    _indoor(spec, 10, 2, 9, 9)
     _ground(spec, 1, 11, 18, 6, "asphalt")
     _wall_x(spec, 2, 10, 18)
     _wall_x(spec, 10, 10, 18)
