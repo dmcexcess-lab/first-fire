@@ -1,0 +1,1 @@
+At the start of every new user prompt that requests code or repository changes, reread current README_SOPS.md and README_CONTEXT.md once before beginning that prompt's work. Do not reread between individual edits, commits, or files within the same coherent prompt. A follow-up prompt requesting additional changes starts a new refresh cycle.
