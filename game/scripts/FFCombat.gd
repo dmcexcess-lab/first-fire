@@ -247,7 +247,7 @@ func choose_far_open_cell() -> Vector2i:
 func spawn_zombies():
     zombies.clear()
     var zone := str(context.get("zone", "Nearby Streets"))
-    var count := {"Camp Perimeter": 3, "Nearby Streets": 4, "Residential Blocks": 5, "Commercial Fringe": 6, "Industrial Edge": 7}.get(zone, 4)
+    var count: int = int({"Camp Perimeter": 3, "Nearby Streets": 4, "Residential Blocks": 5, "Commercial Fringe": 6, "Industrial Edge": 7}.get(zone, 4))
     if context.get("kind", "") == "ambush": count += 1
     var candidates := []
     for y in range(1, H - 1):
@@ -587,7 +587,7 @@ func shoot_barrel(cell: Vector2i):
 func blast_actor(actor: Dictionary, cell: Vector2i):
     var d := manhattan(cell, actor.pos)
     if d > 2: return
-    var dmg := max(2, 13 - d * 4)
+    var dmg: int = maxi(2, 13 - d * 4)
     actor.hp -= dmg
     if actor.controlled: stats.damage += dmg
     if actor.hp <= 0:
@@ -939,7 +939,7 @@ func map_origin() -> Vector2:
     var map_width := float(W * TILE)
     var player_center := (float(player.pos.x) + 0.5) * TILE
     var ideal_x := SCREEN_W * 0.5 - player_center
-    var x := clamp(ideal_x, SCREEN_W - map_width, 0.0)
+    var x: float = clampf(ideal_x, SCREEN_W - map_width, 0.0)
     return Vector2(x, MAP_TOP)
 
 func screen_to_cell(pos: Vector2) -> Vector2i:
