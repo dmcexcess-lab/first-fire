@@ -32,6 +32,7 @@ jobs:
           test -f game/scripts/FFData.gd
           test -f game/scripts/FFCombat.gd
           test -f game/scripts/FFTacticalVisuals.gd
+          test -f game/scripts/FFTacticalEnvironments.gd
           test -f game/scripts/FFExpeditionRules.gd
           test -f game/scripts/FFTacticalScenarios.gd
           test -f game/scripts/FFFieldEventsLegacy.gd
@@ -46,6 +47,8 @@ jobs:
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
           grep -q 'const TacticalVisuals = preload' game/scripts/Game.gd
+          grep -q 'const TacticalEnvironments = preload' game/scripts/FFCombat.gd
+          grep -q 'const Environments = preload' game/scripts/FFTacticalScenarios.gd
           grep -q 'const SAVE_SCHEMA_VERSION := 4' game/scripts/Game.gd
           grep -q 'var current_combat := {}' game/scripts/Game.gd
           grep -q 'func resolve_combat' game/scripts/Game.gd
