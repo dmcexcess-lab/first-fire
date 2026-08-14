@@ -2,6 +2,31 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Alpha 0.2 — Survivor Dashboard & Inspection Pass — 2026-08-13
+
+### Survivors
+- Rebuilt the **Survivors** tab as a compact dashboard instead of showing a selector and a full character sheet at the same time.
+- Added at-a-glance **CAMP / OUT / BUSY / LOST** counts.
+- Survivors currently outside camp are now promoted to their own **OUTSIDE CAMP** section with party names, destination, and live remaining time or decision/tactical status.
+- Added **RECENT RETURNS**, using persistent camp history to show the latest expedition return summaries and recovered resources without adding a second expedition-history system.
+- The roster now stays concise: name, condition, current activity, fatigue/stress, INSPECT, and SEND OUT when available.
+
+### Survivor Inspector
+- Added a full-screen survivor inspector with background, traits, condition/status, fatigue, stress, expedition count, leadership ability, all six skills with XP progress, relationships, extended personal history, and current loadout.
+- Equipment management moved into the inspector, including camp gear availability and EQUIP actions.
+- Treatment and SEND OUT remain available from the detailed survivor view.
+- Opening a survivor inspector **pauses settlement simulation** and closing it restores the previous pause state.
+
+### Camp Inventory / Item Information
+- Added **CAMP INVENTORY** access from the Survivors dashboard without changing the Camp tab.
+- Camp inventory now groups owned resources, crafted components, and unequipped gear.
+- Tapping an item opens detailed field notes plus currently implemented gameplay data such as equipment slot, combat value, protection, capacity, skill bonuses, ammo use, tool tags, and inventory size when applicable.
+- Inventory and item inspection use the same modal pause boundary as survivor inspection, so reading details never burns settlement time.
+
+### Web / Compatibility
+- Web **EXIT** remains explicitly pinned to save first and redirect to **Google** rather than leaving a frozen Godot canvas.
+- No simulation rules or save data shape changed; save schema remains **3**.
+
 ## Alpha 0.2 — Architecture Razor — 2026-08-13
 
 ### Source / Architecture
