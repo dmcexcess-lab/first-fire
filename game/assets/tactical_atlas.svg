@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" shape-rendering="crispEdges">
+<defs>
+  <g id="survivor">
+    <ellipse cx="16" cy="24" rx="10" ry="4" fill="#000" opacity=".35"/>
+    <rect x="10" y="19" width="5" height="8" fill="#253039"/><rect x="17" y="19" width="5" height="8" fill="#253039"/>
+    <rect x="8" y="11" width="16" height="10" rx="2" fill="currentColor" stroke="#11191c" stroke-width="1"/>
+    <rect x="5" y="13" width="4" height="7" fill="#d4a17d"/><rect x="23" y="13" width="4" height="7" fill="#d4a17d"/>
+    <circle cx="16" cy="8" r="5" fill="#2a2019"/><circle cx="16" cy="9" r="4" fill="#d4a17d"/>
+    <rect x="12" y="4" width="8" height="3" fill="#2a2019"/><rect x="14" y="12" width="4" height="3" fill="#d7a33d"/>
+    <rect x="15" y="2" width="2" height="3" fill="#f3f5e7"/>
+  </g>
+  <g id="zombie">
+    <ellipse cx="16" cy="24" rx="10" ry="4" fill="#000" opacity=".35"/>
+    <rect x="10" y="19" width="5" height="8" fill="#2c302e"/><rect x="17" y="19" width="5" height="8" fill="#2c302e"/>
+    <rect x="8" y="11" width="16" height="10" rx="2" fill="currentColor" stroke="#161b1a" stroke-width="1"/>
+    <rect x="4" y="12" width="5" height="8" fill="#7a816d"/><rect x="23" y="12" width="5" height="8" fill="#7a816d"/>
+    <circle cx="16" cy="8" r="5" fill="#354036"/><circle cx="16" cy="9" r="4" fill="#7a816d"/>
+    <rect x="12" y="15" width="4" height="4" fill="#6d2b28"/><rect x="15" y="2" width="2" height="3" fill="#c9d7c1"/>
+  </g>
+  <g id="corpse"><ellipse cx="16" cy="19" rx="11" ry="5" fill="#000" opacity=".35"/><rect x="6" y="15" width="17" height="7" rx="2" fill="currentColor"/><circle cx="26" cy="18" r="4" fill="#b58468"/><path d="M8 21 L3 27 M14 21 L20 28" stroke="#252b2d" stroke-width="3"/></g>
+</defs>
+<!-- ground tiles 0-10 -->
+<g transform="translate(0 0)"><rect width="32" height="32" fill="#34383a"/><path d="M3 5h3v2H3zm19 11h2v2h-2zM8 26h4v1H8z" fill="#272b2d"/></g>
+<g transform="translate(32 0)"><rect width="32" height="32" fill="#292d30"/><rect x="15" width="2" height="8" fill="#c2ad63"/><rect x="15" y="15" width="2" height="8" fill="#c2ad63"/><rect x="15" y="30" width="2" height="2" fill="#c2ad63"/></g>
+<g transform="translate(64 0)"><rect width="32" height="32" fill="#74736e"/><path d="M0 15h32M15 0v32" stroke="#595b57"/><path d="M0 1h32" stroke="#96958e"/></g>
+<g transform="translate(96 0)"><rect width="32" height="32" fill="#5b5e5b"/><path d="M5 5h3v2H5zm17 12h4v2h-4zM11 27h2v1h-2z" fill="#4b4e4b"/></g>
+<g transform="translate(128 0)"><rect width="32" height="32" fill="#858780"/><path d="M0 8h32M0 16h32M0 24h32M8 0v32M16 0v32M24 0v32" stroke="#6b6f6a"/></g>
+<g transform="translate(160 0)"><rect width="32" height="32" fill="#76593f"/><path d="M0 6h32M0 12h32M0 18h32M0 24h32M0 30h32M8 0v6M24 6v6M8 12v6M24 18v6" stroke="#59422f"/></g>
+<g transform="translate(192 0)"><rect width="32" height="32" fill="#514a52"/><path d="M0 4h32M0 12h32M0 20h32M0 28h32" stroke="#625a63"/><circle cx="5" cy="8" r="1" fill="#3e3940"/></g>
+<g transform="translate(224 0)"><rect width="32" height="32" fill="#727970"/><path d="M0 8h32M0 16h32M0 24h32M8 0v32M16 0v32M24 0v32" stroke="#60665f"/></g>
+<g transform="translate(256 0)"><rect width="32" height="32" fill="#41523a"/><path d="M5 9l1-4m5 18l-1-4m9-8l2-4m6 17l-1-4M15 29l1-3" stroke="#68785c"/></g>
+<g transform="translate(288 0)"><rect width="32" height="32" fill="#6c583f"/><circle cx="8" cy="8" r="2" fill="#584836"/><circle cx="23" cy="20" r="2" fill="#80684b"/><path d="M3 27h6M18 5h5" stroke="#554433"/></g>
+<g transform="translate(320 0)"><rect width="32" height="32" fill="#77716a"/><path d="M5 0L2 32M16 0l-3 32M27 0l-3 32" stroke="#625e59"/></g>
+<!-- walls and structural tiles 16-26 -->
+<g transform="translate(0 32)"><rect width="32" height="32" fill="#51423f"/><rect height="6" width="32" fill="#26292a"/><path d="M2 28h28M3 12h26M3 20h26" stroke="#342d2c"/></g>
+<g transform="translate(32 32)"><rect width="32" height="32" fill="#d5d0bf"/><rect height="6" width="32" fill="#444643"/><path d="M2 28h28M3 13h26" stroke="#aaa794"/></g>
+<g transform="translate(64 32)"><rect width="32" height="32" fill="#a38a6a"/><rect height="6" width="32" fill="#3b342e"/><path d="M2 28h28M3 13h26" stroke="#7f6a51"/></g>
+<g transform="translate(96 32)"><rect width="32" height="32" fill="#76716b"/><rect height="6" width="32" fill="#303437"/><path d="M2 28h28M3 13h26" stroke="#5d5955"/></g>
+<g transform="translate(128 32)"><rect width="32" height="32" fill="#8c8172"/><rect height="6" width="32" fill="#323534"/><path d="M2 28h28M3 13h26" stroke="#6f665b"/></g>
+<g transform="translate(160 32)"><rect width="32" height="32" fill="#59605f"/><rect height="6" width="32" fill="#202628"/><path d="M2 28h28M3 13h26" stroke="#444b4b"/></g>
+<g transform="translate(192 32)"><rect width="32" height="32" fill="#82786b"/><rect height="6" width="32" fill="#343231"/><path d="M2 28h28M3 13h26" stroke="#655d54"/></g>
+<g transform="translate(224 32)"><rect x="4" y="1" width="24" height="31" fill="#3a2a1e"/><rect x="8" y="4" width="16" height="26" fill="#7b5738" stroke="#261d17"/><circle cx="21" cy="17" r="2" fill="#d3b064"/></g>
+<g transform="translate(256 32)"><path d="M5 2h6v30H5z" fill="#2d2119"/><path d="M10 3l15 6v21l-15 2z" fill="#765238" stroke="#281f19"/></g>
+<g transform="translate(288 32)"><rect x="2" y="2" width="28" height="28" fill="#23383f"/><rect x="5" y="5" width="22" height="22" fill="#7cb7c8"/><path d="M16 5v22M5 16h22M6 6l20 20" stroke="#d8eff2" stroke-width="2"/></g>
+<g transform="translate(320 32)"><ellipse cx="16" cy="16" rx="9" ry="14" fill="#7f351f" stroke="#d7833b" stroke-width="2"/><rect x="8" y="13" width="16" height="5" fill="#b66c37"/></g>
+<!-- props 32-55 -->
+<g transform="translate(0 64)"><rect x="3" y="8" width="26" height="19" fill="#2f4a3b" stroke="#708276"/><rect x="2" y="6" width="28" height="6" fill="#1e3028"/><circle cx="8" cy="29" r="2"/><circle cx="24" cy="29" r="2"/></g>
+<g transform="translate(32 64)"><ellipse cx="16" cy="21" rx="10" ry="7" fill="#45433e"/><path d="M8 15l16 11M14 10v7" stroke="#7d735f" stroke-width="2"/></g>
+<g transform="translate(64 64)"><rect x="2" y="8" width="28" height="16" fill="#31202b"/><rect x="4" y="10" width="24" height="12" fill="#6f294a"/><path d="M6 16h20M7 12v8" stroke="#ff58aa" stroke-width="3"/></g>
+<g transform="translate(96 64)"><rect x="8" y="4" width="16" height="25" fill="#d8d4c5" stroke="#303639"/><rect x="10" y="7" width="12" height="8" fill="#2b3336"/><rect x="12" y="19" width="8" height="5" fill="#a94138"/><path d="M24 9l5 4v12" stroke="#25292a" stroke-width="2"/></g>
+<g transform="translate(128 64)"><rect x="3" y="9" width="26" height="15" rx="4" fill="#4f6570" stroke="#20272a"/><rect x="9" y="6" width="14" height="21" rx="3" fill="#698590"/><rect x="10" y="8" width="12" height="6" fill="#9ab8c3"/></g>
+<g transform="translate(160 64)"><rect x="2" y="9" width="28" height="19" fill="#6f5238" stroke="#b39368"/><path d="M3 14h26" stroke="#c3aa7c" stroke-width="2"/></g>
+<g transform="translate(192 64)"><rect x="5" y="2" width="22" height="28" fill="#4f5351" stroke="#919a94"/><path d="M7 8h18M7 15h18M7 22h18" stroke="#c6b05f" stroke-width="3"/></g>
+<g transform="translate(224 64)"><rect x="10" y="2" width="12" height="28" fill="#343638"/><rect x="4" y="4" width="24" height="12" fill="#c63e35"/><path d="M9 10h14" stroke="#f4d46f" stroke-width="2"/></g>
+<g transform="translate(256 64)"><rect x="4" y="5" width="24" height="23" fill="#d2e0e2" stroke="#5b7a86"/><rect x="7" y="8" width="18" height="6" fill="#5c90aa"/></g>
+<g transform="translate(288 64)"><rect x="3" y="12" width="26" height="15" fill="#714f43" stroke="#2b2020"/><rect x="5" y="6" width="22" height="13" fill="#956d5d"/><path d="M16 8v11" stroke="#68483e"/></g>
+<g transform="translate(320 64)"><circle cx="16" cy="16" r="11" fill="#765b3e" stroke="#b08b62" stroke-width="2"/><circle cx="16" cy="16" r="3" fill="#3b2c20"/></g>
+<g transform="translate(352 64)"><rect x="4" y="4" width="24" height="25" fill="#677b8b" stroke="#273139"/><rect x="6" y="6" width="20" height="8" fill="#ded8c6"/><rect x="7" y="15" width="18" height="12" fill="#486174"/></g>
+<g transform="translate(384 64)"><rect x="3" y="4" width="26" height="25" fill="#8c8c84" stroke="#c8c9c3"/><circle cx="11" cy="11" r="3" fill="#24292b"/><circle cx="22" cy="11" r="3" fill="#24292b"/></g>
+<g transform="translate(416 64)"><rect x="6" y="3" width="20" height="27" fill="#c9cecb" stroke="#696f6d"/><path d="M7 16h18M22 7v6" stroke="#7a807d"/></g>
+<g transform="translate(448 64)"><rect x="4" y="4" width="24" height="25" fill="#b9bbb6" stroke="#686d6b"/><circle cx="16" cy="17" r="7" fill="#455c65" stroke="#91a4a8" stroke-width="2"/></g>
+<g transform="translate(480 64)"><rect x="5" y="3" width="22" height="27" fill="#7f3e39" stroke="#2b2020"/><rect x="8" y="6" width="16" height="12" fill="#d4b85c"/><rect x="9" y="21" width="6" height="5" fill="#22292b"/></g>
+<g transform="translate(0 96)"><rect x="4" y="4" width="24" height="24" fill="#72583a" stroke="#b08a5b" stroke-width="2"/><path d="M5 5l22 22M27 5L5 27" stroke="#aa8051" stroke-width="2"/></g>
+<g transform="translate(32 96)"><path d="M3 7h26v4H3zm0 8h26v4H3zm0 8h26v4H3z" fill="#7a5b3a"/><path d="M7 5h4v23H7zm15 0h4v23h-4z" fill="#a37c4f"/></g>
+<g transform="translate(64 96)"><rect x="4" y="12" width="21" height="15" fill="#c58c2f" stroke="#343534"/><rect x="8" y="6" width="13" height="10" fill="#d39d3d"/><path d="M26 4v25h6" stroke="#2f3334" stroke-width="2"/><circle cx="8" cy="27" r="3"/><circle cx="21" cy="27" r="3"/></g>
+<g transform="translate(96 96)"><rect x="4" y="3" width="24" height="26" fill="#4d5b59" stroke="#202626" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="#202727" stroke="#81908c"/><rect x="6" y="5" width="5" height="4" fill="#d6a03c"/></g>
+<g transform="translate(128 96)"><circle cx="10" cy="19" r="8" fill="#526240"/><circle cx="21" cy="16" r="9" fill="#657347"/><circle cx="16" cy="24" r="7" fill="#3f5137"/></g>
+<g transform="translate(160 96)"><rect x="5" y="7" width="21" height="15" fill="none" stroke="#89918f" stroke-width="2"/><path d="M5 7L2 2" stroke="#89918f" stroke-width="2"/><circle cx="9" cy="25" r="2"/><circle cx="22" cy="25" r="2"/></g>
+<g transform="translate(192 96)"><circle cx="16" cy="17" r="12" fill="#4e4b47" stroke="#87817a" stroke-width="2"/><path d="M7 22L25 9" stroke="#8d6e4b" stroke-width="3"/></g>
+<g transform="translate(224 96)"><rect x="10" y="2" width="12" height="28" fill="#685b48"/><rect x="4" y="3" width="24" height="13" fill="#4c5556" stroke="#c2b487"/><path d="M7 9h18" stroke="#d6a45f" stroke-width="2"/></g>
+<!-- items 64-71 -->
+<g transform="translate(0 128)"><rect x="7" y="12" width="17" height="8" fill="#303638" stroke="#8e9a9a"/><path d="M24 10l6 3v6l-6 3z" fill="#b9c5bd"/><rect x="8" y="14" width="6" height="4" fill="#d6c34a"/></g>
+<g transform="translate(32 128)"><path d="M3 14h26" stroke="#33383a" stroke-width="3"/><rect x="12" y="9" width="9" height="10" fill="#454a4b" stroke="#9ea9a7"/><circle cx="16" cy="13" r="2" fill="#efe5a7"/></g>
+<g transform="translate(64 128)"><rect x="10" y="7" width="12" height="20" fill="#755230" stroke="#2a2521" stroke-width="2"/><circle cx="16" cy="17" r="7" fill="#f0b657" opacity=".8"/><path d="M12 6h8l3 5" stroke="#3c3e3d" stroke-width="2" fill="none"/></g>
+<g transform="translate(96 128)"><rect x="13" y="4" width="6" height="24" fill="#70e353" stroke="#d7ff9d"/><rect x="12" y="4" width="8" height="5" fill="#293129"/><rect x="12" y="24" width="8" height="5" fill="#293129"/></g>
+<g transform="translate(128 128)"><rect x="12" y="4" width="7" height="24" fill="#e74f3e" stroke="#ffad75"/><path d="M12 4h7l-3-4z" fill="#f8e6be"/></g>
+<g transform="translate(160 128)"><rect x="7" y="6" width="18" height="22" fill="#30383a" stroke="#777f80"/><rect x="10" y="10" width="12" height="9" fill="#1a2225"/><path d="M21 6L27 1" stroke="#777f80"/></g>
+<g transform="translate(192 128)"><circle cx="10" cy="16" r="6" fill="#2d3938" stroke="#82928e"/><circle cx="22" cy="16" r="6" fill="#2d3938" stroke="#82928e"/><rect x="13" y="13" width="6" height="6" fill="#303534"/></g>
+<g transform="translate(224 128)"><rect x="8" y="9" width="17" height="15" fill="#4c6a3d" stroke="#9ab16d"/><rect x="11" y="12" width="11" height="9" fill="#bdba4e"/><rect x="24" y="13" width="3" height="7" fill="#6b705f"/></g>
+<!-- survivor sprites 96-127 -->
+<g style="color:#334f65"><use href="#survivor" x="0" y="192"/><use href="#survivor" x="32" y="192" transform="rotate(90 48 208)"/><use href="#survivor" x="64" y="192" transform="rotate(180 80 208)"/><use href="#survivor" x="96" y="192" transform="rotate(270 112 208)"/></g>
+<g style="color:#6b4635"><use href="#survivor" x="128" y="192"/><use href="#survivor" x="160" y="192" transform="rotate(90 176 208)"/><use href="#survivor" x="192" y="192" transform="rotate(180 208 208)"/><use href="#survivor" x="224" y="192" transform="rotate(270 240 208)"/></g>
+<g style="color:#4f6348"><use href="#survivor" x="256" y="192"/><use href="#survivor" x="288" y="192" transform="rotate(90 304 208)"/><use href="#survivor" x="320" y="192" transform="rotate(180 336 208)"/><use href="#survivor" x="352" y="192" transform="rotate(270 368 208)"/></g>
+<g style="color:#694b63"><use href="#survivor" x="384" y="192"/><use href="#survivor" x="416" y="192" transform="rotate(90 432 208)"/><use href="#survivor" x="448" y="192" transform="rotate(180 464 208)"/><use href="#survivor" x="480" y="192" transform="rotate(270 496 208)"/></g>
+<g style="color:#7a5639"><use href="#survivor" x="0" y="224"/><use href="#survivor" x="32" y="224" transform="rotate(90 48 240)"/><use href="#survivor" x="64" y="224" transform="rotate(180 80 240)"/><use href="#survivor" x="96" y="224" transform="rotate(270 112 240)"/></g>
+<g style="color:#355e5b"><use href="#survivor" x="128" y="224"/><use href="#survivor" x="160" y="224" transform="rotate(90 176 240)"/><use href="#survivor" x="192" y="224" transform="rotate(180 208 240)"/><use href="#survivor" x="224" y="224" transform="rotate(270 240 240)"/></g>
+<g style="color:#4d4f55"><use href="#survivor" x="256" y="224"/><use href="#survivor" x="288" y="224" transform="rotate(90 304 240)"/><use href="#survivor" x="320" y="224" transform="rotate(180 336 240)"/><use href="#survivor" x="352" y="224" transform="rotate(270 368 240)"/></g>
+<g style="color:#755044"><use href="#survivor" x="384" y="224"/><use href="#survivor" x="416" y="224" transform="rotate(90 432 240)"/><use href="#survivor" x="448" y="224" transform="rotate(180 464 240)"/><use href="#survivor" x="480" y="224" transform="rotate(270 496 240)"/></g>
+<!-- zombie sprites 128-159 -->
+<g style="color:#4a4e45"><use href="#zombie" x="0" y="256"/><use href="#zombie" x="32" y="256" transform="rotate(90 48 272)"/><use href="#zombie" x="64" y="256" transform="rotate(180 80 272)"/><use href="#zombie" x="96" y="256" transform="rotate(270 112 272)"/></g>
+<g style="color:#5a4038"><use href="#zombie" x="128" y="256"/><use href="#zombie" x="160" y="256" transform="rotate(90 176 272)"/><use href="#zombie" x="192" y="256" transform="rotate(180 208 272)"/><use href="#zombie" x="224" y="256" transform="rotate(270 240 272)"/></g>
+<g style="color:#3f4d54"><use href="#zombie" x="256" y="256"/><use href="#zombie" x="288" y="256" transform="rotate(90 304 272)"/><use href="#zombie" x="320" y="256" transform="rotate(180 336 272)"/><use href="#zombie" x="352" y="256" transform="rotate(270 368 272)"/></g>
+<g style="color:#625648"><use href="#zombie" x="384" y="256"/><use href="#zombie" x="416" y="256" transform="rotate(90 432 272)"/><use href="#zombie" x="448" y="256" transform="rotate(180 464 272)"/><use href="#zombie" x="480" y="256" transform="rotate(270 496 272)"/></g>
+<g style="color:#3a3d37"><use href="#zombie" x="0" y="288"/><use href="#zombie" x="32" y="288" transform="rotate(90 48 304)"/><use href="#zombie" x="64" y="288" transform="rotate(180 80 304)"/><use href="#zombie" x="96" y="288" transform="rotate(270 112 304)"/></g>
+<g style="color:#59604f"><use href="#zombie" x="128" y="288"/><use href="#zombie" x="160" y="288" transform="rotate(90 176 304)"/><use href="#zombie" x="192" y="288" transform="rotate(180 208 304)"/><use href="#zombie" x="224" y="288" transform="rotate(270 240 304)"/></g>
+<g style="color:#4c5560"><use href="#zombie" x="256" y="288"/><use href="#zombie" x="288" y="288" transform="rotate(90 304 304)"/><use href="#zombie" x="320" y="288" transform="rotate(180 336 304)"/><use href="#zombie" x="352" y="288" transform="rotate(270 368 304)"/></g>
+<g style="color:#563c42"><use href="#zombie" x="384" y="288"/><use href="#zombie" x="416" y="288" transform="rotate(90 432 304)"/><use href="#zombie" x="448" y="288" transform="rotate(180 464 304)"/><use href="#zombie" x="480" y="288" transform="rotate(270 496 304)"/></g>
+<!-- corpses -->
+<g style="color:#334f65"><use href="#corpse" x="0" y="320"/></g><g style="color:#6b4635"><use href="#corpse" x="32" y="320"/></g><g style="color:#4f6348"><use href="#corpse" x="64" y="320"/></g><g style="color:#694b63"><use href="#corpse" x="96" y="320"/></g><g style="color:#7a5639"><use href="#corpse" x="128" y="320"/></g><g style="color:#355e5b"><use href="#corpse" x="160" y="320"/></g><g style="color:#4d4f55"><use href="#corpse" x="192" y="320"/></g><g style="color:#755044"><use href="#corpse" x="224" y="320"/></g>
+<g style="color:#4a4e45"><use href="#corpse" x="0" y="352"/></g><g style="color:#5a4038"><use href="#corpse" x="32" y="352"/></g><g style="color:#3f4d54"><use href="#corpse" x="64" y="352"/></g><g style="color:#625648"><use href="#corpse" x="96" y="352"/></g><g style="color:#3a3d37"><use href="#corpse" x="128" y="352"/></g><g style="color:#59604f"><use href="#corpse" x="160" y="352"/></g><g style="color:#4c5560"><use href="#corpse" x="192" y="352"/></g><g style="color:#563c42"><use href="#corpse" x="224" y="352"/></g>
+<!-- weapon and carried-item silhouettes 192-203 -->
+<g transform="translate(0 384)"><path d="M8 21L24 9" stroke="#c9d0cf" stroke-width="3"/><path d="M7 23l6-6" stroke="#6b4935" stroke-width="3"/></g>
+<g transform="translate(32 384)"><path d="M7 24L25 8" stroke="#8d6441" stroke-width="5"/><circle cx="26" cy="7" r="3" fill="#5b4330"/></g>
+<g transform="translate(64 384)"><path d="M10 25L21 12" stroke="#71503a" stroke-width="3"/><rect x="18" y="8" width="10" height="6" fill="#aeb5b4"/></g>
+<g transform="translate(96 384)"><path d="M5 26L25 6" stroke="#7d5b3a" stroke-width="3"/><path d="M25 6l4-4-2 8z" fill="#c5ccca"/></g>
+<g transform="translate(128 384)"><path d="M7 25L24 8l4 4" fill="none" stroke="#8d3d34" stroke-width="3"/></g>
+<g transform="translate(160 384)"><path d="M8 24L21 11" stroke="#795336" stroke-width="3"/><path d="M19 8h10l-7 8z" fill="#b5bcba"/></g>
+<g transform="translate(192 384)"><rect x="8" y="13" width="18" height="6" fill="#5d676a"/><rect x="11" y="18" width="6" height="7" fill="#23282a"/></g>
+<g transform="translate(224 384)"><path d="M5 18L28 11" stroke="#596265" stroke-width="4"/><rect x="7" y="16" width="10" height="5" fill="#765036"/></g>
+<use href="#survivor" x="256" y="384" opacity="0"/>
+<g transform="translate(256 384)"><rect x="7" y="12" width="17" height="8" fill="#303638" stroke="#8e9a9a"/><path d="M24 10l6 3v6l-6 3z" fill="#b9c5bd"/></g>
+<g transform="translate(288 384)"><path d="M3 14h26" stroke="#33383a" stroke-width="3"/><rect x="12" y="9" width="9" height="10" fill="#454a4b" stroke="#9ea9a7"/></g>
+<g transform="translate(320 384)"><rect x="10" y="7" width="12" height="20" fill="#755230" stroke="#2a2521" stroke-width="2"/><circle cx="16" cy="17" r="7" fill="#f0b657" opacity=".8"/></g>
+<g transform="translate(352 384)"><rect x="13" y="4" width="6" height="24" fill="#70e353" stroke="#d7ff9d"/></g>
+</svg>
