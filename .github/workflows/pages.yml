@@ -21,50 +21,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Unpack and patch First Fire
+      - name: Validate canonical source
         shell: bash
         run: |
           set -euxo pipefail
-          test -f first_fire_alpha01_web_ready.zip
-          mkdir -p src
-          unzip -q -o first_fire_alpha01_web_ready.zip -d src
-          test -f src/first_fire_alpha01_web_ready/project.godot
-
-          cat .deploy/alpha01_patch_00.part \
-              .deploy/alpha01_patch_01.part \
-              .deploy/alpha01_patch_02.part \
-              .deploy/alpha01_patch_03.part \
-              .deploy/alpha01_patch_04.part > /tmp/first_fire_alpha01.patch
-          cat .deploy/combat/combat_integration_00.b64 \
-              .deploy/combat/combat_integration_01.b64 \
-              .deploy/combat/combat_integration_02.b64 \
-              .deploy/combat/combat_integration_03.b64 > /tmp/combat_integration.b64
-          test "$(wc -c < /tmp/combat_integration.b64)" -eq 7528
-          base64 -d < /tmp/combat_integration.b64 | gzip -dc > /tmp/combat_integration.patch
-          base64 -d < .deploy/combat/FFCombat.gd.gz.b64 | gzip -dc > /tmp/FFCombat.gd
-          (
-            cd src/first_fire_alpha01_web_ready
-            patch -p0 --batch < /tmp/first_fire_alpha01.patch
-            patch -p0 --batch < "$GITHUB_WORKSPACE/.deploy/balance_pass.patch"
-            patch -p0 --batch < "$GITHUB_WORKSPACE/.deploy/save_schema_reset.patch"
-            patch -p0 --batch < /tmp/combat_integration.patch
-            cp /tmp/FFCombat.gd scripts/FFCombat.gd
-          )
-          grep -q 'injured_stranger_return_after' src/first_fire_alpha01_web_ready/scripts/Game.gd
-          grep -q 'const DAY_SECONDS := 120.0' src/first_fire_alpha01_web_ready/scripts/Game.gd
-          grep -q 'func _loot_item_target' src/first_fire_alpha01_web_ready/scripts/Game.gd
-          grep -q 'const SAVE_SCHEMA_VERSION := 3' src/first_fire_alpha01_web_ready/scripts/Game.gd
-          grep -q 'var current_combat := {}' src/first_fire_alpha01_web_ready/scripts/Game.gd
-          grep -q 'func resolve_combat' src/first_fire_alpha01_web_ready/scripts/Game.gd
-          grep -q 'FFCombat.gd' src/first_fire_alpha01_web_ready/scripts/Main.gd
-          grep -q 'signal encounter_finished' src/first_fire_alpha01_web_ready/scripts/FFCombat.gd
-          grep -q 'pointing/emulate_mouse_from_touch=false' src/first_fire_alpha01_web_ready/project.godot
-          grep -q '"save_schema": SAVE_SCHEMA_VERSION' src/first_fire_alpha01_web_ready/scripts/Game.gd
-          if grep -q 'func _normalize_loaded_state' src/first_fire_alpha01_web_ready/scripts/Game.gd; then exit 1; fi
-          grep -q 'Idle — recovering fatigue and stress automatically.' src/first_fire_alpha01_web_ready/scripts/Main.gd
-          grep -q '"Dirty Water": 30, "Raw Food": 24' src/first_fire_alpha01_web_ready/scripts/FFData.gd
-
-          sed -i 's#vram_texture_compression/for_mobile=true#vram_texture_compression/for_mobile=false#' src/first_fire_alpha01_web_ready/export_presets.cfg
+          test -f game/project.godot
+          test -f game/main.tscn
+          test -f game/scripts/Game.gd
+          test -f game/scripts/Main.gd
+          test -f game/scripts/FFData.gd
+          test -f game/scripts/FFCombat.gd
+          test -f game/scripts/FFExpeditionRules.gd
+          test -f game/scripts/FFTacticalScenarios.gd
+          test -f game/scripts/FFFieldEventsLegacy.gd
+          test -f game/scripts/FFSaveCodec.gd
+          test -f game/scripts/FFCampLifeRules.gd
+          test -f game/scripts/FFCampSocial.gd
+          test -f game/scripts/ci/FFArchitectureSmoke.gd
+          test ! -e first_fire_alpha01_web_ready.zip
+          test ! -d .deploy
+          test ! -d .razor
+          grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
+          grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
+          grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
+          grep -q 'const SAVE_SCHEMA_VERSION := 3' game/scripts/Game.gd
+          grep -q 'var current_combat := {}' game/scripts/Game.gd
+          grep -q 'func resolve_combat' game/scripts/Game.gd
+          grep -q 'sim_paused = true' game/scripts/Game.gd
+          grep -q 'signal encounter_finished' game/scripts/FFCombat.gd
+          grep -q 'pointing/emulate_mouse_from_touch=false' game/project.godot
+          grep -q 'vram_texture_compression/for_mobile=false' game/export_presets.cfg
+          if grep -q 'func _normalize_loaded_state' game/scripts/Game.gd; then exit 1; fi
 
       - name: Install Godot 4.7.1 and export templates
         shell: bash
@@ -78,12 +65,40 @@ jobs:
           unzip -q templates.tpz -d templates
           cp -a templates/templates/. "$HOME/.local/share/godot/export_templates/4.7.1.stable/"
 
+      - name: Architecture smoke test
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ./Godot_v4.7.1-stable_linux.x86_64 \
+            --headless \
+            --path "$GITHUB_WORKSPACE/game" \
+            --script res://scripts/ci/FFArchitectureSmoke.gd \
+            2>&1 | tee "$RUNNER_TEMP/architecture-smoke.log"
+          grep -q 'FIRST_FIRE_ARCHITECTURE_SMOKE_OK' "$RUNNER_TEMP/architecture-smoke.log"
+          if grep -Eqi 'SCRIPT ERROR|Parse Error|Failed to load script' "$RUNNER_TEMP/architecture-smoke.log"; then exit 1; fi
+
+      - name: Startup smoke test
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ./Godot_v4.7.1-stable_linux.x86_64 \
+            --headless \
+            --path "$GITHUB_WORKSPACE/game" \
+            --quit-after 3 \
+            2>&1 | tee "$RUNNER_TEMP/startup-smoke.log"
+          if grep -Eqi 'SCRIPT ERROR|Parse Error|Failed to load script' "$RUNNER_TEMP/startup-smoke.log"; then exit 1; fi
+
       - name: Export Web build
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p "$GITHUB_WORKSPACE/build/web"
-          ./Godot_v4.7.1-stable_linux.x86_64 --headless --path "$GITHUB_WORKSPACE/src/first_fire_alpha01_web_ready" --export-release Web "$GITHUB_WORKSPACE/build/web/index.html"
+          ./Godot_v4.7.1-stable_linux.x86_64 \
+            --headless \
+            --path "$GITHUB_WORKSPACE/game" \
+            --export-release Web "$GITHUB_WORKSPACE/build/web/index.html" \
+            2>&1 | tee "$RUNNER_TEMP/export.log"
+          if grep -Eqi 'SCRIPT ERROR|Parse Error|Failed to load script' "$RUNNER_TEMP/export.log"; then exit 1; fi
           touch "$GITHUB_WORKSPACE/build/web/.nojekyll"
 
       - name: Configure Pages
