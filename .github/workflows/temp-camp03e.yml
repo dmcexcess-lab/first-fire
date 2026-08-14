@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/scripts/temp_camp03e_patch.py'
+      - '.github/scripts/temp_camp03e_trigger.txt'
 
 permissions:
   contents: write
@@ -28,7 +29,7 @@ jobs:
           # The GitHub App cannot mutate workflow files from inside Actions.
           # Restore permanent CI here; it is updated separately after integration.
           git checkout HEAD -- .github/workflows/pages.yml
-          git rm -f .github/scripts/temp_camp03e_patch.py
+          git rm -f .github/scripts/temp_camp03e_patch.py .github/scripts/temp_camp03e_trigger.txt
           git add -A
           git commit -m "Add living tactical camp view"
           git push origin HEAD:main
