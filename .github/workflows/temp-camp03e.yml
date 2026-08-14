@@ -19,13 +19,16 @@ jobs:
           fetch-depth: 0
       - name: Apply living camp patch
         run: python3 .github/scripts/temp_camp03e_patch.py
-      - name: Commit integration and remove temporary writer
+      - name: Commit game changes only
         shell: bash
         run: |
           set -euxo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm -f .github/scripts/temp_camp03e_patch.py .github/workflows/temp-camp03e.yml
+          # The GitHub App cannot mutate workflow files from inside Actions.
+          # Restore permanent CI here; it is updated separately after integration.
+          git checkout HEAD -- .github/workflows/pages.yml
+          git rm -f .github/scripts/temp_camp03e_patch.py
           git add -A
           git commit -m "Add living tactical camp view"
           git push origin HEAD:main
