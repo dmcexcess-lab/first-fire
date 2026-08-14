@@ -1,6 +1,6 @@
 # First Fire — Beta Candidate Roadmap
 
-First Fire is now in **feature freeze**. The game loop and its final feature set are decided. Work from here to Beta/1.0 is completion, conversion, balance, content depth, readability, performance, and bug fixing—not new pillars.
+First Fire is now in **feature freeze** and shelved for Beta testing/release work. The game loop and its final feature set are decided. Work from here to 1.0 is completion, balance, verification, packaging, and bug fixing—not new pillars.
 
 ## Final game loop
 
@@ -91,21 +91,21 @@ A settlement becomes **mature** when it has:
 
 This produces a milestone event only. It does **not** end the save.
 
-## Beta → 1.0
+## Beta → Release 1.0 gate
 
-Once the above completion work is stable, focus only on:
+First Fire does **not** become 1.0 because a calendar date or feature count says so. Release happens only when all of these gates are satisfied:
 
-- long-run economy and progression balance;
-- tactical repetition and encounter conversion;
-- camp politics/event tuning;
-- item/building costs and usefulness;
-- onboarding/tutorial clarity;
-- final 2D art/UI/audio feedback;
-- mobile/browser performance;
-- accessibility/readability;
-- save stability;
-- bug fixing;
-- release packaging;
-- non-exploitative monetization only after gameplay is stable.
+1. **No known release-blocking bugs.** Normal play, save/load, browser lifecycle, tactical encounters, camp simulation, crafting/building, and long-run play must survive Beta testing without known blockers.
+2. **All systems and timers are balanced.** Economy, resource use, construction, crafting, recovery, expedition cadence, camp events, politics, recruitment, and progression must feel coherent across early, middle, and mature settlement play.
+3. **Final game speed is decided.** The current two-real-minute game day is test tuning, not automatically the shipping answer. Beta determines the final simulation speed and timer scale.
+4. **Combat and tactical systems are balanced and reliable.** Action timing, movement, vision, lighting, sound, stealth, melee, firearms, infected behavior, hazards, objectives, loot, exits, and encounter frequency must all work consistently and produce the intended survival/extraction feel.
+5. **Ads work under the existing non-exploitative policy.** Advertising/ad-free purchase behavior must function without influencing gameplay systems or progression.
+6. **Android APK release build is complete and tested.** The Android package is the release target for 1.0; packaging/device testing is part of the release gate, not an afterthought.
+
+When all six gates pass, that build becomes **First Fire 1.0**. Until then the project remains a Beta candidate / Beta test project with no new feature work.
+
+## Shelved development state
+
+As of this scope lock, First Fire is intentionally shelved while work moves to the next project. Returning to First Fire means **Beta verification against the release gate above**, not reopening the feature roadmap.
 
 Schema 7 is intended as the final deliberate Alpha reset. Once Beta testing begins, save compatibility becomes a player-facing promise and schema changes should be treated much more conservatively.
