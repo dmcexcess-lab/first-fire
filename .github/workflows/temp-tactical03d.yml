@@ -22,7 +22,7 @@ jobs:
             echo '0.3D already integrated.'
             exit 0
           fi
-          python3 .github/scripts/temp_tactical03d_patch.py | tee /tmp/tactical03d.log
+          python3 .github/scripts/temp_tactical03d_runner.py | tee /tmp/tactical03d.log
           grep -q 'FIRST_FIRE_TACTICAL_03D_PATCH_OK' /tmp/tactical03d.log
           grep -q 'const SAVE_SCHEMA_VERSION := 5' game/scripts/Game.gd
           grep -q 'var scene_time := "day"' game/scripts/FFCombat.gd
