@@ -177,7 +177,7 @@ const TACTICAL_GEAR_UNLOCKS_BY_ZONE := {
         "School Backpack", "Improvised Pack"
     ],
     "Nearby Streets": [
-        "Baseball Bat", "Hammer", "Headlamp", "Lantern", "Pry Tool",
+        "Baseball Bat", "Hammer", "Improvised Spear", "Headlamp", "Lantern", "Pry Tool",
         "Work Jacket", "Heavy Boots", "First Aid Kit"
     ],
     "Residential Blocks": [
