@@ -1,0 +1,33 @@
+name: Temporary worker label parse fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fix worker label source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if grep -Fq 'worker_text = "%s\nTechnical %d' game/scripts/Main.gd; then
+            echo 'Worker label already escaped.'
+            exit 0
+          fi
+          python3 .github/scripts/temp_worker_label_fix.py | tee /tmp/worker-label.log
+          grep -q 'FIRST_FIRE_WORKER_LABEL_FIX_OK' /tmp/worker-label.log
+          grep -Fq 'worker_text = "%s\nTechnical %d' game/scripts/Main.gd
+          test ! -e .github/scripts/temp_worker_label_fix.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game/scripts/Main.gd .github/scripts/temp_worker_label_fix.py
+          git commit -m 'Fix worker picker label string'
+          git push origin HEAD:main
