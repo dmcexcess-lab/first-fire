@@ -866,8 +866,7 @@ func _worker_picker():
 
     var worker_text := "Unknown survivor"
     if current != null:
-        worker_text = "%s
-Technical %d  •  %d/%d" % [current["name"], int(current["skills"]["Technical"]), current_index + 1, avail.size()]
+        worker_text = "%s\nTechnical %d  •  %d/%d" % [current["name"], int(current["skills"]["Technical"]), current_index + 1, avail.size()]
     var current_label = _make_label(worker_text, 13)
     current_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     current_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
