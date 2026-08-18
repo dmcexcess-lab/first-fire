@@ -77,6 +77,15 @@ func _ready():
 func has_save_game():
     return SaveCodec.exists(SAVE_PATH)
 
+func tutorial_needed() -> bool:
+    # Only saves created after onboarding was added carry this flag. Existing
+    # schema-7 Beta saves are not interrupted by a retroactive tutorial.
+    return flags.has("tutorial_complete") and not bool(flags.get("tutorial_complete", true))
+
+func complete_tutorial() -> void:
+    flags["tutorial_complete"] = true
+    save_game()
+
 func new_game():
     day = 1
     day_elapsed = 0.0
@@ -100,7 +109,7 @@ func new_game():
     for site in D.SPECIAL_SITES.keys():
         special_sites[site] = {"discovered": false, "cleared": false}
     history = []
-    flags = {}
+    flags = {"tutorial_complete": false}
     policies = {}
     current_event = {}
     event_queue = []

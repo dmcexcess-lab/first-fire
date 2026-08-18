@@ -6,6 +6,25 @@ const SurvivorPanel = preload("res://scripts/FFSurvivorPanel.gd")
 const InspectorOverlay = preload("res://scripts/FFInspector.gd")
 const CampView = preload("res://scripts/FFCampView.gd")
 
+const TUTORIAL_STEPS := [
+    {
+        "title": "KEEP THE FIRE GOING",
+        "body": "Camp time runs whenever the game is unpaused. Each survivor needs food and clean water each day. Use CAMP to watch supplies, current work, shelter and the settlement's recent history."
+    },
+    {
+        "title": "SEND ONE SURVIVOR OUT",
+        "body": "Open SURVIVORS, inspect someone, then SEND OUT. Choose an unlocked zone. Expeditions take real camp time and can become tactical encounters. Getting to an EXIT is always a valid way to survive."
+    },
+    {
+        "title": "CRAFT AND BUILD",
+        "body": "CRAFT turns raw food and dirty water into safe supplies and later makes equipment. BUILD expands shelter and camp capability. Use the left/right worker buttons to choose any currently available survivor."
+    },
+    {
+        "title": "TACTICAL SURVIVAL",
+        "body": "Outside camp, movement and actions spend tactical ticks. Facing, darkness, sound, doors, injuries and equipment matter. You usually do not need to kill everything: take what you can, rescue who you can, and escape alive."
+    },
+]
+
 var current_tab := "Camp"
 var selected_worker_id := -1
 var selected_survivor_id := -1
@@ -41,6 +60,14 @@ var load_game_button: Button
 var nav_buttons := {}
 var camp_view: Control
 var menu_camp_view: Control
+
+var tutorial_overlay: ColorRect
+var tutorial_title: Label
+var tutorial_body: Label
+var tutorial_progress: Label
+var tutorial_next_button: Button
+var tutorial_index := 0
+var tutorial_restore_paused := false
 
 func _ready():
     _build_ui()
@@ -164,14 +191,12 @@ func _build_ui():
     _build_main_menu()
     _build_inspector_overlay()
     _build_combat_overlay()
+    _build_tutorial_overlay()
 
     reset_confirm = ConfirmationDialog.new()
     reset_confirm.title = "Reset Alpha Save?"
     reset_confirm.dialog_text = "This deletes the current First Fire run and starts over."
-    reset_confirm.confirmed.connect(func():
-        Game.new_game()
-        _ensure_valid_selection()
-    )
+    reset_confirm.confirmed.connect(_reset_alpha_save)
     add_child(reset_confirm)
 
     new_game_confirm = ConfirmationDialog.new()
@@ -248,6 +273,110 @@ func _build_main_menu():
     note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     v.add_child(note)
+
+func _build_tutorial_overlay():
+    tutorial_overlay = ColorRect.new()
+    tutorial_overlay.color = Color(0, 0, 0, 0.88)
+    tutorial_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    tutorial_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    tutorial_overlay.visible = false
+    add_child(tutorial_overlay)
+
+    var center = CenterContainer.new()
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    tutorial_overlay.add_child(center)
+
+    var panel = PanelContainer.new()
+    panel.custom_minimum_size = Vector2(350, 0)
+    center.add_child(panel)
+
+    var margin = MarginContainer.new()
+    margin.add_theme_constant_override("margin_left", 20)
+    margin.add_theme_constant_override("margin_right", 20)
+    margin.add_theme_constant_override("margin_top", 20)
+    margin.add_theme_constant_override("margin_bottom", 20)
+    panel.add_child(margin)
+
+    var v = VBoxContainer.new()
+    v.add_theme_constant_override("separation", 12)
+    margin.add_child(v)
+
+    tutorial_progress = _make_label("", 12)
+    tutorial_progress.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    v.add_child(tutorial_progress)
+
+    tutorial_title = _make_label("", 23)
+    tutorial_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    tutorial_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    v.add_child(tutorial_title)
+
+    tutorial_body = _make_label("", 15)
+    tutorial_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    v.add_child(tutorial_body)
+
+    var buttons = HBoxContainer.new()
+    buttons.add_theme_constant_override("separation", 8)
+    v.add_child(buttons)
+
+    var skip = Button.new()
+    skip.text = "SKIP"
+    skip.custom_minimum_size = Vector2(105, 48)
+    skip.pressed.connect(_finish_tutorial)
+    buttons.add_child(skip)
+
+    tutorial_next_button = Button.new()
+    tutorial_next_button.text = "NEXT"
+    tutorial_next_button.custom_minimum_size = Vector2(0, 48)
+    tutorial_next_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    tutorial_next_button.pressed.connect(_advance_tutorial)
+    buttons.add_child(tutorial_next_button)
+
+func _show_tutorial_if_needed():
+    if tutorial_overlay == null or not Game.tutorial_needed() or not Game.current_combat.is_empty():
+        return
+    tutorial_index = 0
+    tutorial_restore_paused = Game.sim_paused
+    Game.set_paused(true)
+    _refresh_tutorial_step()
+    tutorial_overlay.visible = true
+    tutorial_overlay.move_to_front()
+
+func _refresh_tutorial_step():
+    if tutorial_overlay == null or TUTORIAL_STEPS.is_empty():
+        return
+    tutorial_index = clampi(tutorial_index, 0, TUTORIAL_STEPS.size() - 1)
+    var step: Dictionary = TUTORIAL_STEPS[tutorial_index]
+    tutorial_progress.text = "QUICK START  •  %d / %d" % [tutorial_index + 1, TUTORIAL_STEPS.size()]
+    tutorial_title.text = str(step.get("title", "FIRST FIRE"))
+    tutorial_body.text = str(step.get("body", ""))
+    tutorial_next_button.text = "GOT IT" if tutorial_index == TUTORIAL_STEPS.size() - 1 else "NEXT"
+
+func _advance_tutorial():
+    if tutorial_index >= TUTORIAL_STEPS.size() - 1:
+        _finish_tutorial()
+        return
+    tutorial_index += 1
+    _refresh_tutorial_step()
+
+func _finish_tutorial():
+    if tutorial_overlay != null:
+        tutorial_overlay.visible = false
+    Game.complete_tutorial()
+    if not Game.current_combat.is_empty():
+        Game.set_paused(true)
+    else:
+        Game.set_paused(tutorial_restore_paused)
+    _refresh_all()
+
+func _reset_alpha_save():
+    Game.new_game()
+    Game.save_existed_on_boot = true
+    selected_survivor_id = -1
+    selected_worker_id = -1
+    current_tab = "Camp"
+    _ensure_valid_selection()
+    _refresh_all()
+    _show_tutorial_if_needed()
 
 func _build_event_overlay():
     event_overlay = ColorRect.new()
@@ -406,6 +535,7 @@ func _close_main_menu():
         return
     Game.set_paused(false)
     _refresh_all()
+    _show_tutorial_if_needed()
 
 func _on_new_game_menu_pressed():
     if Game.save_existed_on_boot:
@@ -424,6 +554,7 @@ func _start_new_game_from_menu():
         main_menu_overlay.visible = false
     Game.set_paused(false)
     _refresh_all()
+    _show_tutorial_if_needed()
 
 func _load_game_from_menu():
     Game.load_game()
@@ -699,28 +830,59 @@ func _draw_survivors():
 func _worker_picker():
     var box = VBoxContainer.new()
     box.add_child(_make_label("Worker", 13))
-    var option = OptionButton.new()
     var avail = Game.available_survivors()
-    var selected_index = 0
     if avail.is_empty():
-        option.add_item("No available survivor")
-        option.disabled = true
         selected_worker_id = -1
-    else:
-        var valid_current = false
-        for a in avail:
-            if int(a["id"]) == selected_worker_id: valid_current = true
-        if not valid_current: selected_worker_id = int(avail[0]["id"])
-        var idx = 0
-        for s in avail:
-            option.add_item("%s — Technical %d" % [s["name"], int(s["skills"]["Technical"])])
-            option.set_item_metadata(idx, int(s["id"]))
-            if int(s["id"]) == selected_worker_id: selected_index = idx
-            idx += 1
-        option.select(selected_index)
-        option.item_selected.connect(_on_worker_selected.bind(option))
-    option.custom_minimum_size = Vector2(0, 46)
-    box.add_child(option)
+        var none = _make_label("No available survivor", 14)
+        none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        none.custom_minimum_size = Vector2(0, 46)
+        box.add_child(none)
+        return box
+
+    var valid_current := false
+    for survivor in avail:
+        if int(survivor["id"]) == selected_worker_id:
+            valid_current = true
+            break
+    if not valid_current:
+        selected_worker_id = int(avail[0]["id"])
+
+    var current: Variant = Game.get_survivor(selected_worker_id)
+    var current_index := 0
+    for i in range(avail.size()):
+        if int(avail[i]["id"]) == selected_worker_id:
+            current_index = i
+            break
+
+    var row = HBoxContainer.new()
+    row.add_theme_constant_override("separation", 6)
+
+    var previous = Button.new()
+    previous.text = "◀"
+    previous.custom_minimum_size = Vector2(54, 48)
+    previous.disabled = avail.size() <= 1
+    previous.pressed.connect(_on_worker_cycle.bind(-1))
+    row.add_child(previous)
+
+    var worker_text := "Unknown survivor"
+    if current != null:
+        worker_text = "%s
+Technical %d  •  %d/%d" % [current["name"], int(current["skills"]["Technical"]), current_index + 1, avail.size()]
+    var current_label = _make_label(worker_text, 13)
+    current_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    current_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    current_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    current_label.custom_minimum_size = Vector2(0, 48)
+    row.add_child(current_label)
+
+    var next = Button.new()
+    next.text = "▶"
+    next.custom_minimum_size = Vector2(54, 48)
+    next.disabled = avail.size() <= 1
+    next.pressed.connect(_on_worker_cycle.bind(1))
+    row.add_child(next)
+
+    box.add_child(row)
     return box
 
 func _format_cost(cost, component_cost = {}):
@@ -779,8 +941,20 @@ func _on_tab_pressed(tab):
     _refresh_content()
     content_scroll.scroll_vertical = 0
 
-func _on_worker_selected(index, option):
-    selected_worker_id = int(option.get_item_metadata(index))
+func _on_worker_cycle(direction: int):
+    var avail = Game.available_survivors()
+    if avail.size() <= 1:
+        return
+    var current_index := 0
+    for i in range(avail.size()):
+        if int(avail[i]["id"]) == selected_worker_id:
+            current_index = i
+            break
+    var next_index := posmod(current_index + direction, avail.size())
+    selected_worker_id = int(avail[next_index]["id"])
+    # Rebuild after the pressed signal unwinds instead of deleting the active
+    # control tree from inside its own input callback.
+    call_deferred("_refresh_content")
 
 func _open_survivor_inspector(id):
     selected_survivor_id = int(id)

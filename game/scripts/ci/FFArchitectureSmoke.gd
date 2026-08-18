@@ -86,6 +86,7 @@ func _init() -> void:
     if not _check(str(TacticalVisuals.field_gear_visual("Leather Jacket").get("badge", "")) == "C", "field clothing badge"): return
     if not _check(str(TacticalVisuals.field_gear_visual("Hiking Pack").get("badge", "")) == "P", "field pack badge"): return
     if not _check(D.BUILD_ORDER.size() == 15 and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory"), "final building tree"): return
+    if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "founder tutorial lighting seam"): return
 
     var chatter_rng := RandomNumberGenerator.new()
     chatter_rng.seed = 44

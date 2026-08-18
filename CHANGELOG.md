@@ -2,6 +2,18 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Beta Candidate — Onboarding & Worker Picker Fix — 2026-08-17
+
+### Craft / Build Worker Selection
+- Replaced the Craft/Build worker `OptionButton` popup with direct previous/next survivor controls. This avoids the Web/mobile dropdown path that could leave the Craft screen unresponsive when changing workers.
+- Worker switching now defers the content rebuild until the button input callback has completed, avoiding deletion/reconstruction of the active control tree from inside its own signal.
+
+### New-Save Quick Start
+- Added a compact four-step first-save tutorial covering camp food/water and time, sending a survivor out, Craft/Build worker assignment, and tactical ticks/vision/sound/escape.
+- The simulation pauses while the quick-start overlay is open and restores its prior pause state when the tutorial is finished or skipped.
+- New saves persist `tutorial_complete`; existing schema-7 Beta saves without that flag are treated as already onboarded and are not interrupted.
+- Save schema remains **7**.
+
 ## Beta Candidate — Feature Freeze & Living Camp Politics — 2026-08-13
 
 ### Final Scope / Population
