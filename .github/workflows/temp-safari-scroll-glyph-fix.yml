@@ -1,0 +1,39 @@
+name: Temporary Safari scroll and glyph fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply Safari scroll and glyph fix
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if grep -q 'Beta Candidate — Safari Scroll & Font-Safe Controls' CHANGELOG.md; then
+            echo 'Fix already applied.'
+            exit 0
+          fi
+          test -f .github/scripts/temp_safari_scroll_glyph_fix.py
+          python3 .github/scripts/temp_safari_scroll_glyph_fix.py | tee /tmp/safari-scroll-glyph.log
+          grep -q 'FIRST_FIRE_SAFARI_SCROLL_GLYPH_FIX_OK' /tmp/safari-scroll-glyph.log
+          test -f game/scripts/FFMobileScroll.gd
+          grep -q 'MobileScroll.configure(content_scroll)' game/scripts/Main.gd
+          grep -q 'previous.text = "PREV"' game/scripts/Main.gd
+          grep -q 'next.text = "NEXT"' game/scripts/Main.gd
+          grep -q 'MobileScroll.configure(scroll)' game/scripts/FFInspector.gd
+          grep -q 'mobile scrollbar touch mapping' game/scripts/ci/FFArchitectureSmoke.gd
+          test ! -e .github/scripts/temp_safari_scroll_glyph_fix.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game/scripts/Main.gd game/scripts/FFInspector.gd game/scripts/FFMobileScroll.gd game/scripts/ci/FFArchitectureSmoke.gd CHANGELOG.md .github/scripts/temp_safari_scroll_glyph_fix.py
+          git commit -m 'Fix Safari scrollbars and worker glyphs'
+          git push origin HEAD:main
