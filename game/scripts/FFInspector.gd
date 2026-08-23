@@ -2,6 +2,7 @@ extends ColorRect
 class_name FFInspector
 
 const D = preload("res://scripts/FFData.gd")
+const MobileScroll = preload("res://scripts/FFMobileScroll.gd")
 
 signal send_survivor(survivor_id: int)
 
@@ -113,6 +114,7 @@ func _build_shell() -> void:
     scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    MobileScroll.configure(scroll)
     body = VBoxContainer.new()
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation", 7)

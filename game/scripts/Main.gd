@@ -5,6 +5,7 @@ const FFCombat = preload("res://scripts/FFCombat.gd")
 const SurvivorPanel = preload("res://scripts/FFSurvivorPanel.gd")
 const InspectorOverlay = preload("res://scripts/FFInspector.gd")
 const CampView = preload("res://scripts/FFCampView.gd")
+const MobileScroll = preload("res://scripts/FFMobileScroll.gd")
 
 const TUTORIAL_STEPS := [
     {
@@ -163,6 +164,7 @@ func _build_ui():
     content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     content_scroll.clip_contents = true
+    MobileScroll.configure(content_scroll)
     content_box = VBoxContainer.new()
     content_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     content_box.custom_minimum_size = Vector2(0, 0)
@@ -858,8 +860,8 @@ func _worker_picker():
     row.add_theme_constant_override("separation", 6)
 
     var previous = Button.new()
-    previous.text = "◀"
-    previous.custom_minimum_size = Vector2(54, 48)
+    previous.text = "PREV"
+    previous.custom_minimum_size = Vector2(64, 48)
     previous.disabled = avail.size() <= 1
     previous.pressed.connect(_on_worker_cycle.bind(-1))
     row.add_child(previous)
@@ -875,8 +877,8 @@ func _worker_picker():
     row.add_child(current_label)
 
     var next = Button.new()
-    next.text = "▶"
-    next.custom_minimum_size = Vector2(54, 48)
+    next.text = "NEXT"
+    next.custom_minimum_size = Vector2(64, 48)
     next.disabled = avail.size() <= 1
     next.pressed.connect(_on_worker_cycle.bind(1))
     row.add_child(next)

@@ -13,6 +13,7 @@ const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
 const CampSocial = preload("res://scripts/FFCampSocial.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
+const MobileScroll = preload("res://scripts/FFMobileScroll.gd")
 
 func _init() -> void:
     var visual_rng := RandomNumberGenerator.new()
@@ -59,6 +60,8 @@ func _init() -> void:
     if not _check(rates.x > 0.0 and rates.y > 0.0, "camp recovery rules"): return
     if not _check(abs(CampLifeRules.fatigue_gain(5.0) - 10.0) < 0.001, "fatigue gain multiplier"): return
     if not _check(CampSocial.relationship_label(70) == "Close", "social relationship bands"): return
+    if not _check(MobileScroll.TOUCH_BAR_WIDTH >= 28.0, "mobile scrollbar touch target"): return
+    if not _check(MobileScroll.touch_scroll_value(50.0, 100.0, 0.0, 100.0, 20.0) == 40, "mobile scrollbar touch mapping"): return
 
     var survivor_look: Dictionary = TacticalVisuals.survivor_appearance(visual_rng)
     if not _check(survivor_look.has("sprite") and survivor_look.has("accent"), "survivor sprite identity"): return

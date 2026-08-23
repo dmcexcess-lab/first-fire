@@ -2,6 +2,18 @@
 
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
+## Beta Candidate — Safari Scroll & Font-Safe Controls — 2026-08-22
+
+### Mobile / Safari Scrolling
+- Main Camp/Craft/Build/Survivor content and the survivor/inventory inspector now share a dedicated touch-scroll adapter instead of depending on mouse emulation for the scrollbar thumb.
+- Vertical scrollbars use a wider 30 px touch target and respond directly to `InputEventScreenTouch` / `InputEventScreenDrag`, which keeps tactical touch-to-mouse emulation disabled and avoids reintroducing combat double-input risk.
+- Added deterministic architecture smoke coverage for the touch target and scrollbar position mapping.
+
+### Missing-Glyph Controls
+- Replaced the worker picker's Unicode triangle pseudo-icons with font-safe `PREV` / `NEXT` buttons. The triangles could render as the default font's missing-character box on Web and desktop builds.
+- Tactical/camp atlas mappings were inspected during this pass; authored environment prop kinds already map to real atlas regions, so the visible missing-character-style boxes were treated as font glyphs rather than missing sprite assets.
+- Save schema remains **7**.
+
 ## Beta Candidate — Onboarding & Worker Picker Fix — 2026-08-17
 
 ### Craft / Build Worker Selection
