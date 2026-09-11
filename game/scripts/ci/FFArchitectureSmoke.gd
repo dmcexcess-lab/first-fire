@@ -47,6 +47,10 @@ func _init() -> void:
     if not _check(TacticalLighting.secondary_item_from_equipment({"Secondary": "Flashlight", "Tool": ""}) == "Flashlight", "secondary light lookup"): return
     if not _check(TacticalLighting.item_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(10, 5), "Flashlight") > 0.0, "flashlight forward cone"): return
     if not _check(TacticalLighting.item_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(2, 5), "Flashlight") == 0.0, "flashlight rear cutoff"): return
+    var combat_source := FileAccess.get_file_as_string("res://scripts/FFCombat.gd")
+    if not _check(combat_source.contains("func toggle_player_light()"), "portable light tactical toggle"): return
+    if not _check(combat_source.contains("\"player_light_on\": player_light_on"), "portable light state persists"): return
+    if not _check(combat_source.contains("KEY_L: toggle_player_light()"), "portable light keyboard fallback"): return
     if not _check(TacticalEnvironments.build_layout("gas_station", 0).get("lights", []).size() >= 3, "gas station authored lights"): return
     var scene_state: Dictionary = TacticalScenarios.pick_scene_state("gas_station", visual_rng)
     if not _check(scene_state.has("time_of_day") and scene_state.has("encounter_hour") and scene_state.has("encounter_time") and scene_state.has("power_on"), "scene clock and power state"): return

@@ -1,3 +1,11 @@
+## Beta Candidate — Tactical Clock & Portable Light Control — 2026-09-11
+
+- Tactical encounters now use the settlement clock at encounter creation, exposing DAWN / DAY / DUSK / NIGHT instead of an unrelated random day/night roll.
+- Dawn and dusk use intermediate ambient/daylight strength, and the tactical location header carries the encounter clock time.
+- Equipped Secondary lights now have an explicit touch-safe LIGHT ON / LIGHT OFF control plus an `L` keyboard fallback. Switching a light is immediate, recalculates visibility/detectability, and persists across tactical save/resume without advancing tactical time.
+- Portable-light view bonuses and sound-awareness assistance only apply while the light is switched on.
+- Save schema remains 7; the added tactical runtime flag is additive.
+
 ## Beta Candidate — Live Survivor Vitals & Treatment Feedback — 2026-09-11
 
 - Survivor roster cards now update fatigue, stress, condition, activity/recovery state, expedition countdowns, and SEND OUT availability in place on the normal simulation tick; switching tabs is no longer required to see values change.

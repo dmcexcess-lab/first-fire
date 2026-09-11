@@ -79,6 +79,7 @@ var muzzle_flash_facing := Vector2i(1, 0)
 var muzzle_flash_until_ms := -1
 var fx_active_last_frame := false
 var lighting_redraw_accum := 0.0
+var player_light_on := true
 
 var btn_turn_left := Rect2(8, 700, 136, 78)
 var btn_crouch := Rect2(28, 788, 96, 42)
@@ -87,6 +88,7 @@ var btn_turn_right := Rect2(246, 700, 136, 78)
 var btn_back := Rect2(264, 788, 108, 42)
 var btn_guard := Rect2(148, 654, 98, 42)
 var btn_shove := Rect2(148, 744, 98, 42)
+var btn_light := Rect2(148, 700, 98, 40)
 
 func _ready():
     font = ThemeDB.fallback_font
@@ -453,6 +455,7 @@ func restore_runtime():
         player["facing"] = DIRS[posmod(int(runtime["facing"]), 4)]
     player["crouched"] = bool(runtime.get("crouched", false))
     player["guarding"] = bool(runtime.get("guarding", false))
+    player_light_on = bool(runtime.get("player_light_on", true))
     if str(context.get("kind", "")) == "explore":
         if runtime.has("explore_cells"):
             explore_cells.clear()
@@ -546,6 +549,7 @@ func persist_runtime():
         "facing": DIRS.find(player.facing),
         "crouched": bool(player.crouched),
         "guarding": bool(player.get("guarding", false)),
+        "player_light_on": player_light_on,
         "objective_done": objective_done,
         "rescue_hp": int(rescuee.get("hp", -1)) if not rescuee.is_empty() else -1,
         "rescue_pos": [rescuee.pos.x, rescuee.pos.y] if not rescuee.is_empty() else [-1, -1],
@@ -593,6 +597,7 @@ func _input(e):
             KEY_C: toggle_crouch()
             KEY_G: guard()
             KEY_X: shove()
+            KEY_L: toggle_player_light()
             KEY_F, KEY_SPACE: interact()
 
 func dispatch_point(pos: Vector2):
@@ -605,6 +610,7 @@ func dispatch_point(pos: Vector2):
     if btn_back.has_point(pos): step_backward(); return
     if btn_crouch.has_point(pos): toggle_crouch(); return
     if btn_guard.has_point(pos): guard(); return
+    if btn_light.has_point(pos): toggle_player_light(); return
     if btn_shove.has_point(pos): shove(); return
     if pos.y < MAP_TOP or pos.y >= CONTROL_TOP: return
     var cell := screen_to_cell(pos)
@@ -637,6 +643,19 @@ func dispatch_point(pos: Vector2):
                 queue_redraw()
             return
         if barrels.has(cell): shoot_barrel(cell); return
+
+func toggle_player_light() -> void:
+    var item := str(player.get("secondary", ""))
+    if not TacticalLighting.item_emits_light(item):
+        msg = "No portable light equipped."
+        queue_redraw()
+        return
+    player_light_on = not player_light_on
+    msg = "%s %s." % [item, "on" if player_light_on else "off"]
+    recalc_visibility()
+    refresh_intents()
+    persist_runtime()
+    queue_redraw()
 
 func guarded_action(action: String, callable: Callable):
     var now := Time.get_ticks_msec()
@@ -1250,7 +1269,7 @@ func emit_noise(source: Vector2i, intensity: int, label: String, player_made: bo
     if not player_made:
         var heard := intensity - int(costs.get(player.pos, 99999))
         var awareness := float(player.skills.get("Survival", 0))
-        if TacticalLighting.item_emits_light(str(player.get("secondary", ""))): awareness += 0.5
+        if player_light_on and TacticalLighting.item_emits_light(str(player.get("secondary", ""))): awareness += 0.5
         if heard + awareness * 2.0 >= 12:
             var error := TacticalSound.player_location_error(awareness, heard, manhattan(player.pos, source))
             var approx := TacticalSound.estimate_location(source, player.pos, error, rng, W, H)
@@ -1298,15 +1317,15 @@ func recalc_lighting():
                 if contribution > strongest:
                     strongest = contribution
                     tint_hex = str(source.get("color", "ffffff"))
-            if scene_time == "day" and indoors:
+            if TacticalLighting.daylight_available(scene_time) and indoors:
                 for window_pos in glass.keys():
                     if not line_clear(window_pos, cell): continue
-                    var daylight := TacticalLighting.window_daylight_contribution(window_pos, cell)
+                    var daylight := TacticalLighting.window_daylight_contribution(window_pos, cell, TacticalLighting.daylight_strength(scene_time))
                     level = maxf(level, daylight)
                     if daylight > strongest:
                         strongest = daylight
                         tint_hex = "fff1c5"
-            if TacticalLighting.item_emits_light(player_light) and line_clear(player.pos, cell):
+            if player_light_on and TacticalLighting.item_emits_light(player_light) and line_clear(player.pos, cell):
                 var player_level := TacticalLighting.item_contribution(player.pos, player.facing, cell, player_light)
                 level = maxf(level, player_level)
                 if player_level > strongest:
@@ -1347,7 +1366,8 @@ func recalc_visibility():
 
 func view_range() -> int:
     var r := 5 + int(floor(int(player.skills.get("Survival", 0)) / 4.0))
-    r += TacticalLighting.item_view_bonus(str(player.get("secondary", "")))
+    if player_light_on:
+        r += TacticalLighting.item_view_bonus(str(player.get("secondary", "")))
     if float(player.fatigue) >= 80: r -= 1
     return clampi(r, 4, 8)
 
@@ -1713,6 +1733,9 @@ func draw_hud():
     draw_button(btn_turn_right,"TURN R",false,17)
     draw_button(btn_back,"BACK",false,11)
     draw_button(btn_guard,"GUARD",bool(player.get("guarding", false)),10)
+    var portable_light := str(player.get("secondary", ""))
+    var has_portable_light := TacticalLighting.item_emits_light(portable_light)
+    draw_button(btn_light,"LIGHT ON" if player_light_on else "LIGHT OFF",has_portable_light and player_light_on,9)
     draw_button(btn_shove,"SHOVE",false,10)
     var step_cost := TacticalTime.movement_cost(player, false)
     var load_label := TacticalTime.load_band(TacticalTime.equipment_weight(player))
