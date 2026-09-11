@@ -28,7 +28,18 @@ static func environment_name(environment_id: String) -> String:
 static func environment_variant(environment_id: String, rng: RandomNumberGenerator) -> int:
     return Environments.pick_variant(environment_id, rng)
 
+static func time_of_day_for_hour(hour: float) -> String:
+    var normalized_hour := fposmod(hour, 24.0)
+    return "night" if normalized_hour >= 18.0 or normalized_hour < 7.0 else "day"
+
+static func current_encounter_hour() -> float:
+    # Tactical time is a snapshot of the authoritative settlement clock at the
+    # instant the encounter opens. Tactical play then pauses settlement time.
+    var day_seconds := maxf(1.0, float(Game.DAY_SECONDS))
+    var fraction := clampf(float(Game.day_elapsed) / day_seconds, 0.0, 1.0)
+    return fposmod(8.0 + fraction * 24.0, 24.0)
+
 static func pick_scene_state(environment_id: String, rng: RandomNumberGenerator) -> Dictionary:
-    var time_of_day := "day" if rng.randf() < 0.50 else "night"
+    var time_of_day := time_of_day_for_hour(current_encounter_hour())
     var power_on := rng.randf() < Environments.power_chance(environment_id)
     return {"time_of_day": time_of_day, "power_on": power_on}
