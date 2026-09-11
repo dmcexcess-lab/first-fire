@@ -1,0 +1,36 @@
+name: Temporary survivor live refresh integration
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply survivor live refresh patch
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if grep -q 'Live Survivor Vitals & Treatment Feedback' CHANGELOG.md; then
+            echo 'Survivor live refresh patch already applied.'
+            exit 0
+          fi
+          test -f .github/scripts/temp_survivor_live_treatment_patch.py
+          python3 .github/scripts/temp_survivor_live_treatment_patch.py | tee /tmp/survivor-live.log
+          grep -q 'FIRST_FIRE_SURVIVOR_LIVE_TREATMENT_PATCH_OK' /tmp/survivor-live.log
+          grep -q 'func _refresh_live_values' game/scripts/FFSurvivorPanel.gd
+          grep -q 'Treatment underway' game/scripts/FFInspector.gd
+          grep -q 'Sterile Dressing applied' game/scripts/Game.gd
+          test ! -e .github/scripts/temp_survivor_live_treatment_patch.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game/scripts/FFSurvivorPanel.gd game/scripts/FFInspector.gd game/scripts/Game.gd README_CONTEXT.md CHANGELOG.md .github/scripts/temp_survivor_live_treatment_patch.py
+          git commit -m 'Refresh survivor vitals and clarify treatment'
+          git push origin HEAD:main
