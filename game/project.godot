@@ -1,5 +1,5 @@
 ; Engine configuration file.
-; First Fire Alpha 0.1
+; First Fire Beta Candidate
 config_version=5
 
 [application]
@@ -7,7 +7,7 @@ config/name="First Fire"
 run/main_scene="res://main.tscn"
 
 [autoload]
-Game="*res://scripts/Game.gd"
+Game="*res://scripts/GameThreeStat.gd"
 
 [display]
 window/size/viewport_width=390
