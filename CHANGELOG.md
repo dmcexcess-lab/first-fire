@@ -1,3 +1,11 @@
+## Beta Candidate — Live Survivor Vitals & Treatment Feedback — 2026-09-11
+
+- Survivor roster cards now update fatigue, stress, condition, activity/recovery state, expedition countdowns, and SEND OUT availability in place on the normal simulation tick; switching tabs is no longer required to see values change.
+- Confirmed the existing TREAT simulation path was functional: Hurt consumes a Sterile Dressing and caps recovery at 30 seconds; Wounded/Critical consumes Medicine and starts a timed recovery task.
+- Treatment now gives explicit success toasts/history instead of silently mutating hidden recovery state.
+- Survivor inspection now shows injury/treatment time remaining and the treatment resource requirement, including the fact that the inspector pauses camp time while open.
+- Save schema remains 7.
+
 ## Beta Candidate — Safari SEND OUT Selector Fix — 2026-09-11
 
 - Replaced the SEND OUT zone `OptionButton` popup with explicit touch-safe PREV / NEXT controls and a visible selected-zone detail line.

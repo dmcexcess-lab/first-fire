@@ -83,7 +83,7 @@ For Alpha/Beta-candidate playtesting, every new founder starts with a **Flashlig
 
 ## Autonomous camp life
 
-`FFCampLifeRules.gd` owns camp-life cadence/recovery tuning.
+`FFCampLifeRules.gd` owns camp-life cadence/recovery tuning. The SURVIVORS roster now updates fatigue, stress, condition, activity and expedition countdowns in place on the regular simulation tick, without rebuilding the menu or requiring a tab change. Treatment remains simulation-owned: Hurt consumes a Sterile Dressing and caps minor-injury recovery at 30 seconds; Wounded/Critical consumes Medicine and begins a timed recovery task. The survivor inspector explains the requirement/result and reminds the player that its modal pause stops treatment time until closed.
 
 `FFCampSocial.gd` owns relationship/social-selection rules, political standing, and autonomous camp chatter. Chatter is selected from real relationship, shortage, personality, leadership-support and policy state; `Game.gd` applies its small consequences and `FFCampView.gd` only renders the callout.
 

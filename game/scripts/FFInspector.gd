@@ -188,6 +188,9 @@ func _render_survivor() -> void:
     body.add_child(_make_label("%s  •  %s  •  %s" % [str(survivor.get("background", "Unknown")), condition, status], 14))
     body.add_child(_make_label("Traits: %s" % ", ".join(survivor.get("traits", [])), 13))
     body.add_child(_make_label("Fatigue %.0f / 100  •  Stress %.0f / 100" % [float(survivor.get("fatigue", 0.0)), float(survivor.get("stress", 0.0))], 14))
+    var treatment_status: String = _treatment_status_line(survivor)
+    if treatment_status != "":
+        body.add_child(_make_label(treatment_status, 12))
     body.add_child(_make_label("Expeditions completed: %d" % int(survivor.get("expeditions_done", 0)), 12))
 
     var ability: String = str(survivor.get("leader_ability", "Organizer"))
@@ -253,6 +256,10 @@ func _render_survivor() -> void:
     else:
         var actions = HBoxContainer.new()
         actions.add_theme_constant_override("separation", 4)
+        if condition == "Hurt":
+            body.add_child(_make_label("Treatment: 1 Sterile Dressing. Cuts minor-injury recovery to at most 30s.", 11))
+        elif condition == "Wounded" or condition == "Critical":
+            body.add_child(_make_label("Treatment: 1 Medicine. Starts timed recovery; close this inspector to let camp time advance.", 11))
         var treat = Button.new()
         treat.text = "TREAT"
         treat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -402,8 +409,23 @@ func _equip_gear(gear_name: String) -> void:
     _render_survivor()
 
 func _treat_survivor() -> void:
-    Game.treat_survivor(current_survivor_id)
-    _render_survivor()
+    if Game.treat_survivor(current_survivor_id):
+        _render_survivor()
+
+func _treatment_status_line(survivor) -> String:
+    var condition: String = str(survivor.get("condition", "Healthy"))
+    if condition == "Healthy" or condition == "Dead":
+        return ""
+    var status: String = str(survivor.get("status", "Available"))
+    var task: Dictionary = survivor.get("task", {})
+    if status == "Recovering" and str(task.get("kind", "")) == "treatment":
+        return "Treatment underway — %.0fs remaining. Camp time is paused while this inspector is open." % float(task.get("remaining", 0.0))
+    if condition == "Critical":
+        return "Critical injury — active treatment is required before condition can improve."
+    var remaining: float = float(survivor.get("injury_remaining", 0.0))
+    if remaining > 0.0:
+        return "Injury recovery — about %.0fs remaining while camp time runs." % remaining
+    return "Injured — treatment/recovery state pending."
 
 func _gear_counts() -> Dictionary:
     var counts: Dictionary = {}

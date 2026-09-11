@@ -7,12 +7,27 @@ signal inspect_survivor(survivor_id: int)
 signal inspect_inventory
 signal send_survivor(survivor_id: int)
 
+var condition_labels: Dictionary = {}
+var activity_labels: Dictionary = {}
+var vitals_labels: Dictionary = {}
+var send_buttons: Dictionary = {}
+var expedition_state_labels: Dictionary = {}
+
 func _ready() -> void:
     size_flags_horizontal = Control.SIZE_EXPAND_FILL
     add_theme_constant_override("separation", 8)
+    Game.tick.connect(_refresh_live_values)
     _build()
 
+func _clear_live_refs() -> void:
+    condition_labels.clear()
+    activity_labels.clear()
+    vitals_labels.clear()
+    send_buttons.clear()
+    expedition_state_labels.clear()
+
 func _build() -> void:
+    _clear_live_refs()
     add_child(_tab_art())
     add_child(_heading("SURVIVORS", 26))
 
@@ -109,6 +124,14 @@ func _expedition_card(expedition: Dictionary) -> Control:
     var state: String = str(expedition.get("state", "traveling"))
     box.add_child(_make_label(names.to_upper(), 16))
 
+    var state_label = _make_label(_expedition_state_text(expedition), 13)
+    box.add_child(state_label)
+    expedition_state_labels[int(expedition.get("id", -1))] = state_label
+    return panel
+
+func _expedition_state_text(expedition: Dictionary) -> String:
+    var zone: String = str(expedition.get("zone", "Unknown"))
+    var state: String = str(expedition.get("state", "traveling"))
     var state_text: String = "OUT • %s" % zone
     if state == "traveling":
         state_text += " • %.0fs remaining" % float(expedition.get("remaining", 0.0))
@@ -116,8 +139,7 @@ func _expedition_card(expedition: Dictionary) -> Control:
         state_text += " • DECISION WAITING"
     elif state == "combat":
         state_text += " • TACTICAL ENCOUNTER"
-    box.add_child(_make_label(state_text, 13))
-    return panel
+    return state_text
 
 func _survivor_card(survivor: Dictionary) -> Control:
     var panel = PanelContainer.new()
@@ -145,13 +167,18 @@ func _survivor_card(survivor: Dictionary) -> Control:
     var condition_label = _make_label(condition.to_upper(), 11)
     condition_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
     title_row.add_child(condition_label)
+    condition_labels[sid] = condition_label
     box.add_child(title_row)
 
     var activity: String = _activity_text(survivor)
     if _is_away_status(status):
         activity = "OUT • " + activity
-    box.add_child(_make_label(activity, 13))
-    box.add_child(_make_label("Fatigue %.0f  •  Stress %.0f" % [float(survivor.get("fatigue", 0.0)), float(survivor.get("stress", 0.0))], 12))
+    var activity_label = _make_label(activity, 13)
+    box.add_child(activity_label)
+    activity_labels[sid] = activity_label
+    var vitals_label = _make_label("Fatigue %.0f  •  Stress %.0f" % [float(survivor.get("fatigue", 0.0)), float(survivor.get("stress", 0.0))], 12)
+    box.add_child(vitals_label)
+    vitals_labels[sid] = vitals_label
 
     var actions = HBoxContainer.new()
     actions.add_theme_constant_override("separation", 4)
@@ -169,8 +196,32 @@ func _survivor_card(survivor: Dictionary) -> Control:
         send.disabled = status != "Available"
         send.pressed.connect(func(): send_survivor.emit(sid))
         actions.add_child(send)
+        send_buttons[sid] = send
     box.add_child(actions)
     return panel
+
+func _refresh_live_values() -> void:
+    if not is_inside_tree():
+        return
+    for survivor in Game.survivors:
+        var sid: int = int(survivor.get("id", -1))
+        var condition: String = str(survivor.get("condition", "Healthy"))
+        var status: String = str(survivor.get("status", "Available"))
+        if condition_labels.has(sid) and is_instance_valid(condition_labels[sid]):
+            condition_labels[sid].text = condition.to_upper()
+        if activity_labels.has(sid) and is_instance_valid(activity_labels[sid]):
+            var activity: String = _activity_text(survivor)
+            if _is_away_status(status):
+                activity = "OUT • " + activity
+            activity_labels[sid].text = activity
+        if vitals_labels.has(sid) and is_instance_valid(vitals_labels[sid]):
+            vitals_labels[sid].text = "Fatigue %.0f  •  Stress %.0f" % [float(survivor.get("fatigue", 0.0)), float(survivor.get("stress", 0.0))]
+        if send_buttons.has(sid) and is_instance_valid(send_buttons[sid]):
+            send_buttons[sid].disabled = condition == "Dead" or status != "Available"
+    for expedition in Game.expeditions:
+        var expedition_id: int = int(expedition.get("id", -1))
+        if expedition_state_labels.has(expedition_id) and is_instance_valid(expedition_state_labels[expedition_id]):
+            expedition_state_labels[expedition_id].text = _expedition_state_text(expedition)
 
 func _recent_returns(limit: int) -> Array:
     var result: Array = []

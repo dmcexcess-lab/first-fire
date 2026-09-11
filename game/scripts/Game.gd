@@ -492,6 +492,8 @@ func treat_survivor(sid):
         components["Sterile Dressing"] -= 1
         s["injury_remaining"] = min(float(s["injury_remaining"]), 30.0)
         s["status"] = "Available"
+        s["history"].append("Day %d — Treated a minor injury with a Sterile Dressing." % day)
+        toast_requested.emit("%s treated — Sterile Dressing applied; about %.0fs recovery remains." % [s["name"], float(s["injury_remaining"])])
     else:
         if int(resources.get("Medicine", 0)) <= 0:
             toast_requested.emit("You need Medicine.")
@@ -503,6 +505,8 @@ func treat_survivor(sid):
         var reduction: float = minf(0.35, float(medical_skill) * 0.04)
         var treatment_time: float = base * (1.0 - reduction) * CampLifeRules.treatment_time_multiplier(bool(buildings.get("Infirmary", false)))
         s["task"] = {"kind": "treatment", "remaining": treatment_time, "duration": base, "target": sid}
+        s["history"].append("Day %d — Began treatment for %s injuries." % [day, s["condition"].to_lower()])
+        toast_requested.emit("%s is being treated — about %.0fs of camp time." % [s["name"], treatment_time])
     save_game()
     state_changed.emit()
     return true
