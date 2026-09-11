@@ -4,13 +4,14 @@ class_name FFCampView
 const Tiles = preload("res://scripts/FFTacticalTiles.gd")
 const Visuals = preload("res://scripts/FFTacticalVisuals.gd")
 
-const GRID_W := 16
-const GRID_H := 9
+const GRID_W := 18
+const GRID_H := 11
 const FIRE_CELL := Vector2i(7, 4)
 const SLEEP_CELL := Vector2i(5, 6)
 const IDLE_CELLS := [
     Vector2i(6, 4), Vector2i(8, 4), Vector2i(7, 5), Vector2i(6, 5),
     Vector2i(8, 5), Vector2i(5, 4), Vector2i(9, 4), Vector2i(7, 3),
+    Vector2i(4, 9), Vector2i(8, 9), Vector2i(12, 8), Vector2i(15, 8),
 ]
 const BUILDING_CELLS := {
     "Rain Catcher": Vector2i(2, 2),
@@ -44,7 +45,7 @@ var chatter_until_ms := 0
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     clip_contents = true
-    custom_minimum_size = Vector2(0, 210)
+    custom_minimum_size = Vector2(0, 250)
     set_process(true)
     if not Game.camp_chatter_requested.is_connected(_on_camp_chatter):
         Game.camp_chatter_requested.connect(_on_camp_chatter)
@@ -130,8 +131,7 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
         return Vector2i(12, 6) if bool(Game.buildings.get("Cabin", false)) else SLEEP_CELL
     var camp_activity: Dictionary = survivor.get("camp_activity", {})
     match str(camp_activity.get("kind", "")):
-        "maintain_fire", "watch_fire", "guitar": return FIRE_CELL + Vector2i(0, 1)
-        "cards": return building_cell("Communal Table") + Vector2i(0, -1) if bool(Game.buildings.get("Communal Table", false)) else FIRE_CELL + Vector2i(1, 1)
+        "maintain_fire", "watch_fire": return FIRE_CELL + Vector2i(0, 1)
         "rest": return Vector2i(12, 6) if bool(Game.buildings.get("Cabin", false)) else SLEEP_CELL
         "wash": return building_cell("Water Tank") + Vector2i(1, 0) if bool(Game.buildings.get("Water Tank", false)) else building_cell("Rain Catcher") + Vector2i(1, 0)
     if float(survivor.get("fatigue", 0.0)) >= 78.0:
@@ -157,9 +157,10 @@ func _draw() -> void:
     for y in range(GRID_H):
         for x in range(GRID_W):
             var kind := "grass"
-            if (y == 4 and x >= 2 and x <= 13) or (x == 7 and y >= 1 and y <= 7):
+            if (y == 4 and x >= 2 and x <= 15) or (x == 7 and y >= 1 and y <= 9) or (y == 8 and x >= 7 and x <= 15):
                 kind = "dirt"
             Tiles.draw_ground(self, _cell_rect(Vector2i(x, y), origin, tile), kind)
+    _draw_camp_details(origin, tile)
     _draw_structures(origin, tile)
     _draw_construction(origin, tile)
     _draw_night(origin, tile)
@@ -178,6 +179,46 @@ func _cell_center(cell: Vector2i, origin: Vector2, tile: float) -> Vector2:
 
 func _grid_center(pos: Vector2, origin: Vector2, tile: float) -> Vector2:
     return origin + Vector2((pos.x + 0.5) * tile, (pos.y + 0.5) * tile)
+
+func _draw_camp_details(origin: Vector2, tile: float) -> void:
+    # Expanded perimeter and small lived-in props. These are presentation only.
+    for x in range(1, GRID_W - 1):
+        if x % 2 == 0:
+            var top := _cell_center(Vector2i(x, 0), origin, tile)
+            var bottom := _cell_center(Vector2i(x, GRID_H - 1), origin, tile)
+            draw_line(top + Vector2(0, -tile * 0.26), top + Vector2(0, tile * 0.26), Color("50483c"), maxf(1.0, tile * 0.05))
+            draw_line(bottom + Vector2(0, -tile * 0.26), bottom + Vector2(0, tile * 0.26), Color("50483c"), maxf(1.0, tile * 0.05))
+    for y in range(1, GRID_H - 1):
+        if y % 2 == 0:
+            var left := _cell_center(Vector2i(0, y), origin, tile)
+            var right := _cell_center(Vector2i(GRID_W - 1, y), origin, tile)
+            draw_line(left + Vector2(-tile * 0.26, 0), left + Vector2(tile * 0.26, 0), Color("50483c"), maxf(1.0, tile * 0.05))
+            draw_line(right + Vector2(-tile * 0.26, 0), right + Vector2(tile * 0.26, 0), Color("50483c"), maxf(1.0, tile * 0.05))
+
+    # Seating logs around the fire make Watching Fire visually legible.
+    var fire := _cell_center(FIRE_CELL, origin, tile)
+    draw_line(fire + Vector2(-tile * 0.72, tile * 0.58), fire + Vector2(-tile * 0.22, tile * 0.58), Color("705038"), maxf(2.0, tile * 0.12))
+    draw_line(fire + Vector2(tile * 0.22, tile * 0.58), fire + Vector2(tile * 0.72, tile * 0.58), Color("705038"), maxf(2.0, tile * 0.12))
+
+    # A visible wood stack reflects actual Wood stock without inventing a second inventory.
+    if int(Game.resources.get("Wood", 0)) > 0:
+        var wood_center := _cell_center(Vector2i(9, 3), origin, tile)
+        var shown: int = mini(4, maxi(1, int(Game.resources.get("Wood", 0))))
+        for i in range(shown):
+            var offset := Vector2(float(i % 2) * tile * 0.18 - tile * 0.09, float(i / 2) * tile * 0.15 - tile * 0.08)
+            draw_line(wood_center + offset + Vector2(-tile * 0.17, 0), wood_center + offset + Vector2(tile * 0.17, 0), Color("765034"), maxf(2.0, tile * 0.09))
+
+    # The wash point is visible whenever camp has a real water-support structure.
+    if bool(Game.buildings.get("Water Tank", false)) or bool(Game.buildings.get("Rain Catcher", false)):
+        var wash_cell := building_cell("Water Tank") + Vector2i(1, 0) if bool(Game.buildings.get("Water Tank", false)) else building_cell("Rain Catcher") + Vector2i(1, 0)
+        var basin := _cell_rect(wash_cell, origin, tile).grow(-tile * 0.24)
+        draw_circle(basin.get_center(), tile * 0.22, Color("435a61"))
+        draw_circle(basin.get_center(), tile * 0.15, Color(0.38, 0.68, 0.78, 0.78))
+        draw_arc(basin.get_center(), tile * 0.22, 0.0, TAU, 20, Color("9cb6b5"), maxf(1.0, tile * 0.04))
+
+    # Extra edge clutter gives the expanded footprint depth without adding gameplay state.
+    Tiles.draw_prop(self, _cell_rect(Vector2i(16, 8), origin, tile).grow(-tile * 0.15), "crate")
+    Tiles.draw_prop(self, _cell_rect(Vector2i(4, 9), origin, tile).grow(-tile * 0.18), "barrel")
 
 func _draw_structures(origin: Vector2, tile: float) -> void:
     _draw_fire(origin, tile)
@@ -252,9 +293,9 @@ func _draw_fire(origin: Vector2, tile: float) -> void:
     draw_circle(center, tile * 0.28, Color("33261f"))
     draw_line(center + Vector2(-tile * 0.18, tile * 0.12), center + Vector2(tile * 0.18, -tile * 0.12), Color("6d4b2f"), maxf(1.0, tile * 0.07))
     draw_line(center + Vector2(-tile * 0.18, -tile * 0.12), center + Vector2(tile * 0.18, tile * 0.12), Color("6d4b2f"), maxf(1.0, tile * 0.07))
-    var fire_scale:=clampf(float(Game.fire_level)/100.0,0.10,1.0)
-    draw_circle(center+Vector2(0,-tile*0.03),tile*(0.07+0.12*fire_scale),Color(1.0,0.34,0.10,0.40+0.50*fire_scale))
-    draw_circle(center+Vector2(0,-tile*0.08),tile*(0.04+0.07*fire_scale),Color(1.0,0.82,0.28,0.48+0.48*fire_scale))
+    var fire_scale := clampf(float(Game.fire_level) / 100.0, 0.10, 1.0)
+    draw_circle(center + Vector2(0, -tile * 0.03), tile * (0.07 + 0.12 * fire_scale), Color(1.0, 0.34, 0.10, 0.40 + 0.50 * fire_scale))
+    draw_circle(center + Vector2(0, -tile * 0.08), tile * (0.04 + 0.07 * fire_scale), Color(1.0, 0.82, 0.28, 0.48 + 0.48 * fire_scale))
 
 func _draw_noise_line(origin: Vector2, tile: float) -> void:
     var color := Color("8e826d")
@@ -329,10 +370,10 @@ func _draw_night(origin: Vector2, tile: float) -> void:
         return
     draw_rect(map_rect, Color(0.015, 0.035, 0.085, alpha))
     var fire_center := _cell_center(FIRE_CELL, origin, tile)
-    var fire_strength:=clampf(float(Game.fire_level)/100.0,0.0,1.0)
-    draw_circle(fire_center,tile*(0.8+1.45*fire_strength),Color(1.0,0.36,0.10,0.055*fire_strength))
-    draw_circle(fire_center,tile*(0.6+0.95*fire_strength),Color(1.0,0.48,0.12,0.085*fire_strength))
-    draw_circle(fire_center,tile*(0.4+0.50*fire_strength),Color(1.0,0.68,0.20,0.14*fire_strength))
+    var fire_strength := clampf(float(Game.fire_level) / 100.0, 0.0, 1.0)
+    draw_circle(fire_center, tile * (0.8 + 1.45 * fire_strength), Color(1.0, 0.36, 0.10, 0.055 * fire_strength))
+    draw_circle(fire_center, tile * (0.6 + 0.95 * fire_strength), Color(1.0, 0.48, 0.12, 0.085 * fire_strength))
+    draw_circle(fire_center, tile * (0.4 + 0.50 * fire_strength), Color(1.0, 0.68, 0.20, 0.14 * fire_strength))
     if bool(Game.buildings.get("Cabin", false)):
         var cabin_center := _cell_center(Vector2i(12, 5), origin, tile)
         draw_circle(cabin_center, tile * 1.7, Color(1.0, 0.72, 0.34, 0.075))
@@ -354,6 +395,7 @@ func _draw_survivors(origin: Vector2, tile: float) -> void:
             continue
         var pos: Vector2 = actor_positions[sid]
         var center := _grid_center(pos, origin, tile)
+        _draw_activity_graphic(survivor, center, tile)
         var equipment: Dictionary = survivor.get("equipment", {})
         var status := str(survivor.get("status", "Available"))
         var working := status != "Available"
@@ -372,9 +414,55 @@ func _draw_survivors(origin: Vector2, tile: float) -> void:
         var first_name := str(survivor.get("name", "Survivor")).get_slice(" ", 0)
         var font_size: int = maxi(8, int(tile * 0.34))
         draw_string(font, center + Vector2(-tile * 0.52, -tile * 0.48), first_name, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, font_size, Color(0.96, 0.97, 0.92, 0.96))
+        _draw_need_pips(survivor, center, tile)
         var activity := _activity_short(survivor)
         if activity != "":
-            draw_string(font, center + Vector2(-tile * 0.52, tile * 0.62), activity, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, maxi(7, font_size - 2), Color(0.87, 0.78, 0.49, 0.95))
+            draw_string(font, center + Vector2(-tile * 0.52, tile * 0.70), activity, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, maxi(7, font_size - 2), Color(0.87, 0.78, 0.49, 0.95))
+
+func _draw_activity_graphic(survivor: Dictionary, center: Vector2, tile: float) -> void:
+    var activity: Dictionary = survivor.get("camp_activity", {})
+    var kind := str(activity.get("kind", ""))
+    if kind == "maintain_fire":
+        draw_line(center + Vector2(-tile * 0.34, tile * 0.28), center + Vector2(tile * 0.05, tile * 0.08), Color("805336"), maxf(2.0, tile * 0.08))
+        draw_circle(center + Vector2(tile * 0.26, -tile * 0.20), tile * 0.045, Color("f2b143"))
+        draw_circle(center + Vector2(tile * 0.36, -tile * 0.30), tile * 0.030, Color("e46f32"))
+    elif kind == "watch_fire":
+        draw_line(center + Vector2(-tile * 0.30, tile * 0.34), center + Vector2(tile * 0.30, tile * 0.34), Color("704f37"), maxf(2.0, tile * 0.10))
+        draw_arc(center + Vector2(0, -tile * 0.05), tile * 0.22, PI * 0.15, PI * 0.85, 10, Color(0.95, 0.70, 0.30, 0.70), maxf(1.0, tile * 0.04))
+    elif kind == "rest":
+        var font := get_theme_default_font()
+        var z_size: int = maxi(8, int(tile * 0.34))
+        draw_string(font, center + Vector2(tile * 0.16, -tile * 0.25), "Z", HORIZONTAL_ALIGNMENT_LEFT, -1.0, z_size, Color(0.72, 0.82, 0.92, 0.90))
+        draw_string(font, center + Vector2(tile * 0.30, -tile * 0.42), "z", HORIZONTAL_ALIGNMENT_LEFT, -1.0, maxi(7, z_size - 2), Color(0.72, 0.82, 0.92, 0.72))
+    elif kind == "wash":
+        draw_circle(center + Vector2(-tile * 0.25, -tile * 0.16), tile * 0.06, Color(0.42, 0.76, 0.90, 0.82))
+        draw_circle(center + Vector2(tile * 0.24, -tile * 0.10), tile * 0.05, Color(0.42, 0.76, 0.90, 0.72))
+        draw_arc(center + Vector2(0, tile * 0.28), tile * 0.24, 0.0, PI, 12, Color("8fb7bd"), maxf(1.0, tile * 0.05))
+
+func _draw_need_pips(survivor: Dictionary, center: Vector2, tile: float) -> void:
+    var needs: Dictionary = survivor.get("needs", {})
+    if needs.is_empty():
+        return
+    var values := [
+        float(needs.get("hunger", 100.0)),
+        float(needs.get("thirst", 100.0)),
+        float(needs.get("sleep", 100.0)),
+        float(needs.get("fun", 100.0)),
+        float(needs.get("safety", 100.0)),
+        float(needs.get("hygiene", 100.0)),
+    ]
+    var colors := [Color("d69b52"), Color("66a8d7"), Color("879bd0"), Color("c28ad0"), Color("7eaf78"), Color("7fc0bd")]
+    var radius: float = maxf(1.5, tile * 0.055)
+    var start_x: float = center.x - tile * 0.36
+    for i in range(values.size()):
+        var value: float = values[i]
+        var alpha: float = 0.30 if value >= 60.0 else (0.70 if value >= 35.0 else 1.0)
+        var p := Vector2(start_x + float(i) * tile * 0.145, center.y + tile * 0.49)
+        var c: Color = colors[i]
+        c.a = alpha
+        draw_circle(p, radius, c)
+        if value < 35.0:
+            draw_arc(p, radius + 1.0, 0.0, TAU, 12, Color(0.95, 0.90, 0.76, 0.90), 1.0)
 
 func _on_camp_chatter(data: Dictionary) -> void:
     if not is_visible_in_tree():
@@ -412,18 +500,16 @@ func _draw_chatter(origin: Vector2, tile: float) -> void:
     draw_string(font, box.position + Vector2(4.0, 25.0), str(chatter_entry.get("text", "...")), HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 8.0, 8, Color(0.94, 0.94, 0.88, 0.98))
 
 func _activity_short(survivor: Dictionary) -> String:
-    var status:=str(survivor.get("status","Available"))
+    var status := str(survivor.get("status", "Available"))
     match status:
         "Crafting": return "CRAFT"
         "Building": return "BUILD"
         "Recovering": return "RECOVER"
         "Tending": return "GARDEN"
-    var a:Dictionary=survivor.get("camp_activity",{})
-    match str(a.get("kind","")):
+    var a: Dictionary = survivor.get("camp_activity", {})
+    match str(a.get("kind", "")):
         "maintain_fire": return "FIRE"
         "watch_fire": return "WATCH FIRE"
-        "cards": return "CARDS"
-        "guitar": return "GUITAR"
         "rest": return "REST"
         "wash": return "WASH"
     return ""
