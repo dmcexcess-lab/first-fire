@@ -33,6 +33,14 @@ func _init() -> void:
     if not _check(TacticalScenarios.KIND_WEIGHTS.has("Camp Perimeter"), "starting zone scenario catalog"): return
     if not _check(str(TacticalScenarios.KIND_WEIGHTS["Camp Perimeter"][0][0]) == "rescue", "starting zone rescue tactical option"): return
     if not _check(TacticalEnvironments.display_name("gas_station") == "Gas Station", "gas station environment"): return
+    if not _check(TacticalScenarios.environment_name("gas_station").begins_with("Gas Station • "), "encounter HUD clock label"): return
+    if not _check(TacticalScenarios.time_of_day_for_hour(6.0) == "dawn", "dawn encounter phase"): return
+    if not _check(TacticalScenarios.time_of_day_for_hour(12.0) == "day", "day encounter phase"): return
+    if not _check(TacticalScenarios.time_of_day_for_hour(18.5) == "dusk", "dusk encounter phase"): return
+    if not _check(TacticalScenarios.time_of_day_for_hour(2.0) == "night", "night encounter phase"): return
+    if not _check(TacticalScenarios.formatted_hour(20.5) == "8:30 PM", "encounter clock formatting"): return
+    if not _check(TacticalLighting.ambient_level("alley", "dawn", false) > TacticalLighting.ambient_level("alley", "night", false), "dawn brightens night"): return
+    if not _check(TacticalLighting.ambient_level("alley", "dusk", false) < TacticalLighting.ambient_level("alley", "day", false), "dusk darkens day"): return
     if not _check(TacticalEnvironments.exit_count("house", 0) == 1, "single-exit house variant"): return
     if not _check(TacticalEnvironments.exit_count("gas_station", 1) >= 3, "multi-exit gas station variant"): return
     if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary slot"): return
@@ -41,7 +49,7 @@ func _init() -> void:
     if not _check(TacticalLighting.item_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(2, 5), "Flashlight") == 0.0, "flashlight rear cutoff"): return
     if not _check(TacticalEnvironments.build_layout("gas_station", 0).get("lights", []).size() >= 3, "gas station authored lights"): return
     var scene_state: Dictionary = TacticalScenarios.pick_scene_state("gas_station", visual_rng)
-    if not _check(scene_state.has("time_of_day") and scene_state.has("power_on"), "scene day night state"): return
+    if not _check(scene_state.has("time_of_day") and scene_state.has("encounter_hour") and scene_state.has("encounter_time") and scene_state.has("power_on"), "scene clock and power state"): return
     if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
 
     var light_actor: Dictionary = {"equipment": {"Weapon": "Utility Knife", "Secondary": "", "Tool": "", "Clothing": "", "Pack": ""}, "fatigue": 0.0, "condition": "Healthy", "skills": {"Survival": 3, "Combat": 2}, "crouched": false}
