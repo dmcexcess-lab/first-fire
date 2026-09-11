@@ -1,0 +1,42 @@
+name: Temporary tactical depth and balance integration
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply tactical depth and balance pass
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if grep -q 'Beta Candidate — Tactical Depth, Exploration & Balance' CHANGELOG.md; then
+            echo 'Tactical depth pass already applied.'
+            exit 0
+          fi
+          test -f .github/scripts/temp_tactical_depth_balance_patch.py
+          python3 .github/scripts/temp_tactical_depth_balance_patch.py | tee /tmp/tactical-depth-balance.log
+          grep -q 'FIRST_FIRE_TACTICAL_DEPTH_BALANCE_PATCH_OK' /tmp/tactical-depth-balance.log
+          test -f game/scripts/FFTacticalBalance.gd
+          grep -q 'func guard()' game/scripts/FFCombat.gd
+          grep -q 'func shove()' game/scripts/FFCombat.gd
+          grep -q 'func search_explore_cell' game/scripts/FFCombat.gd
+          grep -q '"reach": 2' game/scripts/FFCombat.gd
+          grep -q 'apply_shotgun_spread' game/scripts/FFCombat.gd
+          grep -q 'TacticalBalance.explore_reward_rolls' game/scripts/Game.gd
+          grep -q 'Partial Search of' game/scripts/Game.gd
+          grep -q 'guard changes incoming hit chance' game/scripts/ci/FFArchitectureSmoke.gd
+          test ! -e .github/scripts/temp_tactical_depth_balance_patch.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game/scripts/FFTacticalBalance.gd game/scripts/FFCombat.gd game/scripts/Game.gd game/scripts/ci/FFArchitectureSmoke.gd ARCHITECTURE.md README_CONTEXT.md CHANGELOG.md .github/scripts/temp_tactical_depth_balance_patch.py
+          git commit -m 'Deepen tactical combat exploration and balance'
+          git push origin HEAD:main
