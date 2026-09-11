@@ -1,123 +1,130 @@
 # First Fire — Architecture
 
-This document records the canonical module boundaries after the one-time source razor and where roadmap work belongs.
+This document records the canonical module boundaries and where feature-freeze work belongs.
 
 ## Canonical source
 
-The Godot project is ordinary source under `game/`:
-
-```text
-game/
-  project.godot
-  export_presets.cfg
-  main.tscn
-  assets/
-  scripts/
-```
-
-There is no active ZIP/patch/Base64 reconstruction chain. Git history preserves the old packaging if historical inspection is ever needed.
-
-Preferred dependency direction is:
+The Godot project is ordinary source under `game/`. There is no active ZIP/patch/Base64 reconstruction chain. Preferred dependency direction is:
 
 **data/catalogs → simulation/rule modules → Game orchestration/state → Main UI/input**
 
 UI may request actions and render state; it should not become authoritative simulation.
 
-## Current owners
+## Active three-stat layer
+
+First Fire now has exactly three survivor progression stats:
+
+- **Combat** — melee/firearm handling, attack reliability, and combat output.
+- **Agility** — movement pace, stealth, sprinting, avoidance, and physical escape capability.
+- **Leadership** — camp influence, social checks, political standing, and voting strength.
+
+The former Scavenging, Survival, Medical, Technical, and Social stats are no longer player-facing survivor stats. Crafting, treatment, searching, and other noncombat work should use tools, resources, traits, infrastructure, state, and authored rules instead of recreating hidden substitute skill trees.
+
+`FFThreeStatRules.gd` owns the canonical stat catalog, weapon-hand classes, class combat profiles, and Agility movement/stealth/sprint math.
+
+`GameThreeStat.gd` is the active `Game` autoload. It extends the proven `Game.gd` orchestration foundation while overriding survivor generation, progression, expedition checks, treatment, abstract danger, loot skill hooks, politics, injury protection, and save compatibility for the three-stat model. Existing saves whose survivor state is not the three-stat model are invalidated cleanly through the `combat-agility-leadership-v1` model marker. The underlying save schema remains 7.
+
+`MainThreeStat.gd` is the active main-scene script. It extends `Main.gd` and mounts the three-stat inspector and tactical runtime without duplicating the mature navigation/event/camp UI.
+
+`FFInspectorThreeStat.gd` is the active detailed survivor/item presentation. It exposes only Combat / Agility / Leadership, shows weapon hand/class information, and does not present clothing protection as armor.
+
+`FFCombatThreeStat.gd` is the active tactical runtime specialization. It extends the established `FFCombat.gd` board/environment/objective runtime and owns the current combat action layer:
+
+- **1H Melee**
+- **2H Melee**
+- **1H Gun**
+- **2H Gun**
+- **Stealth** — Agility-driven, quieter and slower movement with positional stealth-attack opportunity
+- **Sprint** — Agility-driven, faster/louder movement with increased grab avoidance
+- **Guard** — defensive stance reducing the next infected grab threat
+- **Shove** — spacing/stagger action that always sacrifices Guard before resolution
+
+There is **no armor mitigation** in the active combat or abstract-injury paths. Clothing may remain as carried/equipped gear for identity, weight, crafting, or future non-armor utility, but it must not cancel or reduce incoming physical damage.
+
+## Core owners
 
 ### `FFData.gd`
-Shared declarative catalogs used across systems. Do not turn it into a universal dumping ground when a growing subsystem deserves its own data owner.
+Shared declarative catalogs. Item names, recipes, zones, buildings, backgrounds, and gear data live here. Legacy `protect`, old background skill-bonus fields, or other stale catalog metadata are not authoritative when contradicted by the active three-stat rules; remove them when a focused cleanup safely owns that data.
 
 ### `Game.gd`
-Persistent state and orchestration facade: camp ticks, expedition sequencing, event/tactical transitions, and the fluid Alpha save-state schema. It may keep compatibility wrappers where removing them would add needless blast radius, but new durable rules should live in dedicated modules.
+Persistent state/orchestration foundation: camp ticks, expedition sequencing, event/tactical transitions, and schema-7 state transport shape. The active runtime is `GameThreeStat.gd`, which specializes this foundation for the current stat/combat model.
 
 ### `Main.gd`
-Top-level UI/input coordinator: persistent HUD, navigation, main menu, expedition launcher, event/tactical transitions, and mounting presentation modules. It should coordinate presentation rather than contain every detailed screen.
+Top-level UI/input foundation. The active main scene uses `MainThreeStat.gd`, which keeps the mature UI while routing survivor inspection and tactical play to the current three-stat implementations.
 
 ### `FFCampView.gd`
-Living 2D camp presentation built from the tactical tile/character language. It reads authoritative buildings, survivor status/tasks, equipment, appearance, fatigue/stress, and camp clock state; it maps those facts to visual stations and cosmetic movement only. Crafting survivors walk to the real task station, builders move to the relevant construction anchor, tending survivors move to the garden, recovering survivors move toward shelter, and expedition survivors disappear from camp. It must never become the owner of work timing, survivor status, resource production, or pathfinding gameplay.
+Living 2D camp presentation. It reads authoritative state and maps it to visual stations/cosmetic survivor motion only. It must not own work timing, resources, survivor rules, or pathfinding gameplay.
 
 ### `FFSurvivorPanel.gd`
-Survivor-tab dashboard presentation. Owns the concise CAMP/OUT/BUSY/LOST summary, current away-party cards and remaining times, recent return summaries derived from persistent camp history, and the compact roster. It does not own survivor state or expedition rules.
-
-### `FFInspector.gd`
-Reusable modal inspection presentation for detailed survivor sheets and camp inventory/item information. It owns the inspection pause/restore behavior and item help text, while survivor/equipment actions still go through `Game.gd`. Inspection is intentionally schema-neutral and must not become a second inventory or survivor-state model.
+Concise Survivors-tab dashboard: CAMP/OUT/BUSY/LOST summary, outside-camp cards, recent returns, and roster. Detailed three-stat presentation belongs to `FFInspectorThreeStat.gd`.
 
 ### `FFCombat.gd`
-Tactical runtime once a physical scenario exists: board state, actors, movement/action timing, zombie behavior, vision/fog, facing, sound, doors/glass/hazards, melee/firearms, objectives, temporary rescue-civilian escort behavior, and completion. A rescue civilian is an objective NPC, not a second expedition survivor or combat companion.
-
-### `FFTacticalScenarios.gd`
-Tactical objective/catalog ownership: encounter-kind weights and combination of an objective with a compatible physical environment. Objective and place are intentionally separate so the same location can host rescue, search, or ambush situations.
-
-### `FFTacticalEnvironments.gd`
-Authored tactical place ownership: recognizable 20×18 environment templates, zone compatibility, ground/theme metadata, props, party entry positions, and one-or-multiple escape routes. Current families include back alley, gas station, residential house, apartment, corner store, warehouse yard, and drainage wash. Geometry must keep every declared exit reachable from the authored party spawn.
-
-### `FFTacticalTiles.gd`
-Tactical environment atlas renderer. Owns atlas-region lookup and drawing for ground, structural tiles, props, and carried-item icons. Physical geometry/occlusion remains authoritative in `FFTacticalEnvironments.gd` / `FFCombat.gd`.
-
-### `FFTacticalTime.gd`
-Pure tactical action-timing rules. Converts survivor equipment weight, fatigue, condition, skills, stance, and zombie pace/mass profiles into actual timeline costs used by `FFCombat.gd`.
+Established tactical board/runtime foundation: map state, actors, zombies, vision/fog, facing, sound propagation, doors/glass/hazards, objectives, rescue escort state, persistence, and rendering integration. Current player combat rules are specialized by `FFCombatThreeStat.gd`.
 
 ### `FFTacticalBalance.gd`
-Pure Beta tuning rules for tactical combat, rescue, and exploration: objective-specific infected counts, rescue civilian durability/contact/escort pacing, multi-search sizing/rewards, search time/noise, melee/firearm accuracy, Guard defense, Shove resistance/stagger, and infected mass damage. Keeping these values outside `FFCombat.gd` makes balance iteration deterministic and testable without creating a new gameplay pillar.
+Pure tactical tuning. Current formulas use Combat and Agility only. It owns infected counts/damage, search timing/noise, Guard, Shove resistance/stagger, and zombie hit chance. Search/explore rewards are no longer improved by a Scavenging stat.
 
-### `FFTacticalSound.gd`
-Pure tactical sound presentation/localization rules: surface-aware labels, bounded fuzzy source estimates, and ambient sound profiles. `FFCombat.gd` still owns propagation and AI reaction state.
+### `FFTacticalTime.gd`
+Low-level tactical timeline utilities for load, fatigue, condition, stance, weapon timing, and infected pace. `FFThreeStatRules.gd` applies the current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.
+
+### `FFTacticalScenarios.gd`
+Encounter objective/catalog ownership and objective/place pairing. Tactical scene time snapshots the real settlement clock at encounter creation.
+
+### `FFTacticalEnvironments.gd`
+Authored physical places, geometry, props, entries, and reachable exits. Current families include alley, gas station, house, apartment, store, warehouse yard, and drainage wash.
+
+### `FFTacticalTiles.gd`
+Atlas-region lookup and tactical environment/item rendering.
 
 ### `FFTacticalLighting.gd`
-Tactical lighting rules/presentation helper. Owns ambient low-light profiles, fixed-light falloff/color presets, data-driven Secondary light-item cone math, and cheap glow animation rules. `FFTacticalEnvironments.gd` owns fixed light placement; `FFCombat.gd` owns occlusion, light-map recalculation, fog/vision, and draw order. Lighting does not advance settlement simulation.
+Ambient profiles, authored/fixed light math, Secondary portable-light profiles, daylight/window behavior, and light-dependent visibility helpers.
+
+### `FFTacticalSound.gd`
+Surface-aware labels, bounded fuzzy source estimates, and ambient sound profiles. Tactical propagation/AI state remains in combat runtime.
 
 ### `FFTacticalVisuals.gd`
-Tactical character presentation owner. Generates persistent survivor appearance dictionaries, zone-weighted infected visual families, weapon silhouettes, and the procedural character/corpse/impact drawing used by `FFCombat.gd`. It is presentation-only: infected visual families do not imply different stats or AI unless a future gameplay change explicitly adds them.
-
-### `FFFieldEventsLegacy.gd`
-Temporary Alpha 0.2 compatibility owner for remaining **outside-world text-event selection only**. Delete it when Alpha 0.3 has tactical equivalents for every field event and no caller needs the text field path. Camp stories/politics remain valid narrative events.
+Persistent survivor appearances, infected visual families, weapons, corpses, impact effects, and tactical character rendering. Presentation only.
 
 ### `FFExpeditionRules.gd`
-Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and routine haul-count distributions. Multi-survivor dispatch and vehicles are not part of the final design.
+Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and haul-count distributions. Agility is the active survivor stat passed into travel timing by `GameThreeStat.gd`.
 
 ### `FFCampLifeRules.gd`
-Camp-life cadence, six survivor needs/moodlets, autonomous downtime/chore selection, fire maintenance tuning, idle recovery, injury/treatment modifiers, defensive-building risk, rain-catcher output, and chatter timing.
+Camp needs/moodlets, autonomous downtime/chore selection, fire maintenance, recovery, treatment modifiers, defense-building effects, and camp cadence.
 
 ### `FFCampSocial.gd`
-Relationship mutation/labels, candidate standing, leadership support, pair selection, and autonomous camp chatter. Personality, stress, shortages, relationship state, leadership opinion and policy can shape quiet interactions; Game applies consequences and the camp view renders them.
+Relationships, chatter, political standing, and leadership support. **Leadership** is the active progression stat for candidate standing and social/political checks.
+
+### `FFFieldEventsLegacy.gd`
+Temporary remaining outside-world text-event catalog. Outside-world content should continue moving toward tactical/physical play; camp social/political narrative remains valid.
 
 ### `FFSaveCodec.gd`
-Persistence transport only: JSON/file read-write, compatibility check, invalidation. During Alpha, `Game.gd` still owns the actual state dictionary/schema.
+Persistence transport only: JSON/file read-write, compatibility check, invalidation. Current save schema remains 7; `GameThreeStat.gd` adds a stat-model compatibility marker so pre-reset six-skill saves are invalidated rather than migrated.
 
 ### `scripts/ci/FFArchitectureSmoke.gd`
-Deterministic module-contract checks. Add cheap regression invariants here when important bugs teach the project something reusable.
-
-## Frozen scope
-
-The living **2D** camp is final presentation. Pets, vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI are deliberately cut. New code should complete/tune existing owners rather than create replacement feature pillars.
-
-The hard population ceiling is 18; the mature-settlement milestone is 15+ survivors with all planned buildings and an elected leader, and it does not end the save.
+Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts are compiled by import/startup gates in their real project context rather than preloaded by the standalone smoke runner.
 
 ## Tactical pause boundary
 
-Entering a tactical field encounter pauses normal settlement simulation. Tactical turns and settlement time are different scales. Do not let tactical UI/scenario code advance food use, building, recovery, or unrelated camp events.
+Tactical encounters pause settlement simulation. Tactical action ticks and settlement time are different scales. Tactical thinking must not consume camp resources, advance building/recovery, or trigger unrelated camp events.
 
-Detailed survivor/item inspection also pauses settlement simulation while the modal is open, then restores the prior pause state. This is a UI inspection boundary, not tactical time and not a new simulation state.
+Detailed survivor/item inspection also pauses settlement simulation while open and restores the prior pause state on close.
+
+## Frozen scope
+
+The living 2D camp is final presentation. Pets, vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI are cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
 
 ## Save boundary
 
-Current schema: **7**. Alpha policy is clean invalidation on meaningful incompatibility rather than accumulating migrations.
+Current schema: **7**.
 
-The filename `user://first_fire_alpha01.json` remains intentionally for compatibility; its old name alone is not grounds for a save wipe.
+Current survivor-model marker: **`combat-agility-leadership-v1`**.
+
+A schema-7 save carrying the previous six-skill survivor shape is deliberately invalidated and restarted instead of migrated. The filename `user://first_fire_alpha01.json` remains intentionally unchanged.
 
 ## Permanent CI gate
 
-Pages CI now:
+Pages CI validates canonical source, installs Godot 4.7.1/templates, imports/parses, runs architecture smoke, boots the real project headlessly, exports Web, rejects script/parse/load errors, uploads the Pages artifact, and deploys only after the gates pass.
 
-1. validates canonical `game/` structure and absence of old reconstruction artifacts;
-2. imports/parses the Godot project;
-3. runs deterministic architecture smoke;
-4. boots the actual project headlessly;
-5. exports Web;
-6. rejects `SCRIPT ERROR`, `Parse Error`, and `Failed to load script` from logs;
-7. deploys Pages only after all gates pass.
+## Refactor rule
 
-## Post-razor refactor rule
-
-The project-wide razor was a one-time exception. Future refactors should be local and feature-driven: put new behavior in its durable owner, delete proven-dead code, retain safe compatibility facades when removal adds risk, and do not launch another broad cleanup merely for aesthetics.
+The source razor was a one-time exception. Future cleanup remains local and feature-driven. The current three-stat subclasses are a deliberate small-blast-radius specialization of mature foundations; fold them into base owners only when a focused change makes that safer than maintaining the seam.
