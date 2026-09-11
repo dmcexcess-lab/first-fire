@@ -4,7 +4,7 @@ class_name FFTacticalScenarios
 const Environments = preload("res://scripts/FFTacticalEnvironments.gd")
 
 const KIND_WEIGHTS := {
-    "Camp Perimeter": [["explore", 0.65], ["ambush", 1.00]],
+    "Camp Perimeter": [["rescue", 0.20], ["explore", 0.65], ["ambush", 1.00]],
     "Nearby Streets": [["rescue", 0.35], ["explore", 0.70], ["ambush", 1.00]],
     "Residential Blocks": [["rescue", 0.30], ["explore", 0.75], ["ambush", 1.00]],
     "Commercial Fringe": [["rescue", 0.20], ["explore", 0.70], ["ambush", 1.00]],

@@ -31,6 +31,7 @@ func _init() -> void:
     if not _check(abs(ExpeditionRules.tactical_event_chance("Industrial Edge") - 0.90) < 0.001, "industrial tactical pop rate"): return
     if not _check(TacticalScenarios.KIND_WEIGHTS.has("Residential Blocks"), "scenario catalog"): return
     if not _check(TacticalScenarios.KIND_WEIGHTS.has("Camp Perimeter"), "starting zone scenario catalog"): return
+    if not _check(str(TacticalScenarios.KIND_WEIGHTS["Camp Perimeter"][0][0]) == "rescue", "starting zone rescue tactical option"): return
     if not _check(TacticalEnvironments.display_name("gas_station") == "Gas Station", "gas station environment"): return
     if not _check(TacticalEnvironments.exit_count("house", 0) == 1, "single-exit house variant"): return
     if not _check(TacticalEnvironments.exit_count("gas_station", 1) >= 3, "multi-exit gas station variant"): return
@@ -50,6 +51,8 @@ func _init() -> void:
     if not _check(TacticalBalance.explore_site_count("Industrial Edge") > TacticalBalance.explore_site_count("Camp Perimeter"), "exploration grows by zone"): return
     if not _check(TacticalBalance.explore_reward_rolls(4, 5) > TacticalBalance.explore_reward_rolls(1, 1), "exploration reward scales with search depth"): return
     if not _check(TacticalBalance.zombie_count("Residential Blocks", "explore") < TacticalBalance.zombie_count("Residential Blocks", "ambush"), "objective-specific zombie balance"): return
+    if not _check(TacticalBalance.zombie_count("Nearby Streets", "rescue") < TacticalBalance.zombie_count("Nearby Streets", "ambush"), "rescue escort pressure balance"): return
+    if not _check(TacticalBalance.RESCUE_SURVIVOR_HP > 0 and TacticalBalance.RESCUE_CONTACT_TICKS > 0, "rescue escort tuning"): return
     var unguarded_actor := light_actor.duplicate(true)
     unguarded_actor["guarding"] = false
     var guarded_actor := light_actor.duplicate(true)

@@ -28,6 +28,8 @@ var context := {}
 var runtime := {}
 var player := {}
 var ally := {}
+var rescuee := {}
+var rescue_contacted := false
 var zombies: Array = []
 var walls := {}
 var obstacles := {}
@@ -138,12 +140,14 @@ func start_encounter(data: Dictionary):
     build_map(environment_id, environment_variant)
     setup_explore_sites()
     make_party()
+    setup_rescuee()
     spawn_zombies()
     restore_runtime()
     objective_done = bool(runtime.get("objective_done", context.get("kind", "ambush") == "ambush"))
     if context.get("kind", "ambush") == "rescue":
-        msg = "Find the survivor, then get back out."
-        submsg = "They will decide whether to join after you escape."
+        var rescue_name := str(rescuee.get("name", "the survivor"))
+        msg = "Reach %s, then get both of you out." % rescue_name
+        submsg = "They cannot fight. Once contacted, they will stay close and can be hurt."
     elif context.get("kind", "ambush") == "explore":
         var field_gear := str(context.get("field_gear", "Field Loot"))
         msg = "Search the marked spots for %s." % field_gear
@@ -168,6 +172,35 @@ func make_party():
     var lead = Game.get_survivor(ids[0]) if not ids.is_empty() else null
     player = make_actor(lead, player_spawn, true)
     ally = {}
+
+func setup_rescuee() -> void:
+    rescuee = {}
+    rescue_contacted = false
+    if str(context.get("kind", "")) != "rescue":
+        return
+    var candidate: Dictionary = {}
+    var raw_candidate = context.get("rescue_candidate", {})
+    if raw_candidate is Dictionary:
+        candidate = raw_candidate.duplicate(true)
+    if candidate.is_empty():
+        candidate = {
+            "id": -1000,
+            "name": "Stranded Survivor",
+            "skills": {"Combat": 0, "Scavenging": 0, "Survival": 1, "Medical": 0, "Technical": 0, "Social": 0},
+            "traits": [],
+            "fatigue": 25.0,
+            "stress": 55.0,
+            "condition": "Healthy",
+            "equipment": {"Weapon": "", "Secondary": "", "Clothing": "", "Pack": "", "Tool": ""},
+            "appearance": TacticalVisuals.survivor_appearance(rng),
+        }
+    rescuee = make_actor(candidate, rescue_cell, false)
+    rescuee["max_hp"] = mini(int(rescuee.get("max_hp", 18)), TacticalBalance.RESCUE_SURVIVOR_HP)
+    rescuee["hp"] = int(rescuee["max_hp"])
+    rescuee["weapon"] = weapon_profile("")
+    rescuee["active"] = false
+    rescuee["crouched"] = true
+    rescuee["next"] = 2147483000
 
 func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
     if s == null:
@@ -383,7 +416,7 @@ func spawn_zombies():
     for y in range(1, H - 1):
         for x in range(1, W - 1):
             var p := Vector2i(x, y)
-            if blocked(p) or p == player.get("pos", player_spawn) or p == ally.get("pos", Vector2i(-1,-1)) or explore_cells.has(p):
+            if blocked(p) or p == player.get("pos", player_spawn) or p == ally.get("pos", Vector2i(-1,-1)) or rescuee_at(p) or explore_cells.has(p):
                 continue
             var d := manhattan(player_spawn, p)
             if context.get("kind", "") == "ambush":
@@ -438,6 +471,15 @@ func restore_runtime():
         ally["dead"] = int(ally["hp"]) <= 0
         if runtime.has("ally_pos"):
             ally["pos"] = arr_to_v2i(runtime["ally_pos"], ally["pos"])
+    if not rescuee.is_empty():
+        rescuee["hp"] = clampi(int(runtime.get("rescue_hp", rescuee["hp"])), 0, int(rescuee["max_hp"]))
+        rescuee["dead"] = int(rescuee["hp"]) <= 0
+        if runtime.has("rescue_pos"):
+            rescuee["pos"] = arr_to_v2i(runtime["rescue_pos"], rescuee["pos"])
+        rescue_contacted = bool(runtime.get("rescue_contacted", runtime.get("objective_done", false)))
+        rescuee["active"] = rescue_contacted and not bool(rescuee["dead"])
+        rescuee["crouched"] = not rescue_contacted
+        rescuee["next"] = int(runtime.get("rescue_next", rescuee.get("next", 2147483000)))
     objective_done = bool(runtime.get("objective_done", false))
     tick = int(runtime.get("tick", tick))
 
@@ -505,6 +547,10 @@ func persist_runtime():
         "crouched": bool(player.crouched),
         "guarding": bool(player.get("guarding", false)),
         "objective_done": objective_done,
+        "rescue_hp": int(rescuee.get("hp", -1)) if not rescuee.is_empty() else -1,
+        "rescue_pos": [rescuee.pos.x, rescuee.pos.y] if not rescuee.is_empty() else [-1, -1],
+        "rescue_contacted": rescue_contacted,
+        "rescue_next": int(rescuee.get("next", 2147483000)) if not rescuee.is_empty() else 2147483000,
         "explore_cells": saved_explore_cells,
         "explore_searched": saved_explore_searched,
         "explore_gear_cell": [explore_gear_cell.x, explore_gear_cell.y],
@@ -564,6 +610,10 @@ func dispatch_point(pos: Vector2):
     var cell := screen_to_cell(pos)
     if not inside(cell): return
     var delta: Vector2i = cell - player.pos
+    if str(context.get("kind", "")) == "rescue" and rescuee_at(cell) and visible_cells.has(cell) and manhattan(player.pos, cell) == 1:
+        player.facing = delta
+        contact_rescuee()
+        return
     if str(context.get("kind", "")) == "explore" and explore_cells.has(cell) and not explore_searched.has(cell) and (cell == player.pos or manhattan(player.pos, cell) == 1):
         if cell != player.pos:
             player.facing = delta
@@ -608,6 +658,8 @@ func rotate_player(step: int):
 
 func step_forward():
     var cell: Vector2i = player.pos + player.facing
+    if rescuee_at(cell):
+        contact_rescuee(); return
     if zombie_at(cell) != -1:
         melee(cell); return
     if doors.has(cell):
@@ -620,7 +672,7 @@ func step_forward():
 func step_backward():
     var keep: Vector2i = player.facing
     var dest: Vector2i = player.pos - keep
-    if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest):
+    if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest) or rescuee_at(dest):
         msg = "Blocked behind you."
         queue_redraw(); return
     player["guarding"] = false
@@ -646,7 +698,7 @@ func toggle_crouch():
 func try_move(dir: Vector2i):
     var dest: Vector2i = player.pos + dir
     player.facing = dir
-    if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest):
+    if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest) or rescuee_at(dest):
         msg = "Blocked."
         recalc_visibility(); refresh_intents(); queue_redraw(); return
     player["guarding"] = false
@@ -661,15 +713,28 @@ func try_move(dir: Vector2i):
     check_objective_and_exit()
     commit_action(TacticalTime.movement_cost(player, false))
 
+func rescuee_ready_to_extract() -> bool:
+    if rescuee.is_empty() or bool(rescuee.get("dead", false)) or not rescue_contacted:
+        return false
+    if exit_cells.has(rescuee.pos):
+        return true
+    return manhattan(player.pos, rescuee.pos) <= 1
+
 func check_objective_and_exit():
     var kind := str(context.get("kind", "ambush"))
-    if not objective_done and kind == "rescue":
-        if player.pos == rescue_cell or (not ally.is_empty() and not ally.dead and ally.pos == rescue_cell):
-            objective_done = true
-            msg = "Survivor found. Reach any exit."
-            emit_noise(rescue_cell, 9, "struggle", true)
     if exit_cells.has(player.pos):
-        if objective_done:
+        if kind == "rescue":
+            var rescue_name := str(rescuee.get("name", "The survivor"))
+            if rescuee_ready_to_extract():
+                objective_done = true
+                msg = "%s makes it out with you." % rescue_name
+            elif not rescuee.is_empty() and bool(rescuee.get("dead", false)):
+                msg = "You escape. %s did not make it." % rescue_name
+            elif rescue_contacted:
+                msg = "You leave before %s reaches the exit." % rescue_name
+            else:
+                msg = "You abandon the rescue and get out alive."
+        elif objective_done:
             msg = "You made it out."
         elif kind == "ambush":
             msg = "You broke contact and escaped."
@@ -680,6 +745,9 @@ func check_objective_and_exit():
         finish_encounter("escaped")
 func interact():
     var p: Vector2i = player.pos + player.facing
+    if str(context.get("kind", "")) == "rescue" and rescuee_at(p):
+        contact_rescuee()
+        return
     if str(context.get("kind", "")) == "explore":
         if explore_cells.has(player.pos) and not explore_searched.has(player.pos):
             search_explore_cell(player.pos)
@@ -813,6 +881,7 @@ func shoot_barrel(cell: Vector2i):
             if zombies[i].hp <= 0: kill_zombie(i, false)
     blast_actor(player, cell)
     if not ally.is_empty() and not ally.dead: blast_actor(ally, cell)
+    if not rescuee.is_empty() and not rescuee.dead: blast_actor(rescuee, cell)
     for p in glass.keys().duplicate():
         if manhattan(cell, p) <= 2: glass.erase(p)
     emit_noise(cell, 110, "explosion", true)
@@ -872,6 +941,64 @@ func shove() -> void:
     emit_noise(player.pos, 18, "shove", true)
     commit_action(TacticalTime.interaction_cost(player, 78))
 
+func contact_rescuee() -> void:
+    if rescuee.is_empty():
+        msg = "There is nobody here to rescue."
+        queue_redraw()
+        return
+    if bool(rescuee.get("dead", false)):
+        msg = "%s is already gone." % str(rescuee.get("name", "The survivor"))
+        queue_redraw()
+        return
+    if rescue_contacted:
+        msg = "%s is already following you." % str(rescuee.get("name", "The survivor"))
+        queue_redraw()
+        return
+    if manhattan(player.pos, rescuee.pos) != 1:
+        msg = "Get next to the survivor first."
+        queue_redraw()
+        return
+    player["guarding"] = false
+    rescue_contacted = true
+    rescuee["active"] = true
+    rescuee["crouched"] = false
+    rescuee["next"] = tick + TacticalBalance.RESCUE_CONTACT_TICKS + TacticalBalance.RESCUE_PACE_PENALTY
+    msg = "%s is with you. Reach an exit together." % str(rescuee.get("name", "The survivor"))
+    emit_noise(rescuee.pos, 12, "whispered reply", false)
+    commit_action(TacticalBalance.RESCUE_CONTACT_TICKS)
+
+func rescuee_act() -> void:
+    if rescuee.is_empty() or bool(rescuee.get("dead", false)) or not rescue_contacted:
+        return
+    var current_distance := manhattan(rescuee.pos, player.pos)
+    var best := Vector2i.ZERO
+    var best_threat := 999
+    var best_distance := current_distance
+    for dir_value in DIRS:
+        var dir: Vector2i = dir_value
+        var candidate: Vector2i = rescuee.pos + dir
+        if blocked(candidate) or zombie_at(candidate) != -1 or candidate == player.pos or ally_at(candidate):
+            continue
+        var distance := manhattan(candidate, player.pos)
+        if distance >= current_distance:
+            continue
+        var threat := 0
+        for z in zombies:
+            if not z.dead and manhattan(candidate, z.pos) <= 1:
+                threat += 1
+        if threat < best_threat or (threat == best_threat and distance < best_distance):
+            best = dir
+            best_threat = threat
+            best_distance = distance
+    if best != Vector2i.ZERO:
+        rescuee["facing"] = best
+        rescuee["pos"] = rescuee.pos + best
+        rescuee["move_state"] = "WALK"
+        emit_noise(rescuee.pos, 11, TacticalSound.surface_step_label(str(ground.get(rescuee.pos, "asphalt")), false), false)
+    else:
+        rescuee["move_state"] = "STILL"
+    rescuee["next"] = tick + TacticalTime.movement_cost(rescuee, false) + TacticalBalance.RESCUE_PACE_PENALTY
+
 func search_explore_cell(cell: Vector2i) -> void:
     if str(context.get("kind", "")) != "explore" or not explore_cells.has(cell) or explore_searched.has(cell):
         return
@@ -911,6 +1038,8 @@ func commit_action(cost: int):
         var next_index := -1
         if not ally.is_empty() and not ally.dead and int(ally.next) <= target_tick and int(ally.next) < next_time:
             next_time = int(ally.next); next_kind = "ally"
+        if not rescuee.is_empty() and not rescuee.dead and rescue_contacted and int(rescuee.next) <= target_tick and int(rescuee.next) < next_time:
+            next_time = int(rescuee.next); next_kind = "rescuee"
         for i in range(zombies.size()):
             if zombies[i].dead: continue
             if int(zombies[i].next) <= target_tick and int(zombies[i].next) < next_time:
@@ -918,6 +1047,7 @@ func commit_action(cost: int):
         if next_kind == "": break
         tick = next_time
         if next_kind == "ally": companion_act()
+        elif next_kind == "rescuee": rescuee_act()
         else: zombie_act(next_index)
     tick = target_tick
     if int(player.hp) <= 0:
@@ -1013,6 +1143,7 @@ func choose_zombie_target(z) -> Dictionary:
     var candidates := []
     if zombie_sees_actor(z, player): candidates.append(player)
     if not ally.is_empty() and not ally.dead and zombie_sees_actor(z, ally): candidates.append(ally)
+    if not rescuee.is_empty() and not rescuee.dead and zombie_sees_actor(z, rescuee): candidates.append(rescuee)
     if candidates.is_empty(): return {}
     var best: Dictionary = candidates[0]
     for a in candidates:
@@ -1068,6 +1199,7 @@ func best_step_toward(from: Vector2i, goal: Vector2i, for_ally: bool) -> Vector2
             continue
         if p == player.pos and (ally.is_empty() or from != ally.pos): continue
         if not ally.is_empty() and p == ally.pos and from != ally.pos: continue
+        if not rescuee.is_empty() and p == rescuee.pos and from != rescuee.pos: continue
         var dist = manhattan(p, goal)
         if dist < best_d:
             best_d = dist; best = d
@@ -1290,6 +1422,10 @@ func finish_encounter(outcome: String):
         "kind": str(context.get("kind", "ambush")),
         "objective_done": objective_done,
         "rescued": objective_done and str(context.get("kind", "")) == "rescue",
+        "rescue_contacted": rescue_contacted,
+        "rescue_survivor_alive": not rescuee.is_empty() and not bool(rescuee.get("dead", false)),
+        "rescue_survivor_hp": int(rescuee.get("hp", -1)) if not rescuee.is_empty() else -1,
+        "rescue_survivor_max_hp": int(rescuee.get("max_hp", -1)) if not rescuee.is_empty() else -1,
         "field_gear": str(context.get("field_gear", "")) if objective_done and str(context.get("kind", "")) == "explore" else "",
         "lead_hp": int(player.get("hp",0)), "lead_max_hp": int(player.get("max_hp",18)),
         "companion_hp": int(ally.get("hp",-1)) if not ally.is_empty() else -1,
@@ -1315,6 +1451,9 @@ func zombie_at(p: Vector2i) -> int:
 
 func ally_at(p: Vector2i) -> bool:
     return not ally.is_empty() and not ally.dead and ally.pos == p
+
+func rescuee_at(p: Vector2i) -> bool:
+    return not rescuee.is_empty() and rescuee.pos == p
 
 func manhattan(a: Vector2i, b: Vector2i) -> int:
     return abs(a.x-b.x)+abs(a.y-b.y)
@@ -1381,9 +1520,9 @@ func draw_map():
     var kind := str(context.get("kind","ambush"))
     if kind == "explore":
         draw_explore_sites()
-    elif kind == "rescue" and not objective_done:
-        draw_circle(cell_center(rescue_cell), 9, Color(.95,.75,.20), false, 3)
-        draw_string(font, cell_center(rescue_cell)+Vector2(-10,-12), "SOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(.95,.8,.35))
+    elif kind == "rescue" and not rescuee.is_empty() and not rescuee.dead and not rescue_contacted:
+        draw_circle(cell_center(rescuee.pos), 9, Color(.95,.75,.20), false, 3)
+        draw_string(font, cell_center(rescuee.pos)+Vector2(-10,-12), "SOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(.95,.8,.35))
 
 func draw_explore_sites() -> void:
     for cell in explore_cells:
@@ -1447,6 +1586,14 @@ func draw_units():
             var intent_text := str(intent_reads.get(i, "?"))
             if intent_text != "":
                 draw_string(font, c + Vector2(-16, -12), intent_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, .84, .35))
+
+    if not rescuee.is_empty() and visible_cells.has(rescuee.pos):
+        if rescuee.dead:
+            TacticalVisuals.draw_survivor_corpse(self, cell_center(rescuee.pos), rescuee)
+        else:
+            TacticalVisuals.draw_survivor(self, cell_center(rescuee.pos), rescuee, false)
+            var rescue_label := "FOLLOW" if rescue_contacted else "RESCUE"
+            draw_string(font, cell_center(rescuee.pos) + Vector2(-24, -13), rescue_label, HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color(.98, .82, .36))
 
     if not ally.is_empty() and visible_cells.has(ally.pos):
         if ally.dead:
@@ -1538,7 +1685,14 @@ func draw_hud():
     draw_string(font, Vector2(10,89), str(gear_lines[1]), HORIZONTAL_ALIGNMENT_LEFT, 370, 8, Color(.72,.78,.74))
     var objective_text := "ESCAPE"
     match str(context.get("kind","ambush")):
-        "rescue": objective_text = "RESCUE + ESCAPE" if not objective_done else "ESCAPE WITH SURVIVOR"
+        "rescue":
+            var rescue_name := str(rescuee.get("name", "SURVIVOR")).to_upper()
+            if not rescuee.is_empty() and rescuee.dead:
+                objective_text = "RESCUE FAILED | ESCAPE"
+            elif rescue_contacted:
+                objective_text = "ESCORT %s TO EXIT" % rescue_name
+            else:
+                objective_text = "REACH %s" % rescue_name
         "explore":
             var field_gear := str(context.get("field_gear", "LOOT"))
             if objective_done:

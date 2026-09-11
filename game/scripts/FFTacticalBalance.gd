@@ -19,6 +19,10 @@ const ZOMBIE_BASE_COUNTS := {
     "Industrial Edge": 7,
 }
 
+const RESCUE_SURVIVOR_HP := 12
+const RESCUE_CONTACT_TICKS := 70
+const RESCUE_PACE_PENALTY := 18
+
 static func explore_site_count(zone: String) -> int:
     return int(EXPLORE_SITE_COUNTS.get(zone, 3))
 
@@ -27,6 +31,8 @@ static func zombie_count(zone: String, kind: String) -> int:
     # Exploration asks the player to cover more ground, so it gets slightly
     # more breathing room. Ambush remains the combat-heaviest objective.
     if kind == "explore":
+        count -= 1
+    elif kind == "rescue":
         count -= 1
     elif kind == "ambush":
         count += 1

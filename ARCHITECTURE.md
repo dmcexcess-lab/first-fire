@@ -44,7 +44,7 @@ Survivor-tab dashboard presentation. Owns the concise CAMP/OUT/BUSY/LOST summary
 Reusable modal inspection presentation for detailed survivor sheets and camp inventory/item information. It owns the inspection pause/restore behavior and item help text, while survivor/equipment actions still go through `Game.gd`. Inspection is intentionally schema-neutral and must not become a second inventory or survivor-state model.
 
 ### `FFCombat.gd`
-Tactical runtime once a physical scenario exists: board state, actors, movement/action timing, zombie behavior, vision/fog, facing, sound, doors/glass/hazards, melee/firearms, objectives, and completion.
+Tactical runtime once a physical scenario exists: board state, actors, movement/action timing, zombie behavior, vision/fog, facing, sound, doors/glass/hazards, melee/firearms, objectives, temporary rescue-civilian escort behavior, and completion. A rescue civilian is an objective NPC, not a second expedition survivor or combat companion.
 
 ### `FFTacticalScenarios.gd`
 Tactical objective/catalog ownership: encounter-kind weights and combination of an objective with a compatible physical environment. Objective and place are intentionally separate so the same location can host rescue, search, or ambush situations.
@@ -59,7 +59,7 @@ Tactical environment atlas renderer. Owns atlas-region lookup and drawing for gr
 Pure tactical action-timing rules. Converts survivor equipment weight, fatigue, condition, skills, stance, and zombie pace/mass profiles into actual timeline costs used by `FFCombat.gd`.
 
 ### `FFTacticalBalance.gd`
-Pure Beta tuning rules for tactical combat and exploration: objective-specific infected counts, multi-search sizing/rewards, search time/noise, melee/firearm accuracy, Guard defense, Shove resistance/stagger, and infected mass damage. Keeping these values outside `FFCombat.gd` makes balance iteration deterministic and testable without creating a new gameplay pillar.
+Pure Beta tuning rules for tactical combat, rescue, and exploration: objective-specific infected counts, rescue civilian durability/contact/escort pacing, multi-search sizing/rewards, search time/noise, melee/firearm accuracy, Guard defense, Shove resistance/stagger, and infected mass damage. Keeping these values outside `FFCombat.gd` makes balance iteration deterministic and testable without creating a new gameplay pillar.
 
 ### `FFTacticalSound.gd`
 Pure tactical sound presentation/localization rules: surface-aware labels, bounded fuzzy source estimates, and ambient sound profiles. `FFCombat.gd` still owns propagation and AI reaction state.

@@ -345,6 +345,41 @@ func _add_recruit(preferred_background = "", rescuer_ids = []) -> Variant:
     state_changed.emit()
     return s
 
+func _add_recruit_candidate(candidate: Dictionary, rescuer_ids = []) -> Variant:
+    if candidate.is_empty():
+        return _add_recruit("", rescuer_ids)
+    if population() >= MAX_POPULATION:
+        toast_requested.emit("First Fire is at its %d-person limit." % MAX_POPULATION)
+        return null
+    if population() >= mini(MAX_POPULATION, shelter_capacity() + 1):
+        toast_requested.emit("There is no room to squeeze another survivor into camp right now.")
+        return null
+    var s: Dictionary = candidate.duplicate(true)
+    if int(s.get("id", -1)) < 0:
+        s["id"] = next_survivor_id
+        next_survivor_id += 1
+    else:
+        next_survivor_id = maxi(next_survivor_id, int(s["id"]) + 1)
+    s["status"] = "Available"
+    s["task"] = {}
+    s["relationships"] = {}
+    if not s.has("history"):
+        s["history"] = []
+    _initialize_relationships(s)
+    for rid in rescuer_ids:
+        s["relationships"][str(rid)] = rng.randi_range(15, 25)
+        var rescuer: Variant = get_survivor(rid)
+        if rescuer != null:
+            rescuer["relationships"][str(s["id"])] = rng.randi_range(5, 15)
+            _change_reputation(rescuer, 5)
+    survivors.append(s)
+    s["history"].append("Day %d — Rescued in the field and joined First Fire." % day)
+    _add_history("Day %d — %s joined First Fire after a field rescue." % [day, s["name"]])
+    eligible_expeditions_since_recruit = 0
+    save_game()
+    state_changed.emit()
+    return s
+
 func relationship_label(value):
     return CampSocial.relationship_label(int(value))
 
@@ -823,12 +858,20 @@ func _begin_tactical_encounter(exp):
     var environment_id := TacticalScenarios.pick_environment(str(exp["zone"]), combat_kind, rng)
     var environment_variant := TacticalScenarios.environment_variant(environment_id, rng)
     var scene_state: Dictionary = TacticalScenarios.pick_scene_state(environment_id, rng)
+    var rescue_candidate := {}
+    if combat_kind == "rescue":
+        rescue_candidate = _generate_survivor(false)
+        rescue_candidate["status"] = "Awaiting Rescue"
+        rescue_candidate["task"] = {}
+        rescue_candidate["stress"] = rng.randf_range(35.0, 60.0)
+        rescue_candidate["fatigue"] = rng.randf_range(15.0, 35.0)
     current_combat = {
         "uid": "%d-%d-%d" % [day, int(exp["id"]), rng.randi_range(1000, 999999)],
         "expedition_id": int(exp["id"]),
         "survivor_ids": ids.duplicate(true),
         "zone": str(exp["zone"]),
         "kind": combat_kind,
+        "rescue_candidate": rescue_candidate.duplicate(true) if combat_kind == "rescue" else {},
         "environment_id": environment_id,
         "environment_variant": environment_variant,
         "time_of_day": str(scene_state.get("time_of_day", "day")),
@@ -888,6 +931,30 @@ func _commit_tactical_health(s, hp, max_hp, reason):
         s["injury_remaining"] = injury_time
         s["history"].append("Day %d — Injured during a tactical encounter: %s." % [day, target])
 
+func _prepare_rescue_candidate(candidate_value, hp: int, max_hp: int) -> Dictionary:
+    var candidate: Dictionary = candidate_value.duplicate(true) if candidate_value is Dictionary else {}
+    if candidate.is_empty():
+        return candidate
+    var ratio := float(maxi(0, hp)) / float(maxi(1, max_hp))
+    var condition := "Healthy"
+    var injury_time := 0.0
+    if ratio < 0.25:
+        condition = "Critical"; injury_time = 360.0
+    elif ratio < 0.55:
+        condition = "Wounded"; injury_time = 180.0
+    elif ratio < 0.80:
+        condition = "Hurt"; injury_time = 60.0
+    candidate["condition"] = condition
+    candidate["injury_remaining"] = injury_time
+    candidate["stress"] = min(100.0, float(candidate.get("stress", 10.0)) + float(maxi(0, max_hp - hp)) * 3.0)
+    candidate["status"] = "Available"
+    candidate["task"] = {}
+    if condition != "Healthy":
+        var candidate_history: Array = candidate.get("history", [])
+        candidate_history.append("Day %d — Injured during rescue: %s." % [day, condition])
+        candidate["history"] = candidate_history
+    return candidate
+
 func _grant_tactical_explore_reward(exp, lead, searches_completed: int):
     var scavenging := int(lead["skills"].get("Scavenging", 0)) if lead != null else 0
     var count := TacticalBalance.explore_reward_rolls(searches_completed, scavenging)
@@ -945,7 +1012,9 @@ func resolve_combat(result):
     var kind = str(encounter.get("kind", "ambush"))
     var place = str(encounter.get("location_name", "the area"))
     if kind == "rescue" and bool(result.get("rescued", false)):
-        _queue_recruit_offer(event, "A Survivor Makes It Out", "You get the stranger out of %s alive. Away from the infected and with a little room to breathe, they finally decide whether they trust First Fire enough to come back with you." % place, "tactical_rescue")
+        var rescue_candidate: Dictionary = _prepare_rescue_candidate(encounter.get("rescue_candidate", {}), int(result.get("rescue_survivor_hp", 1)), int(result.get("rescue_survivor_max_hp", TacticalBalance.RESCUE_SURVIVOR_HP)))
+        var rescue_name := str(rescue_candidate.get("name", "The survivor"))
+        _queue_recruit_offer(event, "%s Makes It Out" % rescue_name, "You get %s out of %s alive. Away from the infected and with a little room to breathe, they finally decide whether they trust First Fire enough to come back with you." % [rescue_name, place], "tactical_rescue", "", rescue_candidate)
     elif kind == "explore":
         var searches := int(result.get("searches_completed", 0))
         var total_sites := maxi(searches, int(result.get("search_sites_total", searches)))
@@ -963,7 +1032,13 @@ func resolve_combat(result):
         else:
             _queue_field_result(event, "Withdrew from %s" % place, "You found a way out before committing to the search. The expedition can continue, but the marked gear opportunity here is gone.", "The party withdrew from %s before searching the tactical objective." % place)
     elif kind == "rescue" and not bool(result.get("objective_done", false)):
-        _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the rescue. The expedition can continue, but the opportunity here is gone.", "The party withdrew from %s before completing the tactical objective." % place)
+        var rescue_name := str(encounter.get("rescue_candidate", {}).get("name", "the survivor"))
+        if not bool(result.get("rescue_survivor_alive", true)):
+            _queue_field_result(event, "Rescue Failed", "%s did not survive the encounter at %s. You still make it back out, but there is nobody left to bring home." % [rescue_name, place], "The attempted rescue at %s failed, but the expedition survivor escaped." % place)
+        elif bool(result.get("rescue_contacted", false)):
+            _queue_field_result(event, "Separated at %s" % place, "You reached %s, but extracted before both of you could reach the exit. The expedition continues, but the rescue opportunity is lost." % rescue_name, "The party reached a stranded survivor at %s but could not extract them." % place)
+        else:
+            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the rescue. The expedition can continue, but the opportunity here is gone.", "The party withdrew from %s before completing the tactical objective." % place)
     else:
         _queue_field_result(event, "Broke Contact", "The ambush never became a stand-up fight. You made space, found an exit, and got away from %s." % place, "The party escaped a tactical ambush at %s." % place)
     save_game()
@@ -1470,10 +1545,12 @@ func _queue_closed_result(event, title, body, note = ""):
         _choice("Continue", "close")
     ], event.get("context", {})))
 
-func _queue_recruit_offer(event, title, body, source = "stranger", preferred_background = ""):
+func _queue_recruit_offer(event, title, body, source = "stranger", preferred_background = "", recruit_candidate = {}):
     var context = event.get("context", {}).duplicate(true)
     context["recruit_source"] = source
     context["preferred_background"] = preferred_background
+    if recruit_candidate is Dictionary and not recruit_candidate.is_empty():
+        context["recruit_candidate"] = recruit_candidate.duplicate(true)
     _queue_event(_event_base("recruit_offer", title, body, [
         _choice("Invite them to First Fire", "recruit_offer_accept", not _has_room_for_recruit(), "NO SHELTER SPACE"),
         _choice("Ask what they know, then part ways", "recruit_offer_info"),
@@ -1678,7 +1755,12 @@ func _handle_event_action(event, action):
         "recruit_offer_accept":
             var preferred = event.get("context", {}).get("preferred_background", "")
             var source = event.get("context", {}).get("recruit_source", "stranger")
-            var recruit: Variant = _add_recruit(preferred, ids)
+            var recruit_candidate: Dictionary = event.get("context", {}).get("recruit_candidate", {})
+            var recruit: Variant = null
+            if not recruit_candidate.is_empty():
+                recruit = _add_recruit_candidate(recruit_candidate, ids)
+            else:
+                recruit = _add_recruit(preferred, ids)
             if recruit != null:
                 if source == "injured_stranger":
                     for sid in ids:

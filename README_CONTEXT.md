@@ -45,7 +45,7 @@ Tactical encounters use the actual expedition survivor(s), not temporary avatars
 
 Current tactical encounter types include:
 
-- **Survivor Rescue**
+- **Survivor Rescue** — now a physical escort objective: reach a named stranded survivor, make contact, keep them alive, and extract together. The rescued person cannot fight; infected can attack them; abandoning the rescue remains a valid self-extraction. The same survivor identity/appearance/condition carries into the post-extraction recruitment offer. Rescue can now occur from Camp Perimeter onward.
 - **Explore Location**
 - **Ambush**
 

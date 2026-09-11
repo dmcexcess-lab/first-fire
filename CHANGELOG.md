@@ -1,5 +1,16 @@
 # First Fire — Changelog
 
+## Beta Candidate — Physical Survivor Rescue — 2026-09-10
+
+- Promoted Survivor Rescue from an abstract SOS-cell objective into a physical tactical escort encounter.
+- Rescue encounters now generate a real named survivor with a persistent appearance and identity before the board opens.
+- The player must reach the survivor and explicitly make contact; the civilian then follows the player but does not fight.
+- Infected can see, target, injure, and kill the rescue civilian, so route choice, noise, Guard/Shove use, and extraction timing matter.
+- Successful rescue requires the expedition survivor and rescue civilian to reach an exit together; self-extraction remains valid at the cost of the rescue.
+- The exact rescued survivor, including tactical injury condition, carries into the post-extraction recruitment offer instead of generating a different person afterward.
+- Rescue is now available in Camp Perimeter as well as later zones; rescue encounters run one infected below zone baseline to account for the vulnerable escort.
+- Active rescue position, HP, contact state, and escort timing persist across tactical save/resume without changing save schema 7.
+
 ## Beta Candidate — Tactical Depth, Exploration & Balance — 2026-09-10
 
 - Added **Guard**: spend tactical time to reduce the next infected grab chance; a guarded hit also loses one damage.
