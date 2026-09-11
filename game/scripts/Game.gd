@@ -405,7 +405,7 @@ func add_skill_xp(s, skill, amount):
     var rank = int(s["skills"][skill])
     var threshold = 20 + rank * 15
     while rank < 10 and int(s["skill_xp"][skill]) >= threshold:
-        s["skill_xp"][skill] = int(s["skill_xp"][skill]) - threshold
+        s["skill_xp"][skill] = int(s["skill_xp"].get(skill, 0)) - threshold
         rank += 1
         s["skills"][skill] = rank
         s["history"].append("Day %d — Reached %s %d." % [day, skill, rank])
@@ -524,7 +524,8 @@ func treat_survivor(sid):
     if s["status"] != "Available":
         return false
     _clear_camp_activity(s)
-    if s["condition"] == "Hurt":
+    var condition := str(s["condition"])
+    if condition == "Hurt":
         if int(components.get("Sterile Dressing", 0)) <= 0:
             toast_requested.emit("You need a Sterile Dressing.")
             return false
@@ -534,18 +535,23 @@ func treat_survivor(sid):
         s["history"].append("Day %d — Treated a minor injury with a Sterile Dressing." % day)
         toast_requested.emit("%s treated — Sterile Dressing applied; about %.0fs recovery remains." % [s["name"], float(s["injury_remaining"])])
     else:
-        if int(resources.get("Medicine", 0)) <= 0:
-            toast_requested.emit("You need Medicine.")
+        var supply_name := "Sterile Dressing" if condition == "Wounded" else "Medicine"
+        var has_supply := int(components.get("Sterile Dressing", 0)) > 0 if condition == "Wounded" else int(resources.get("Medicine", 0)) > 0
+        if not has_supply:
+            toast_requested.emit("You need %s." % ("a Sterile Dressing" if condition == "Wounded" else "Medicine"))
             return false
-        resources["Medicine"] -= 1
+        if condition == "Wounded":
+            components["Sterile Dressing"] -= 1
+        else:
+            resources["Medicine"] -= 1
         s["status"] = "Recovering"
-        var base: float = 45.0 if s["condition"] == "Wounded" else 120.0
+        var base: float = 45.0 if condition == "Wounded" else 120.0
         var medical_skill: int = int(_best_available_skill("Medical", sid))
         var reduction: float = minf(0.35, float(medical_skill) * 0.04)
         var treatment_time: float = base * (1.0 - reduction) * CampLifeRules.treatment_time_multiplier(bool(buildings.get("Infirmary", false)))
         s["task"] = {"kind": "treatment", "remaining": treatment_time, "duration": base, "target": sid}
-        s["history"].append("Day %d — Began treatment for %s injuries." % [day, s["condition"].to_lower()])
-        toast_requested.emit("%s is being treated — about %.0fs of camp time." % [s["name"], treatment_time])
+        s["history"].append("Day %d — Began treatment for %s injuries with %s." % [day, condition.to_lower(), supply_name])
+        toast_requested.emit("%s is being treated with %s — about %.0fs of camp time." % [s["name"], supply_name, treatment_time])
     save_game()
     state_changed.emit()
     return true
