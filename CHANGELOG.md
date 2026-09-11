@@ -1,5 +1,20 @@
 # First Fire — Changelog
 
+## Beta Candidate — Tactical Depth, Exploration & Balance — 2026-09-10
+
+- Added **Guard**: spend tactical time to reduce the next infected grab chance; a guarded hit also loses one damage.
+- Added **Shove**: create space without dealing normal damage. Infected mass now matters to shove resistance and stagger duration.
+- Differentiated weapons further: knives gain accuracy, the improvised spear reaches two straight-line cells, blunt/pry weapons displace better, and shotguns can damage infected adjacent to the primary impact.
+- Rebalanced infected attacks so light/medium/heavy mass produces different damage ranges while existing per-infected pace continues to drive chase timing.
+- Expanded Explore into a real sweep: 3–5 search locations depending on zone, one hidden target-gear cache, explicit tactical search time/noise, and persistent searched-state across tactical save/resume.
+- Partial Explore retreats now keep a bounded amount of supplies from physically searched caches even when the marked gear was not found.
+- Exploration spawns one fewer infected than the zone baseline; ambushes remain one above baseline. This preserves encounter identity instead of scaling every objective the same way.
+- Tactical search rewards scale with search depth and Scavenging skill but are capped to avoid stacking into huge loot piles alongside the normal expedition haul.
+- A successful Explore no longer also rolls a second random post-expedition gear drop; the physical marked item is the gear reward for that tactical objective.
+- Tactical encounter fatigue was reduced from a 6-point base to 4 before the existing fatigue multiplier, while Combat XP now comes from actual attacks/shots/kills instead of receiving a flat participation award.
+- Added deterministic smoke contracts for exploration scale/rewards, objective-specific infected counts, Guard, Shove mass resistance, and Scavenging search speed.
+- Save schema remains 7; the added tactical runtime fields are additive.
+
 This file tracks player-facing changes to the playable Alpha builds, plus major technical changes that affect development/reliability.
 
 ## Beta Candidate — Safari Scroll & Font-Safe Controls — 2026-08-22

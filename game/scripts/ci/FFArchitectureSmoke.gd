@@ -8,6 +8,7 @@ const TacticalLighting = preload("res://scripts/FFTacticalLighting.gd")
 const TacticalTiles = preload("res://scripts/FFTacticalTiles.gd")
 const TacticalTime = preload("res://scripts/FFTacticalTime.gd")
 const TacticalSound = preload("res://scripts/FFTacticalSound.gd")
+const TacticalBalance = preload("res://scripts/FFTacticalBalance.gd")
 const LegacyFieldEvents = preload("res://scripts/FFFieldEventsLegacy.gd")
 const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
@@ -46,6 +47,18 @@ func _init() -> void:
     var heavy_actor: Dictionary = light_actor.duplicate(true)
     heavy_actor["equipment"] = {"Weapon": "Shotgun", "Secondary": "Lantern", "Tool": "Toolbox", "Clothing": "Leather Jacket", "Pack": "Hiking Pack"}
     if not _check(TacticalTime.movement_cost(heavy_actor, false) > TacticalTime.movement_cost(light_actor, false), "encumbrance changes timeline"): return
+    if not _check(TacticalBalance.explore_site_count("Industrial Edge") > TacticalBalance.explore_site_count("Camp Perimeter"), "exploration grows by zone"): return
+    if not _check(TacticalBalance.explore_reward_rolls(4, 5) > TacticalBalance.explore_reward_rolls(1, 1), "exploration reward scales with search depth"): return
+    if not _check(TacticalBalance.zombie_count("Residential Blocks", "explore") < TacticalBalance.zombie_count("Residential Blocks", "ambush"), "objective-specific zombie balance"): return
+    var unguarded_actor := light_actor.duplicate(true)
+    unguarded_actor["guarding"] = false
+    var guarded_actor := light_actor.duplicate(true)
+    guarded_actor["guarding"] = true
+    if not _check(TacticalBalance.zombie_hit_chance(guarded_actor) < TacticalBalance.zombie_hit_chance(unguarded_actor), "guard changes incoming hit chance"): return
+    if not _check(TacticalBalance.shove_chance(light_actor, "LIGHT", 0) > TacticalBalance.shove_chance(light_actor, "HEAVY", 0), "infected mass changes shove resistance"): return
+    var skilled_searcher := light_actor.duplicate(true)
+    skilled_searcher["skills"]["Scavenging"] = 7
+    if not _check(TacticalBalance.search_cost(skilled_searcher) < TacticalBalance.search_cost(light_actor), "scavenging speeds tactical search"): return
 
     var sound_rng := RandomNumberGenerator.new()
     sound_rng.seed = 7

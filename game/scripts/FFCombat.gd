@@ -9,6 +9,7 @@ const TacticalLighting = preload("res://scripts/FFTacticalLighting.gd")
 const TacticalTiles = preload("res://scripts/FFTacticalTiles.gd")
 const TacticalTime = preload("res://scripts/FFTacticalTime.gd")
 const TacticalSound = preload("res://scripts/FFTacticalSound.gd")
+const TacticalBalance = preload("res://scripts/FFTacticalBalance.gd")
 
 const SCREEN_W := 390.0
 const SCREEN_H := 844.0
@@ -57,11 +58,14 @@ var power_on := false
 var objective_cell := Vector2i(W - 3, 3)
 var rescue_cell := Vector2i(W - 3, 4)
 var objective_done := false
+var explore_cells: Array = []
+var explore_searched := {}
+var explore_gear_cell := Vector2i(-1, -1)
 var game_over := false
 var msg := ""
 var submsg := ""
 var location_name := "Field Encounter"
-var stats := {"kills": 0, "shots": 0, "noise": 0, "damage": 0}
+var stats := {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "noise": 0, "damage": 0}
 var active_touch_ids := {}
 var last_guard_action := ""
 var last_guard_ms := -10000
@@ -79,6 +83,8 @@ var btn_crouch := Rect2(28, 788, 96, 42)
 var btn_forward := Rect2(264, 654, 108, 38)
 var btn_turn_right := Rect2(246, 700, 136, 78)
 var btn_back := Rect2(264, 788, 108, 42)
+var btn_guard := Rect2(148, 654, 98, 42)
+var btn_shove := Rect2(148, 744, 98, 42)
 
 func _ready():
     font = ThemeDB.fallback_font
@@ -108,7 +114,7 @@ func start_encounter(data: Dictionary):
     rng.seed = int(context.get("seed", 1))
     initialized = true
     game_over = false
-    stats = {"kills": 0, "shots": 0, "noise": 0, "damage": 0}
+    stats = {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "noise": 0, "damage": 0}
     sound_marks.clear()
     memory.clear()
     last_seen.clear()
@@ -130,6 +136,7 @@ func start_encounter(data: Dictionary):
     scene_time = str(context.get("time_of_day", "day"))
     power_on = bool(context.get("power_on", false))
     build_map(environment_id, environment_variant)
+    setup_explore_sites()
     make_party()
     spawn_zombies()
     restore_runtime()
@@ -190,6 +197,7 @@ func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
         "last_dir": Vector2i.ZERO,
         "move_state": "STILL",
         "crouched": false,
+        "guarding": false,
         "dead": false,
         "controlled": controlled
     }
@@ -205,24 +213,23 @@ func condition_max_hp(condition: String) -> int:
 func weapon_profile(name: String) -> Dictionary:
     match name:
         "Utility Knife", "Kitchen Knife":
-            return {"name": name if name != "" else "Knife", "dmin": 4, "dmax": 7, "time": 80, "noise": 3, "push": 0, "stealth": 5, "gun": false, "ammo": 0}
+            return {"name": name if name != "" else "Knife", "dmin": 4, "dmax": 7, "time": 82, "noise": 3, "push": 0, "stealth": 5, "accuracy": 0.06, "reach": 1, "gun": false, "ammo": 0}
         "Wooden Club", "Baseball Bat":
-            return {"name": name, "dmin": 5, "dmax": 9, "time": 120, "noise": 9, "push": 2, "stealth": 1, "gun": false, "ammo": 0}
+            return {"name": name, "dmin": 5, "dmax": 9, "time": 118, "noise": 9, "push": 2, "stealth": 1, "accuracy": -0.02, "reach": 1, "gun": false, "ammo": 0}
         "Hammer":
-            return {"name": name, "dmin": 5, "dmax": 9, "time": 105, "noise": 8, "push": 1, "stealth": 2, "gun": false, "ammo": 0}
+            return {"name": name, "dmin": 5, "dmax": 9, "time": 104, "noise": 8, "push": 1, "stealth": 2, "accuracy": 0.01, "reach": 1, "gun": false, "ammo": 0}
         "Improvised Spear":
-            return {"name": name, "dmin": 6, "dmax": 10, "time": 125, "noise": 7, "push": 1, "stealth": 3, "gun": false, "ammo": 0}
+            return {"name": name, "dmin": 6, "dmax": 10, "time": 122, "noise": 7, "push": 1, "stealth": 3, "accuracy": -0.03, "reach": 2, "gun": false, "ammo": 0}
         "Crowbar":
-            return {"name": name, "dmin": 5, "dmax": 8, "time": 110, "noise": 8, "push": 1, "stealth": 2, "gun": false, "ammo": 0}
+            return {"name": name, "dmin": 5, "dmax": 8, "time": 108, "noise": 8, "push": 2, "stealth": 2, "accuracy": 0.00, "reach": 1, "gun": false, "ammo": 0}
         "Hatchet":
-            return {"name": name, "dmin": 7, "dmax": 11, "time": 145, "noise": 11, "push": 1, "stealth": 2, "gun": false, "ammo": 0}
+            return {"name": name, "dmin": 7, "dmax": 11, "time": 140, "noise": 11, "push": 1, "stealth": 2, "accuracy": -0.03, "reach": 1, "gun": false, "ammo": 0}
         "Pistol":
-            return {"name": name, "dmin": 3, "dmax": 5, "time": 95, "noise": 7, "push": 0, "stealth": 1, "gun": true, "ammo": 1, "gmin": 8, "gmax": 14, "gtime": 120, "gnoise": 72}
+            return {"name": name, "dmin": 3, "dmax": 5, "time": 95, "noise": 7, "push": 0, "stealth": 1, "accuracy": 0.02, "reach": 1, "gun": true, "ammo": 1, "gmin": 8, "gmax": 14, "gtime": 118, "gnoise": 72, "gaccuracy": 0.05}
         "Shotgun":
-            return {"name": name, "dmin": 4, "dmax": 7, "time": 115, "noise": 9, "push": 1, "stealth": 1, "gun": true, "ammo": 2, "gmin": 13, "gmax": 20, "gtime": 155, "gnoise": 96}
+            return {"name": name, "dmin": 4, "dmax": 7, "time": 115, "noise": 9, "push": 1, "stealth": 1, "accuracy": -0.02, "reach": 1, "gun": true, "ammo": 2, "gmin": 13, "gmax": 20, "gtime": 155, "gnoise": 96, "gaccuracy": -0.02}
         _:
-            return {"name": "Bare Hands", "dmin": 2, "dmax": 4, "time": 105, "noise": 5, "push": 0, "stealth": 0, "gun": false, "ammo": 0}
-
+            return {"name": "Bare Hands", "dmin": 2, "dmax": 4, "time": 108, "noise": 5, "push": 0, "stealth": 0, "accuracy": -0.08, "reach": 1, "gun": false, "ammo": 0}
 func build_map(new_environment_id: String, variant: int):
     environment_id = new_environment_id
     walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); indoor_cells.clear(); opaque_obstacles.clear(); exit_cells.clear(); light_sources.clear(); light_levels.clear(); light_tints.clear()
@@ -303,16 +310,80 @@ func choose_far_open_cell() -> Vector2i:
         return player_spawn
     return candidates[rng.randi_range(0, candidates.size() - 1)]
 
+func setup_explore_sites() -> void:
+    explore_cells.clear()
+    explore_searched.clear()
+    explore_gear_cell = Vector2i(-1, -1)
+    if str(context.get("kind", "ambush")) != "explore":
+        return
+    var wanted := TacticalBalance.explore_site_count(str(context.get("zone", "Nearby Streets")))
+    explore_cells = choose_explore_cells(wanted)
+    if explore_cells.is_empty():
+        explore_cells = [objective_cell]
+    explore_gear_cell = explore_cells[rng.randi_range(0, explore_cells.size() - 1)]
+    objective_cell = explore_gear_cell
+
+func choose_explore_cells(wanted: int) -> Array:
+    var distances := {player_spawn: 0}
+    var queue: Array = [player_spawn]
+    while not queue.is_empty():
+        var p: Vector2i = queue.pop_front()
+        var base_distance := int(distances[p])
+        for d in DIRS:
+            var n: Vector2i = p + Vector2i(d)
+            if not inside(n) or walls.has(n) or obstacles.has(n) or distances.has(n):
+                continue
+            distances[n] = base_distance + 1
+            queue.append(n)
+    var preferred: Array = []
+    var fallback: Array = []
+    for key in distances.keys():
+        var p: Vector2i = key
+        if int(distances[p]) < 4 or p == player_spawn or p == ally_spawn or exit_cells.has(p):
+            continue
+        if walls.has(p) or obstacles.has(p) or glass.has(p) or doors.has(p) or barrels.has(p):
+            continue
+        fallback.append(p)
+        var near_fixture := false
+        for d in DIRS:
+            var adjacent := p + Vector2i(d)
+            if props.has(adjacent) or obstacles.has(adjacent) or barrels.has(adjacent):
+                near_fixture = true
+                break
+        if near_fixture:
+            preferred.append(p)
+    var result: Array = []
+    for pass_pool in [preferred, fallback]:
+        var pool: Array = pass_pool.duplicate()
+        while not pool.is_empty() and result.size() < wanted:
+            var eligible: Array = []
+            for p in pool:
+                var spaced := true
+                for chosen in result:
+                    if manhattan(p, chosen) < 4:
+                        spaced = false
+                        break
+                if spaced:
+                    eligible.append(p)
+            if eligible.is_empty():
+                break
+            var choice: Vector2i = eligible[rng.randi_range(0, eligible.size() - 1)]
+            result.append(choice)
+            pool.erase(choice)
+        if result.size() >= wanted:
+            break
+    return result
+
 func spawn_zombies():
     zombies.clear()
     var zone := str(context.get("zone", "Nearby Streets"))
-    var count: int = int({"Camp Perimeter": 3, "Nearby Streets": 4, "Residential Blocks": 5, "Commercial Fringe": 6, "Industrial Edge": 7}.get(zone, 4))
-    if context.get("kind", "") == "ambush": count += 1
+    var kind := str(context.get("kind", "ambush"))
+    var count: int = TacticalBalance.zombie_count(zone, kind)
     var candidates := []
     for y in range(1, H - 1):
         for x in range(1, W - 1):
             var p := Vector2i(x, y)
-            if blocked(p) or p == player.get("pos", player_spawn) or p == ally.get("pos", Vector2i(-1,-1)):
+            if blocked(p) or p == player.get("pos", player_spawn) or p == ally.get("pos", Vector2i(-1,-1)) or explore_cells.has(p):
                 continue
             var d := manhattan(player_spawn, p)
             if context.get("kind", "") == "ambush":
@@ -348,6 +419,20 @@ func restore_runtime():
     if runtime.has("facing"):
         player["facing"] = DIRS[posmod(int(runtime["facing"]), 4)]
     player["crouched"] = bool(runtime.get("crouched", false))
+    player["guarding"] = bool(runtime.get("guarding", false))
+    if str(context.get("kind", "")) == "explore":
+        if runtime.has("explore_cells"):
+            explore_cells.clear()
+            for value in runtime.get("explore_cells", []):
+                explore_cells.append(arr_to_v2i(value, Vector2i(-1, -1)))
+        if runtime.has("explore_gear_cell"):
+            explore_gear_cell = arr_to_v2i(runtime.get("explore_gear_cell", []), explore_gear_cell)
+            objective_cell = explore_gear_cell
+        explore_searched.clear()
+        for value in runtime.get("explore_searched", []):
+            var searched_cell := arr_to_v2i(value, Vector2i(-1, -1))
+            if searched_cell != Vector2i(-1, -1):
+                explore_searched[searched_cell] = true
     if not ally.is_empty():
         ally["hp"] = clamp(int(runtime.get("ally_hp", ally["max_hp"])), 0, int(ally["max_hp"]))
         ally["dead"] = int(ally["hp"]) <= 0
@@ -405,6 +490,12 @@ func persist_runtime():
     var removed_barrels := []
     for p in base_barrels.keys():
         if not barrels.has(p): removed_barrels.append([p.x, p.y])
+    var saved_explore_cells := []
+    for p in explore_cells:
+        saved_explore_cells.append([p.x, p.y])
+    var saved_explore_searched := []
+    for p in explore_searched.keys():
+        saved_explore_searched.append([p.x, p.y])
     runtime = {
         "lead_hp": int(player.get("hp", 0)),
         "ally_hp": int(ally.get("hp", 0)) if not ally.is_empty() else -1,
@@ -412,7 +503,11 @@ func persist_runtime():
         "ally_pos": [ally.pos.x, ally.pos.y] if not ally.is_empty() else [-1,-1],
         "facing": DIRS.find(player.facing),
         "crouched": bool(player.crouched),
+        "guarding": bool(player.get("guarding", false)),
         "objective_done": objective_done,
+        "explore_cells": saved_explore_cells,
+        "explore_searched": saved_explore_searched,
+        "explore_gear_cell": [explore_gear_cell.x, explore_gear_cell.y],
         "tick": tick,
         "zombies": zsave,
         "open_doors": open_doors,
@@ -450,6 +545,8 @@ func _input(e):
             KEY_W, KEY_UP: step_forward()
             KEY_S, KEY_DOWN: step_backward()
             KEY_C: toggle_crouch()
+            KEY_G: guard()
+            KEY_X: shove()
             KEY_F, KEY_SPACE: interact()
 
 func dispatch_point(pos: Vector2):
@@ -461,10 +558,17 @@ func dispatch_point(pos: Vector2):
     if btn_forward.has_point(pos): step_forward(); return
     if btn_back.has_point(pos): step_backward(); return
     if btn_crouch.has_point(pos): toggle_crouch(); return
+    if btn_guard.has_point(pos): guard(); return
+    if btn_shove.has_point(pos): shove(); return
     if pos.y < MAP_TOP or pos.y >= CONTROL_TOP: return
     var cell := screen_to_cell(pos)
     if not inside(cell): return
     var delta: Vector2i = cell - player.pos
+    if str(context.get("kind", "")) == "explore" and explore_cells.has(cell) and not explore_searched.has(cell) and (cell == player.pos or manhattan(player.pos, cell) == 1):
+        if cell != player.pos:
+            player.facing = delta
+        search_explore_cell(cell)
+        return
     if manhattan(player.pos, cell) == 1:
         player.facing = delta
         if zombie_at(cell) != -1: melee(cell); return
@@ -474,7 +578,10 @@ func dispatch_point(pos: Vector2):
     if visible_cells.has(cell):
         var zi := zombie_at(cell)
         if zi != -1:
-            if bool(player.weapon.gun): shoot(zi)
+            if bool(player.weapon.gun):
+                shoot(zi)
+            elif can_melee_reach(cell):
+                melee(cell)
             else:
                 msg = "Too far for %s." % player.weapon.name
                 queue_redraw()
@@ -492,6 +599,7 @@ func guarded_action(action: String, callable: Callable):
 func rotate_player(step: int):
     var idx := DIRS.find(player.facing)
     idx = posmod(idx + step, 4)
+    player["guarding"] = false
     player.facing = DIRS[idx]
     player.last_dir = Vector2i.ZERO
     player.move_state = "STILL"
@@ -515,6 +623,7 @@ func step_backward():
     if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest):
         msg = "Blocked behind you."
         queue_redraw(); return
+    player["guarding"] = false
     player.pos = dest
     player.facing = keep
     player.last_dir = Vector2i.ZERO
@@ -528,6 +637,7 @@ func step_backward():
     commit_action(TacticalTime.movement_cost(player, true))
 
 func toggle_crouch():
+    player["guarding"] = false
     player.crouched = not player.crouched
     player.move_state = "CROUCH" if player.crouched else "STILL"
     msg = "Crouched: quieter, slower." if player.crouched else "Standing."
@@ -539,6 +649,7 @@ func try_move(dir: Vector2i):
     if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest):
         msg = "Blocked."
         recalc_visibility(); refresh_intents(); queue_redraw(); return
+    player["guarding"] = false
     player.pos = dest
     player.last_dir = dir
     player.move_state = "CROUCH" if player.crouched else "WALK"
@@ -552,52 +663,60 @@ func try_move(dir: Vector2i):
 
 func check_objective_and_exit():
     var kind := str(context.get("kind", "ambush"))
-    if not objective_done and (kind == "explore" or kind == "rescue"):
-        var target: Vector2i = rescue_cell if kind == "rescue" else objective_cell
-        if player.pos == target or (not ally.is_empty() and not ally.dead and ally.pos == target):
+    if not objective_done and kind == "rescue":
+        if player.pos == rescue_cell or (not ally.is_empty() and not ally.dead and ally.pos == rescue_cell):
             objective_done = true
-            if kind == "rescue":
-                msg = "Survivor found. Reach any exit."
-                emit_noise(target, 9, "struggle", true)
-            else:
-                var field_gear := str(context.get("field_gear", "field loot"))
-                msg = "Recovered %s. Reach any exit." % field_gear
-                emit_noise(target, 10, "rummaging", true)
+            msg = "Survivor found. Reach any exit."
+            emit_noise(rescue_cell, 9, "struggle", true)
     if exit_cells.has(player.pos):
         if objective_done:
             msg = "You made it out."
         elif kind == "ambush":
             msg = "You broke contact and escaped."
+        elif kind == "explore" and not explore_searched.is_empty():
+            msg = "You leave with what you found and abandon the marked gear."
         else:
             msg = "You abandon the objective and get out alive."
         finish_encounter("escaped")
-
 func interact():
     var p: Vector2i = player.pos + player.facing
+    if str(context.get("kind", "")) == "explore":
+        if explore_cells.has(player.pos) and not explore_searched.has(player.pos):
+            search_explore_cell(player.pos)
+            return
+        if explore_cells.has(p) and not explore_searched.has(p):
+            search_explore_cell(p)
+            return
     if doors.has(p):
+        player["guarding"] = false
         doors[p] = not doors[p]
         msg = "Door opened." if doors[p] else "Door closed."
         emit_noise(p, 20 if doors[p] else 16, "door open" if doors[p] else "door close", true)
         commit_action(TacticalTime.interaction_cost(player, 60)); return
     if glass.has(p):
+        player["guarding"] = false
         glass.erase(p)
         msg = "Glass breaks. Loud."
         emit_noise(p, 58, "breaking glass", true)
         commit_action(TacticalTime.interaction_cost(player, 100)); return
     msg = "Nothing useful there."
     queue_redraw()
-
 func melee(target: Vector2i):
     var zi := zombie_at(target)
     if zi == -1:
         msg = "Nothing in reach."; queue_redraw(); return
+    if not can_melee_reach(target):
+        msg = "%s cannot reach that target." % player.weapon.name; queue_redraw(); return
+    player["guarding"] = false
+    player.facing = dominant(target - player.pos)
+    stats["melee"] = int(stats.get("melee", 0)) + 1
     var z: Dictionary = zombies[zi]
     var stealth := stealth_attack(z)
-    var combat := int(player.skills.get("Combat", 0))
-    var chance: float = clampf(0.54 + combat * 0.055 - attack_penalty(player) + (0.30 if stealth else 0.0), 0.12, 0.97)
+    var combat_skill := int(player.skills.get("Combat", 0))
+    var chance := TacticalBalance.melee_hit_chance(combat_skill, attack_penalty(player), stealth, float(player.weapon.get("accuracy", 0.0)))
     if rng.randf() <= chance:
-        var d := rng.randi_range(int(player.weapon.dmin), int(player.weapon.dmax)) + int(floor(combat / 3.0))
-        if stealth: d = int(round(float(d + int(player.weapon.stealth) + combat) * 1.45))
+        var d := rng.randi_range(int(player.weapon.dmin), int(player.weapon.dmax)) + int(floor(combat_skill / 3.0))
+        if stealth: d = int(round(float(d + int(player.weapon.stealth) + combat_skill) * 1.35))
         zombies[zi].hp -= d
         _flash_hit(z.pos, int(zombies[zi].hp) <= 0)
         msg = "%s hit for %d%s." % [player.weapon.name, d, " — STEALTH" if stealth else ""]
@@ -605,44 +724,82 @@ func melee(target: Vector2i):
             kill_zombie(zi, stealth)
         else:
             reveal_melee_target(zi)
-            if int(player.weapon.push) > 0: push_zombie(zi, player.facing)
+            if int(player.weapon.push) > 0:
+                var pushed := push_zombie(zi, player.facing)
+                zombies[zi].next += TacticalBalance.shove_stagger_ticks(str(zombies[zi].get("mass", "MED")), not pushed) / 2
     else:
         msg = "%s misses." % player.weapon.name
     emit_noise(player.pos, maxi(8, int(player.weapon.noise)), "melee impact", true)
     commit_action(TacticalTime.attack_cost(player, int(player.weapon.time)))
 
+func can_melee_reach(target: Vector2i) -> bool:
+    var distance := manhattan(player.pos, target)
+    var reach := maxi(1, int(player.weapon.get("reach", 1)))
+    if distance < 1 or distance > reach:
+        return false
+    var diff := target - player.pos
+    if diff.x != 0 and diff.y != 0:
+        return false
+    var dir := dominant(diff)
+    for step in range(1, distance):
+        var between := player.pos + dir * step
+        if blocked(between) or zombie_at(between) != -1:
+            return false
+    return line_clear(player.pos, target)
 func shoot(i: int):
     if not bool(player.weapon.gun):
         msg = "No firearm equipped."; queue_redraw(); return
+    var z: Dictionary = zombies[i]
+    if z.dead or not visible_cells.has(z.pos): return
     var ammo_cost := int(player.weapon.ammo)
     if not Game.consume_combat_ammo(ammo_cost):
         msg = "No ammunition."; queue_redraw(); return
-    var z: Dictionary = zombies[i]
-    if z.dead or not visible_cells.has(z.pos): return
+    player["guarding"] = false
     player.facing = dominant(z.pos - player.pos)
     var dist := manhattan(player.pos, z.pos)
-    var combat := int(player.skills.get("Combat", 0))
-    var chance: float = clampf(0.52 + combat * 0.06 - maxi(0, dist - 3) * 0.035 - attack_penalty(player), 0.10, 0.95)
+    var combat_skill := int(player.skills.get("Combat", 0))
+    var accuracy := float(player.weapon.get("gaccuracy", 0.0))
+    if player.weapon.name == "Shotgun" and dist <= 3:
+        accuracy += 0.08
+    var chance := TacticalBalance.gun_hit_chance(combat_skill, dist, attack_penalty(player), accuracy)
     stats.shots += 1
     _flash_muzzle(player.pos, player.facing)
     if rng.randf() <= chance:
-        var d := rng.randi_range(int(player.weapon.gmin), int(player.weapon.gmax)) + int(floor(combat / 2.0))
+        var d := rng.randi_range(int(player.weapon.gmin), int(player.weapon.gmax)) + int(floor(combat_skill / 2.0))
         if player.weapon.name == "Shotgun" and dist <= 3: d += 4
         zombies[i].hp -= d
         _flash_hit(z.pos, int(zombies[i].hp) <= 0)
         msg = "%s hits for %d." % [player.weapon.name, d]
-        if int(zombies[i].hp) <= 0: kill_zombie(i, false)
-        else: reveal_melee_target(i)
+        if int(zombies[i].hp) <= 0:
+            kill_zombie(i, false)
+        else:
+            reveal_melee_target(i)
+        if player.weapon.name == "Shotgun":
+            apply_shotgun_spread(i, z.pos, d)
     else:
         msg = "%s misses." % player.weapon.name
     emit_noise(player.pos, int(player.weapon.gnoise), "gunshot", true)
     commit_action(TacticalTime.attack_cost(player, int(player.weapon.gtime)))
 
+func apply_shotgun_spread(primary_index: int, impact_cell: Vector2i, primary_damage: int) -> void:
+    for j in range(zombies.size()):
+        if j == primary_index or zombies[j].dead:
+            continue
+        if manhattan(impact_cell, zombies[j].pos) > 1 or not line_clear(player.pos, zombies[j].pos):
+            continue
+        var splash := maxi(2, int(round(float(primary_damage) * 0.42)))
+        zombies[j].hp -= splash
+        _flash_hit(zombies[j].pos, int(zombies[j].hp) <= 0)
+        if int(zombies[j].hp) <= 0:
+            kill_zombie(j, false)
+        else:
+            reveal_melee_target(j)
 func shoot_barrel(cell: Vector2i):
     if not bool(player.weapon.gun):
         msg = "You need a firearm to hit that safely."; queue_redraw(); return
     if not Game.consume_combat_ammo(int(player.weapon.ammo)):
         msg = "No ammunition."; queue_redraw(); return
+    player["guarding"] = false
     barrels.erase(cell)
     stats.shots += 1
     _flash_muzzle(player.pos, player.facing)
@@ -675,11 +832,65 @@ func stealth_attack(z) -> bool:
     var to_player: Vector2i = player.pos - z.pos
     return dominant(to_player) == -z.facing or not zombie_sees_actor(z, player)
 
-func push_zombie(i: int, dir: Vector2i):
+func push_zombie(i: int, dir: Vector2i) -> bool:
     var dest: Vector2i = zombies[i].pos + dir
     if not blocked(dest) and zombie_at(dest) == -1 and dest != player.pos and not ally_at(dest):
         zombies[i].pos = dest
+        return true
+    return false
 
+func guard() -> void:
+    if bool(player.get("guarding", false)):
+        msg = "Already guarding. Move or attack when you are ready."
+        queue_redraw()
+        return
+    player["guarding"] = true
+    player.last_dir = Vector2i.ZERO
+    player.move_state = "STILL"
+    msg = "Guard up — the next grab is much harder to land."
+    commit_action(TacticalTime.interaction_cost(player, 55))
+
+func shove() -> void:
+    var target := player.pos + player.facing
+    var zi := zombie_at(target)
+    if zi == -1:
+        msg = "No infected directly in front of you to shove."
+        queue_redraw()
+        return
+    player["guarding"] = false
+    stats["shoves"] = int(stats.get("shoves", 0)) + 1
+    var mass := str(zombies[zi].get("mass", "MED"))
+    var chance := TacticalBalance.shove_chance(player, mass, int(player.weapon.get("push", 0)))
+    if rng.randf() <= chance:
+        var pushed := push_zombie(zi, player.facing)
+        var stagger := TacticalBalance.shove_stagger_ticks(mass, not pushed)
+        zombies[zi].next += stagger
+        msg = "Shove lands — %s%s." % ["space created" if pushed else "it slams into the obstacle", "" if mass != "HEAVY" else " despite its weight"]
+    else:
+        msg = "The shove fails to move it."
+    reveal_melee_target(zi)
+    emit_noise(player.pos, 18, "shove", true)
+    commit_action(TacticalTime.interaction_cost(player, 78))
+
+func search_explore_cell(cell: Vector2i) -> void:
+    if str(context.get("kind", "")) != "explore" or not explore_cells.has(cell) or explore_searched.has(cell):
+        return
+    if cell != player.pos and manhattan(player.pos, cell) > 1:
+        msg = "Get closer to search there."
+        queue_redraw()
+        return
+    player["guarding"] = false
+    explore_searched[cell] = true
+    stats["searches"] = int(stats.get("searches", 0)) + 1
+    var field_gear := str(context.get("field_gear", "field gear"))
+    if cell == explore_gear_cell:
+        objective_done = true
+        msg = "Found %s. You can leave now or keep searching." % field_gear
+    else:
+        var remaining := explore_cells.size() - explore_searched.size()
+        msg = "Useful supplies. %d search spot%s left." % [remaining, "" if remaining == 1 else "s"]
+    emit_noise(cell, TacticalBalance.search_noise(player), "rummaging", true)
+    commit_action(TacticalBalance.search_cost(player))
 func kill_zombie(i: int, stealth: bool):
     if zombies[i].dead: return
     zombies[i].dead = true
@@ -809,25 +1020,29 @@ func choose_zombie_target(z) -> Dictionary:
     return best
 
 func zombie_attack(i: int, target_actor: Dictionary):
-    var defense := int(target_actor.skills.get("Combat", 0)) * 0.02 + int(target_actor.skills.get("Survival", 0)) * 0.012
-    var hit: float = clampf(0.67 - defense + (0.08 if float(target_actor.fatigue) >= 80 else 0.0), 0.25, 0.82)
+    var guarded := bool(target_actor.get("guarding", false))
+    var hit := TacticalBalance.zombie_hit_chance(target_actor)
+    if target_actor.controlled and guarded:
+        target_actor["guarding"] = false
     if rng.randf() <= hit:
-        var dmg := rng.randi_range(2, 5)
+        var damage_range := TacticalBalance.zombie_damage_range(str(zombies[i].get("mass", "MED")))
+        var dmg := rng.randi_range(damage_range.x, damage_range.y)
+        if guarded:
+            dmg = maxi(1, dmg - 1)
         var protection := clothing_protection(target_actor.clothing)
-        if rng.randf() < protection: dmg = max(1, dmg - 2)
+        if rng.randf() < protection: dmg = maxi(1, dmg - 2)
         target_actor.hp -= dmg
         _flash_hit(target_actor.pos, int(target_actor.hp) <= 0)
         if target_actor.controlled:
             stats.damage += dmg
-            msg = "The infected hits you for %d." % dmg
+            msg = "The infected breaks through your guard for %d." % dmg if guarded else "The infected hits you for %d." % dmg
         else:
             msg = "%s gets hit." % target_actor.name
         if target_actor.hp <= 0:
             target_actor.hp = 0; target_actor.dead = true
     elif target_actor.controlled:
-        msg = "You avoid the grab."
+        msg = "You deflect the grab." if guarded else "You avoid the grab."
     zombies[i].next = tick + TacticalTime.zombie_attack_cost(zombies[i])
-
 func clothing_protection(name: String) -> float:
     if name != "" and D.GEAR.has(name):
         return float(D.GEAR[name].get("protect", 0.0))
@@ -1079,7 +1294,8 @@ func finish_encounter(outcome: String):
         "lead_hp": int(player.get("hp",0)), "lead_max_hp": int(player.get("max_hp",18)),
         "companion_hp": int(ally.get("hp",-1)) if not ally.is_empty() else -1,
         "companion_max_hp": int(ally.get("max_hp",-1)) if not ally.is_empty() else -1,
-        "kills": int(stats.kills), "shots": int(stats.shots), "damage": int(stats.damage)
+        "kills": int(stats.kills), "shots": int(stats.shots), "melee": int(stats.get("melee", 0)), "shoves": int(stats.get("shoves", 0)), "damage": int(stats.damage),
+        "searches_completed": explore_searched.size(), "search_sites_total": explore_cells.size()
     }
     encounter_finished.emit(result)
 
@@ -1163,23 +1379,22 @@ func draw_map():
             elif obstacles.has(p):
                 TacticalTiles.draw_prop(self, r, "crate")
     var kind := str(context.get("kind","ambush"))
-    if kind == "explore" and not objective_done:
-        var objective_rect := Rect2(objective_cell.x*TILE+3, objective_cell.y*TILE+3, TILE-6, TILE-6)
-        draw_rect(objective_rect, Color(.95,.75,.20), false, 3)
-        var field_gear := str(context.get("field_gear", ""))
-        var visual: Dictionary = TacticalVisuals.field_gear_visual(field_gear)
-        var atlas_index := int(visual.get("atlas", -1))
-        var center := cell_center(objective_cell)
-        if atlas_index >= 0:
-            TacticalTiles.draw_region(self, atlas_index, Rect2(center - Vector2(9,9), Vector2(18,18)))
-        else:
-            draw_circle(center, 8.0, Color(.08,.10,.09,.92))
-            draw_circle(center, 8.0, Color(.95,.75,.20), false, 1.5)
-            draw_string(font, center + Vector2(-6,3), str(visual.get("badge", "?")), HORIZONTAL_ALIGNMENT_CENTER, 12, 9, Color(.98,.92,.70))
-        draw_string(font, center + Vector2(-52,-14), field_gear, HORIZONTAL_ALIGNMENT_CENTER, 104, 7, Color(.98,.86,.40))
+    if kind == "explore":
+        draw_explore_sites()
     elif kind == "rescue" and not objective_done:
         draw_circle(cell_center(rescue_cell), 9, Color(.95,.75,.20), false, 3)
         draw_string(font, cell_center(rescue_cell)+Vector2(-10,-12), "SOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(.95,.8,.35))
+
+func draw_explore_sites() -> void:
+    for cell in explore_cells:
+        var center := cell_center(cell)
+        var searched := explore_searched.has(cell)
+        var known := visible_cells.has(cell) or memory.has(cell)
+        var alpha := 0.96 if known else 0.38
+        var color := Color(0.28, 0.88, 0.48, alpha) if searched else Color(0.95, 0.75, 0.20, alpha)
+        draw_rect(Rect2(cell.x * TILE + 4, cell.y * TILE + 4, TILE - 8, TILE - 8), color, false, 2)
+        var label := "GEAR" if searched and cell == explore_gear_cell else ("DONE" if searched else "?")
+        draw_string(font, center + Vector2(-14, 3), label, HORIZONTAL_ALIGNMENT_CENTER, 28, 8, color)
 
 func draw_escape_markers():
     for p in exit_cells:
@@ -1315,7 +1530,10 @@ func draw_hud():
         "rescue": objective_text = "RESCUE + ESCAPE" if not objective_done else "ESCAPE WITH SURVIVOR"
         "explore":
             var field_gear := str(context.get("field_gear", "LOOT"))
-            objective_text = ("TAKE %s + ESCAPE" % field_gear) if not objective_done else "ESCAPE"
+            if objective_done:
+                objective_text = "FOUND %s | SEARCH %d/%d" % [field_gear, explore_searched.size(), explore_cells.size()]
+            else:
+                objective_text = "SEARCH %d/%d | FIND %s" % [explore_searched.size(), explore_cells.size(), field_gear]
     objective_text += "  |  Exits %d" % exit_cells.size()
     draw_string(font,Vector2(10,112),"Objective: %s"%objective_text,HORIZONTAL_ALIGNMENT_LEFT,370,11,Color(.96,.80,.34))
     draw_string(font,Vector2(10,133),msg,HORIZONTAL_ALIGNMENT_LEFT,370,10,Color(.93,.94,.90))
@@ -1329,10 +1547,12 @@ func draw_hud():
     draw_button(btn_forward,"FORWARD",false,11)
     draw_button(btn_turn_right,"TURN R",false,17)
     draw_button(btn_back,"BACK",false,11)
+    draw_button(btn_guard,"GUARD",bool(player.get("guarding", false)),10)
+    draw_button(btn_shove,"SHOVE",false,10)
     var step_cost := TacticalTime.movement_cost(player, false)
     var load_label := TacticalTime.load_band(TacticalTime.equipment_weight(player))
-    draw_string(font,Vector2(148,716),"T %d  STEP %d"%[tick,step_cost],HORIZONTAL_ALIGNMENT_CENTER,98,8,Color(.62,.68,.64))
-    draw_string(font,Vector2(148,731),"K %d  %s"%[int(stats.kills),load_label],HORIZONTAL_ALIGNMENT_CENTER,98,8,Color(.55,.60,.56))
+    draw_string(font,Vector2(148,806),"T %d  STEP %d"%[tick,step_cost],HORIZONTAL_ALIGNMENT_CENTER,98,8,Color(.62,.68,.64))
+    draw_string(font,Vector2(148,821),"K %d  %s"%[int(stats.kills),load_label],HORIZONTAL_ALIGNMENT_CENTER,98,8,Color(.55,.60,.56))
 
 func draw_button(rect: Rect2, text: String, active: bool, size: int):
     var fill=Color(.24,.30,.25,.96) if active else Color(.08,.10,.09,.94)

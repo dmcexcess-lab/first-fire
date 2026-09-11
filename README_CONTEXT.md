@@ -63,6 +63,10 @@ Player vision is now shorter and truly light-dependent instead of being a light-
 
 Tactical action time is authoritative: equipped weight, fatigue, injuries, stance, survivor skill, weapon action time, and per-zombie pace/mass profiles feed the actual tick scheduler. Sound markers use bounded fuzzy localization near the true source, surface-specific footsteps and more ambient/infected noises, and nearby infected share awareness when one spots the party. A nonlethal melee hit reveals the attacker to that infected even when the approach was stealthy. Adjacent doors are now tap/click interactions, allowing explicit closing instead of treating an open door tap as movement.
 
+Beta tactical depth adds two explicit defensive decisions without adding a new combat mode: **Guard** spends time to sharply reduce the next infected grab chance, while **Shove** trades damage for spacing/stagger and is harder against heavier infected. Weapon handling is more distinct: knives are quick/accurate, the improvised spear can attack two cells in a straight line, heavier melee weapons create more displacement, and a shotgun can catch infected adjacent to its primary impact.
+
+Explore encounters are now a multi-search mini-game rather than a single pickup. Each location contains several physically reachable search spots (3 in early zones up to 5 in Industrial), the marked gear is hidden in one of them, each search consumes tactical time and makes rummaging noise, and partial supplies survive an early retreat even when the target gear was not found. Exploration gets slightly fewer infected than an ambush so the larger traversal/search loop remains playable rather than becoming a mandatory clear.
+
 ## Expedition logistics
 
 `FFExpeditionRules.gd` owns current travel duration, recruit protection, tactical-event mix, zone caps, and routine haul-count rules.

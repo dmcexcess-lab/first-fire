@@ -58,6 +58,9 @@ Tactical environment atlas renderer. Owns atlas-region lookup and drawing for gr
 ### `FFTacticalTime.gd`
 Pure tactical action-timing rules. Converts survivor equipment weight, fatigue, condition, skills, stance, and zombie pace/mass profiles into actual timeline costs used by `FFCombat.gd`.
 
+### `FFTacticalBalance.gd`
+Pure Beta tuning rules for tactical combat and exploration: objective-specific infected counts, multi-search sizing/rewards, search time/noise, melee/firearm accuracy, Guard defense, Shove resistance/stagger, and infected mass damage. Keeping these values outside `FFCombat.gd` makes balance iteration deterministic and testable without creating a new gameplay pillar.
+
 ### `FFTacticalSound.gd`
 Pure tactical sound presentation/localization rules: surface-aware labels, bounded fuzzy source estimates, and ambient sound profiles. `FFCombat.gd` still owns propagation and AI reaction state.
 

@@ -15,6 +15,7 @@ const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
 const CampSocial = preload("res://scripts/FFCampSocial.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
+const TacticalBalance = preload("res://scripts/FFTacticalBalance.gd")
 # Alpha saves are disposable; the filename remains stable while schema changes invalidate old state cleanly.
 const SAVE_PATH := "user://first_fire_alpha01.json"
 const SAVE_SCHEMA_VERSION := 7
@@ -887,10 +888,9 @@ func _commit_tactical_health(s, hp, max_hp, reason):
         s["injury_remaining"] = injury_time
         s["history"].append("Day %d — Injured during a tactical encounter: %s." % [day, target])
 
-func _grant_tactical_explore_reward(exp, lead):
-    var count = 1
-    if lead != null and int(lead["skills"].get("Scavenging", 0)) >= 4:
-        count += 1
+func _grant_tactical_explore_reward(exp, lead, searches_completed: int):
+    var scavenging := int(lead["skills"].get("Scavenging", 0)) if lead != null else 0
+    var count := TacticalBalance.explore_reward_rolls(searches_completed, scavenging)
     var found = {}
     for i in range(count):
         var key = _weighted_loot_pick(exp["zone"])
@@ -900,7 +900,6 @@ func _grant_tactical_explore_reward(exp, lead):
     for key in found.keys():
         bits.append("+%d %s" % [found[key], key])
     return ", ".join(bits)
-
 func resolve_combat(result):
     if current_combat.is_empty():
         return
@@ -912,9 +911,11 @@ func resolve_combat(result):
 
     if lead != null:
         _commit_tactical_health(lead, result.get("lead_hp", 0), result.get("lead_max_hp", 18), "was killed in a tactical field encounter")
-        lead["fatigue"] = min(100.0, float(lead["fatigue"]) + CampLifeRules.fatigue_gain(6.0))
+        lead["fatigue"] = min(100.0, float(lead["fatigue"]) + CampLifeRules.fatigue_gain(4.0))
         lead["stress"] = min(100.0, float(lead["stress"]) + min(18.0, float(result.get("damage", 0)) * 1.5))
-        add_skill_xp(lead, "Combat", min(22, 4 + int(result.get("kills", 0)) * 3))
+        var combat_xp := mini(20, int(result.get("kills", 0)) * 2 + int(result.get("melee", 0)) + int(result.get("shots", 0)))
+        if combat_xp > 0:
+            add_skill_xp(lead, "Combat", combat_xp)
     current_combat = {}
     sim_paused = false
     combat_changed.emit()
@@ -945,15 +946,24 @@ func resolve_combat(result):
     var place = str(encounter.get("location_name", "the area"))
     if kind == "rescue" and bool(result.get("rescued", false)):
         _queue_recruit_offer(event, "A Survivor Makes It Out", "You get the stranger out of %s alive. Away from the infected and with a little room to breathe, they finally decide whether they trust First Fire enough to come back with you." % place, "tactical_rescue")
-    elif kind == "explore" and bool(result.get("objective_done", false)):
-        var reward: String = str(_grant_tactical_explore_reward(exp, lead))
-        var recovered_gear := str(result.get("field_gear", ""))
+    elif kind == "explore":
+        var searches := int(result.get("searches_completed", 0))
+        var total_sites := maxi(searches, int(result.get("search_sites_total", searches)))
+        var reward: String = str(_grant_tactical_explore_reward(exp, lead, searches))
+        if lead != null and searches > 0:
+            add_skill_xp(lead, "Scavenging", mini(10, searches * 2))
+        var recovered_gear := str(result.get("field_gear", "")) if bool(result.get("objective_done", false)) else ""
         if recovered_gear != "" and D.GEAR.has(recovered_gear):
             inventory_gear.append(recovered_gear)
             reward = (reward + ", " if reward != "" else "") + recovered_gear
-        _queue_field_result(event, "%s Searched" % place, "You physically recovered the marked field loot and got back out. Find: %s." % reward, "The party searched %s tactically and escaped with %s." % [place, recovered_gear if recovered_gear != "" else "supplies"])
-    elif kind in ["rescue", "explore"] and not bool(result.get("objective_done", false)):
-        _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the objective. The expedition can continue, but the opportunity here is gone.", "The party withdrew from %s before completing the tactical objective." % place)
+        if bool(result.get("objective_done", false)):
+            _queue_field_result(event, "%s Searched" % place, "You searched %d/%d marked spots, recovered the target gear, and got back out. Find: %s." % [searches, total_sites, reward if reward != "" else "nothing extra"], "The party searched %s tactically and escaped with %s." % [place, recovered_gear if recovered_gear != "" else "supplies"])
+        elif searches > 0:
+            _queue_field_result(event, "Partial Search of %s" % place, "You searched %d/%d marked spots and escaped before finding the target gear. You still keep the supplies you physically recovered: %s." % [searches, total_sites, reward if reward != "" else "nothing useful"], "The party partially searched %s and withdrew alive." % place)
+        else:
+            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out before committing to the search. The expedition can continue, but the marked gear opportunity here is gone.", "The party withdrew from %s before searching the tactical objective." % place)
+    elif kind == "rescue" and not bool(result.get("objective_done", false)):
+        _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the rescue. The expedition can continue, but the opportunity here is gone.", "The party withdrew from %s before completing the tactical objective." % place)
     else:
         _queue_field_result(event, "Broke Contact", "The ambush never became a stand-up fight. You made space, found an exit, and got away from %s." % place, "The party escaped a tactical ambush at %s." % place)
     save_game()
@@ -1028,7 +1038,9 @@ func _finish_expedition(eid):
     var loot = _roll_loot(exp, living_party)
     for key in loot.keys():
         resources[key] = int(resources.get(key, 0)) + int(loot[key])
-    var gear_found = _roll_gear(exp, living_party)
+    var gear_found = ""
+    if not (bool(exp.get("tactical_resolved", false)) and str(exp.get("combat_kind", "")) == "explore"):
+        gear_found = _roll_gear(exp, living_party)
     if gear_found != "":
         inventory_gear.append(gear_found)
         log_bits.append("Found %s" % gear_found)
