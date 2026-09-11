@@ -33,10 +33,18 @@ static func time_of_day_for_hour(hour: float) -> String:
     return "night" if normalized_hour >= 18.0 or normalized_hour < 7.0 else "day"
 
 static func current_encounter_hour() -> float:
-    # Tactical time is a snapshot of the authoritative settlement clock at the
-    # instant the encounter opens. Tactical play then pauses settlement time.
-    var day_seconds := maxf(1.0, float(Game.DAY_SECONDS))
-    var fraction := clampf(float(Game.day_elapsed) / day_seconds, 0.0, 1.0)
+    # Read the authoritative settlement clock only at encounter creation. Use a
+    # dynamic root lookup so this pure scenario module does not create an
+    # autoload/preload cycle with Game during headless smoke execution.
+    var tree := Engine.get_main_loop() as SceneTree
+    if tree == null:
+        return 12.0
+    var game := tree.root.get_node_or_null("Game")
+    if game == null:
+        return 12.0
+    var day_seconds := maxf(1.0, float(game.get("DAY_SECONDS")))
+    var elapsed := float(game.get("day_elapsed"))
+    var fraction := clampf(elapsed / day_seconds, 0.0, 1.0)
     return fposmod(8.0 + fraction * 24.0, 24.0)
 
 static func pick_scene_state(environment_id: String, rng: RandomNumberGenerator) -> Dictionary:
