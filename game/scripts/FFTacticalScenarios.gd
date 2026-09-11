@@ -30,7 +30,21 @@ static func environment_variant(environment_id: String, rng: RandomNumberGenerat
 
 static func time_of_day_for_hour(hour: float) -> String:
     var normalized_hour := fposmod(hour, 24.0)
-    return "night" if normalized_hour >= 18.0 or normalized_hour < 7.0 else "day"
+    if normalized_hour >= 5.5 and normalized_hour < 7.0:
+        return "dawn"
+    if normalized_hour >= 18.0 and normalized_hour < 19.5:
+        return "dusk"
+    return "night" if normalized_hour >= 19.5 or normalized_hour < 5.5 else "day"
+
+static func formatted_hour(hour: float) -> String:
+    var total_minutes := int(round(fposmod(hour, 24.0) * 60.0)) % 1440
+    var hour24 := int(total_minutes / 60)
+    var minute := total_minutes % 60
+    var suffix := "PM" if hour24 >= 12 else "AM"
+    var display_hour := hour24 % 12
+    if display_hour == 0:
+        display_hour = 12
+    return "%d:%02d %s" % [display_hour, minute, suffix]
 
 static func current_encounter_hour() -> float:
     # Read the authoritative settlement clock only at encounter creation. Use a
@@ -48,6 +62,12 @@ static func current_encounter_hour() -> float:
     return fposmod(8.0 + fraction * 24.0, 24.0)
 
 static func pick_scene_state(environment_id: String, rng: RandomNumberGenerator) -> Dictionary:
-    var time_of_day := time_of_day_for_hour(current_encounter_hour())
+    var encounter_hour := current_encounter_hour()
+    var time_of_day := time_of_day_for_hour(encounter_hour)
     var power_on := rng.randf() < Environments.power_chance(environment_id)
-    return {"time_of_day": time_of_day, "power_on": power_on}
+    return {
+        "time_of_day": time_of_day,
+        "encounter_hour": encounter_hour,
+        "encounter_time": formatted_hour(encounter_hour),
+        "power_on": power_on,
+    }
