@@ -94,11 +94,10 @@ static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int
     if fire_level<FIRE_MAINTAIN_THRESHOLD and wood>0: return {"kind":"maintain_fire","label":"Maintaining Fire","remaining":FIRE_MAINTAIN_SECONDS,"duration":FIRE_MAINTAIN_SECONDS}
     if float(n["sleep"])<48.0: return {"kind":"rest","label":"Resting","remaining":7.0,"duration":7.0}
     if float(n["hygiene"])<42.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":5.0,"duration":5.0}
+    # Leisure activities must be backed by real camp items before entering this pool.
+    # Watching the fire is the only item-free fun action for now.
     if float(n["fun"])<58.0:
-        var o:Array=[{"kind":"watch_fire","label":"Watching Fire","remaining":7.0,"duration":7.0},{"kind":"guitar","label":"Playing Guitar","remaining":9.0,"duration":9.0}]
-        if pop>=2: o.append({"kind":"cards","label":"Playing Cards","remaining":8.0,"duration":8.0})
-        if has_table and pop>=2: o.append({"kind":"cards","label":"Playing Cards","remaining":8.0,"duration":8.0})
-        return o[rng.randi_range(0,o.size()-1)].duplicate(true)
+        return {"kind":"watch_fire","label":"Watching Fire","remaining":7.0,"duration":7.0}
     return {}
 
 static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dictionary:
@@ -107,8 +106,6 @@ static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dicti
         "rest": f=maxf(0.0,fatigue-14.0); n["sleep"]=clampf(100.0-f,0.0,100.0)
         "wash": n["hygiene"]=clampf(float(n["hygiene"])+48.0,0.0,100.0)
         "watch_fire": n["fun"]=clampf(float(n["fun"])+22.0,0.0,100.0); n["safety"]=clampf(float(n["safety"])+6.0,0.0,100.0)
-        "cards": n["fun"]=clampf(float(n["fun"])+34.0,0.0,100.0)
-        "guitar": n["fun"]=clampf(float(n["fun"])+30.0,0.0,100.0)
     return {"needs":n,"fatigue":f}
 
 static func fatigue_gain(base_amount: float) -> float:
