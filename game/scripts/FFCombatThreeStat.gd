@@ -5,7 +5,6 @@ const BalanceThree = preload("res://scripts/FFTacticalBalance.gd")
 const TimeThree = preload("res://scripts/FFTacticalTime.gd")
 const SoundThree = preload("res://scripts/FFTacticalSound.gd")
 const LightingThree = preload("res://scripts/FFTacticalLighting.gd")
-const VisualsThree = preload("res://scripts/FFTacticalVisuals.gd")
 
 var btn_sprint := Rect2(148, 788, 98, 42)
 
@@ -14,8 +13,7 @@ func weapon_profile(name: String) -> Dictionary:
 
 func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
     var actor: Dictionary = super.make_actor(s, pos, controlled)
-    if actor.is_empty():
-        return actor
+    if actor.is_empty(): return actor
     actor["skills"] = ThreeStatRules.normalize_stats(actor.get("skills", {}))
     actor["sprinting"] = false
     return actor
@@ -28,8 +26,7 @@ func setup_rescuee() -> void:
 
 func restore_runtime():
     super.restore_runtime()
-    if not player.is_empty():
-        player["sprinting"] = bool(runtime.get("sprinting", false))
+    if not player.is_empty(): player["sprinting"] = bool(runtime.get("sprinting", false))
 
 func persist_runtime():
     super.persist_runtime()
@@ -38,8 +35,7 @@ func persist_runtime():
         Game.update_combat_runtime(runtime)
 
 func _input(e):
-    if not visible or not initialized:
-        return
+    if not visible or not initialized: return
     if e is InputEventScreenTouch:
         get_viewport().set_input_as_handled()
         var touch_id := int(e.index)
@@ -47,15 +43,11 @@ func _input(e):
             if active_touch_ids.has(touch_id): return
             active_touch_ids[touch_id] = true
             dispatch_point(e.position)
-        else:
-            active_touch_ids.erase(touch_id)
+        else: active_touch_ids.erase(touch_id)
         return
     if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
-        if DisplayServer.is_touchscreen_available():
-            get_viewport().set_input_as_handled(); return
-        if e.pressed:
-            dispatch_point(e.position)
-            get_viewport().set_input_as_handled()
+        if DisplayServer.is_touchscreen_available(): get_viewport().set_input_as_handled(); return
+        if e.pressed: dispatch_point(e.position); get_viewport().set_input_as_handled()
         return
     if e is InputEventKey and e.pressed and not e.echo:
         get_viewport().set_input_as_handled()
@@ -101,8 +93,7 @@ func dispatch_point(pos: Vector2):
         if zi != -1:
             if bool(player.weapon.gun): shoot(zi)
             elif can_melee_reach(cell): melee(cell)
-            else:
-                msg = "Too far for %s." % player.weapon.name; queue_redraw()
+            else: msg = "Too far for %s." % player.weapon.name; queue_redraw()
             return
         if barrels.has(cell): shoot_barrel(cell); return
 
@@ -134,93 +125,75 @@ func try_move(dir: Vector2i):
     var dest: Vector2i = player.pos + dir
     player.facing = dir
     if blocked(dest) or zombie_at(dest) != -1 or ally_at(dest) or rescuee_at(dest):
-        msg = "Blocked."
-        recalc_visibility(); refresh_intents(); queue_redraw(); return
+        msg = "Blocked."; recalc_visibility(); refresh_intents(); queue_redraw(); return
     player["guarding"] = false
     player.pos = dest
     player.last_dir = dir
     var agility := int(player.get("skills", {}).get("Agility", 0))
     var sprinting := bool(player.get("sprinting", false))
     player.move_state = "SPRINT" if sprinting else ("CROUCH" if player.crouched else "WALK")
-    var noise := ThreeStatRules.sprint_noise(agility) if sprinting else (ThreeStatRules.stealth_noise(agility) if player.crouched else 18)
+    var noise: int = ThreeStatRules.sprint_noise(agility) if sprinting else (ThreeStatRules.stealth_noise(agility) if player.crouched else 18)
     emit_noise(dest, noise, "running" if sprinting else SoundThree.surface_step_label(str(ground.get(dest, "asphalt")), bool(player.crouched)), true)
     if not sprinting:
         var breathing := TimeThree.breath_noise(player)
         if breathing > 0: emit_noise(dest, breathing, "breathing", true)
     check_objective_and_exit()
-    var base_cost := TimeThree.movement_cost(player, false)
-    var cost := ThreeStatRules.sprint_move_cost(agility, base_cost) if sprinting else (ThreeStatRules.stealth_move_cost(agility, base_cost) if player.crouched else ThreeStatRules.normal_move_cost(agility, base_cost))
+    var base_cost: int = TimeThree.movement_cost(player, false)
+    var cost: int = ThreeStatRules.sprint_move_cost(agility, base_cost) if sprinting else (ThreeStatRules.stealth_move_cost(agility, base_cost) if player.crouched else ThreeStatRules.normal_move_cost(agility, base_cost))
     commit_action(cost)
 
 func stealth_attack(z) -> bool:
-    if not bool(player.crouched) or z.state == "CHASE":
-        return false
+    if not bool(player.crouched) or z.state == "CHASE": return false
     var to_player: Vector2i = player.pos - z.pos
-    var positional := dominant(to_player) == -z.facing or not zombie_sees_actor(z, player)
-    if not positional:
-        return false
+    var positional: bool = dominant(to_player) == -z.facing or not zombie_sees_actor(z, player)
+    if not positional: return false
     var agility := int(player.get("skills", {}).get("Agility", 0))
     return rng.randf() <= clampf(0.45 + float(agility) * 0.055, 0.45, 0.90)
 
 func melee(target: Vector2i):
     var zi := zombie_at(target)
-    if zi == -1:
-        msg = "Nothing in reach."; queue_redraw(); return
-    if not can_melee_reach(target):
-        msg = "%s cannot reach that target." % player.weapon.name; queue_redraw(); return
-    player["guarding"] = false
-    player["sprinting"] = false
-    player.facing = dominant(target - player.pos)
+    if zi == -1: msg = "Nothing in reach."; queue_redraw(); return
+    if not can_melee_reach(target): msg = "%s cannot reach that target." % player.weapon.name; queue_redraw(); return
+    player["guarding"] = false; player["sprinting"] = false; player.facing = dominant(target - player.pos)
     stats["melee"] = int(stats.get("melee", 0)) + 1
     var z: Dictionary = zombies[zi]
-    var stealth := stealth_attack(z)
+    var stealth: bool = stealth_attack(z)
     var combat := int(player.get("skills", {}).get("Combat", 0))
-    var chance := ThreeStatRules.attack_chance(combat, attack_penalty(player), float(player.weapon.get("accuracy", 0.0)), stealth)
+    var chance: float = ThreeStatRules.attack_chance(combat, attack_penalty(player), float(player.weapon.get("accuracy", 0.0)), stealth)
     if rng.randf() <= chance:
-        var d := ThreeStatRules.melee_damage(player.weapon, combat, stealth, rng)
+        var d: int = ThreeStatRules.melee_damage(player.weapon, combat, stealth, rng)
         zombies[zi].hp -= d
         _flash_hit(z.pos, int(zombies[zi].hp) <= 0)
         msg = "%s %s hit for %d%s." % [str(player.weapon.get("class_label", "MELEE")), player.weapon.name, d, " — STEALTH" if stealth else ""]
-        if int(zombies[zi].hp) <= 0:
-            kill_zombie(zi, stealth)
+        if int(zombies[zi].hp) <= 0: kill_zombie(zi, stealth)
         else:
             reveal_melee_target(zi)
             if int(player.weapon.get("push", 0)) > 0:
-                var pushed := push_zombie(zi, player.facing)
+                var pushed: bool = push_zombie(zi, player.facing)
                 zombies[zi].next += BalanceThree.shove_stagger_ticks(str(zombies[zi].get("mass", "MED")), not pushed) / 2
-    else:
-        msg = "%s misses." % player.weapon.name
+    else: msg = "%s misses." % player.weapon.name
     emit_noise(player.pos, maxi(8, int(player.weapon.noise)), "melee impact", true)
     commit_action(TimeThree.attack_cost(player, int(player.weapon.time)))
 
 func shoot(i: int):
-    if not bool(player.weapon.gun):
-        msg = "No firearm equipped."; queue_redraw(); return
+    if not bool(player.weapon.gun): msg = "No firearm equipped."; queue_redraw(); return
     var z: Dictionary = zombies[i]
     if z.dead or not visible_cells.has(z.pos): return
-    var ammo_cost := int(player.weapon.ammo)
-    if not Game.consume_combat_ammo(ammo_cost):
-        msg = "No ammunition."; queue_redraw(); return
-    player["guarding"] = false
-    player["sprinting"] = false
-    player.facing = dominant(z.pos - player.pos)
+    if not Game.consume_combat_ammo(int(player.weapon.ammo)): msg = "No ammunition."; queue_redraw(); return
+    player["guarding"] = false; player["sprinting"] = false; player.facing = dominant(z.pos - player.pos)
     var dist := manhattan(player.pos, z.pos)
     var combat := int(player.get("skills", {}).get("Combat", 0))
     var range_penalty := float(maxi(0, dist - 3)) * 0.04
-    var chance := ThreeStatRules.attack_chance(combat, attack_penalty(player) + range_penalty, float(player.weapon.get("gaccuracy", 0.0)), false)
-    stats.shots += 1
-    _flash_muzzle(player.pos, player.facing)
+    var chance: float = ThreeStatRules.attack_chance(combat, attack_penalty(player) + range_penalty, float(player.weapon.get("gaccuracy", 0.0)), false)
+    stats.shots += 1; _flash_muzzle(player.pos, player.facing)
     if rng.randf() <= chance:
-        var d := ThreeStatRules.gun_damage(player.weapon, combat, rng)
-        zombies[i].hp -= d
-        _flash_hit(z.pos, int(zombies[i].hp) <= 0)
+        var d: int = ThreeStatRules.gun_damage(player.weapon, combat, rng)
+        zombies[i].hp -= d; _flash_hit(z.pos, int(zombies[i].hp) <= 0)
         msg = "%s %s hits for %d." % [str(player.weapon.get("class_label", "GUN")), player.weapon.name, d]
         if int(zombies[i].hp) <= 0: kill_zombie(i, false)
         else: reveal_melee_target(i)
-        if int(player.weapon.get("hands", 1)) == 2 and player.weapon.name == "Shotgun":
-            apply_shotgun_spread(i, z.pos, d)
-    else:
-        msg = "%s misses." % player.weapon.name
+        if int(player.weapon.get("hands", 1)) == 2 and player.weapon.name == "Shotgun": apply_shotgun_spread(i, z.pos, d)
+    else: msg = "%s misses." % player.weapon.name
     emit_noise(player.pos, int(player.weapon.gnoise), "gunshot", true)
     commit_action(TimeThree.attack_cost(player, int(player.weapon.gtime)))
 
@@ -236,11 +209,10 @@ func shove():
 
 func zombie_attack(i: int, target_actor: Dictionary):
     var guarded := bool(target_actor.get("guarding", false))
-    var hit := BalanceThree.zombie_hit_chance(target_actor)
-    if target_actor.controlled and guarded:
-        target_actor["guarding"] = false
+    var hit: float = BalanceThree.zombie_hit_chance(target_actor)
+    if target_actor.controlled and guarded: target_actor["guarding"] = false
     if rng.randf() <= hit:
-        var damage_range := BalanceThree.zombie_damage_range(str(zombies[i].get("mass", "MED")))
+        var damage_range: Vector2i = BalanceThree.zombie_damage_range(str(zombies[i].get("mass", "MED")))
         var dmg := rng.randi_range(damage_range.x, damage_range.y)
         if guarded: dmg = maxi(1, dmg - 1)
         # No armor layer: clothing never reduces or cancels physical damage.
@@ -249,10 +221,8 @@ func zombie_attack(i: int, target_actor: Dictionary):
         if target_actor.controlled:
             stats.damage += dmg
             msg = "The infected breaks through your guard for %d." % dmg if guarded else "The infected hits you for %d." % dmg
-        else:
-            msg = "%s gets hit." % target_actor.name
-        if target_actor.hp <= 0:
-            target_actor.hp = 0; target_actor.dead = true
+        else: msg = "%s gets hit." % target_actor.name
+        if target_actor.hp <= 0: target_actor.hp = 0; target_actor.dead = true
     elif target_actor.controlled:
         msg = "You deflect the grab." if guarded else ("You outrun the grab." if bool(target_actor.get("sprinting", false)) else "You avoid the grab.")
     zombies[i].next = tick + TimeThree.zombie_attack_cost(zombies[i])
@@ -262,8 +232,7 @@ func draw_hud():
     var scene_label := "%s  •  %s  •  %s" % [location_name, scene_time.to_upper(), "POWER" if power_on else "NO POWER"]
     draw_string(font,Vector2(10,22),scene_label,HORIZONTAL_ALIGNMENT_LEFT,370,14,Color.WHITE)
     draw_string(font,Vector2(10,47),"%s  HP %d/%d  %s"%[player.name,int(player.hp),int(player.max_hp),str(player.condition).to_upper()],HORIZONTAL_ALIGNMENT_LEFT,370,13,Color(.70,.84,1))
-    var class_label := str(player.weapon.get("class_label", "1H MELEE"))
-    var weapon_line := "%s | %s" % [class_label, str(player.weapon.name)]
+    var weapon_line := "%s | %s" % [str(player.weapon.get("class_label", "1H MELEE")), str(player.weapon.name)]
     if bool(player.weapon.gun): weapon_line += " | Ammo %d" % int(Game.resources.get("Ammo", 0))
     draw_string(font, Vector2(10,69), weapon_line, HORIZONTAL_ALIGNMENT_LEFT, 370, 10, Color(.82,.84,.82))
     var stats_line := "COM %d  AGI %d  LEAD %d" % [int(player.skills.get("Combat",0)), int(player.skills.get("Agility",0)), int(player.skills.get("Leadership",0))]
@@ -282,21 +251,11 @@ func draw_hud():
     draw_string(font,Vector2(10,112),"Objective: %s"%objective_text,HORIZONTAL_ALIGNMENT_LEFT,370,11,Color(.96,.80,.34))
     draw_string(font,Vector2(10,133),msg,HORIZONTAL_ALIGNMENT_LEFT,370,10,Color(.93,.94,.90))
     if any_zombie_sees_player(): draw_string(font,Vector2(0,MAP_TOP+20),"!! SPOTTED !!",HORIZONTAL_ALIGNMENT_CENTER,SCREEN_W,18,Color(1,.22,.16))
-
-    draw_rect(Rect2(0,CONTROL_TOP,SCREEN_W,SCREEN_H-CONTROL_TOP),Color(.025,.032,.028,.94))
-    draw_rect(Rect2(0,CONTROL_TOP,SCREEN_W,2),Color(.38,.42,.38))
-    draw_button(btn_turn_left,"TURN L",false,17)
-    draw_button(btn_crouch,"STEALTH",bool(player.crouched),10)
-    draw_button(btn_forward,"FORWARD",false,11)
-    draw_button(btn_turn_right,"TURN R",false,17)
-    draw_button(btn_back,"BACK",false,11)
-    draw_button(btn_guard,"GUARD",bool(player.get("guarding", false)),10)
-    var portable_light := str(player.get("secondary", ""))
-    var has_portable_light := LightingThree.item_emits_light(portable_light)
-    draw_button(btn_light,"LIGHT ON" if player_light_on else "LIGHT OFF",has_portable_light and player_light_on,9)
-    draw_button(btn_shove,"SHOVE",false,10)
-    draw_button(btn_sprint,"SPRINT",bool(player.get("sprinting", false)),10)
-    var agility := int(player.skills.get("Agility", 0))
-    var base_step := TimeThree.movement_cost(player, false)
-    var step_cost := ThreeStatRules.sprint_move_cost(agility, base_step) if bool(player.get("sprinting", false)) else (ThreeStatRules.stealth_move_cost(agility, base_step) if player.crouched else ThreeStatRules.normal_move_cost(agility, base_step))
+    draw_rect(Rect2(0,CONTROL_TOP,SCREEN_W,SCREEN_H-CONTROL_TOP),Color(.025,.032,.028,.94)); draw_rect(Rect2(0,CONTROL_TOP,SCREEN_W,2),Color(.38,.42,.38))
+    draw_button(btn_turn_left,"TURN L",false,17); draw_button(btn_crouch,"STEALTH",bool(player.crouched),10); draw_button(btn_forward,"FORWARD",false,11)
+    draw_button(btn_turn_right,"TURN R",false,17); draw_button(btn_back,"BACK",false,11); draw_button(btn_guard,"GUARD",bool(player.get("guarding", false)),10)
+    var portable_light := str(player.get("secondary", "")); var has_portable_light := LightingThree.item_emits_light(portable_light)
+    draw_button(btn_light,"LIGHT ON" if player_light_on else "LIGHT OFF",has_portable_light and player_light_on,9); draw_button(btn_shove,"SHOVE",false,10); draw_button(btn_sprint,"SPRINT",bool(player.get("sprinting", false)),10)
+    var agility := int(player.skills.get("Agility", 0)); var base_step: int = TimeThree.movement_cost(player, false)
+    var step_cost: int = ThreeStatRules.sprint_move_cost(agility, base_step) if bool(player.get("sprinting", false)) else (ThreeStatRules.stealth_move_cost(agility, base_step) if player.crouched else ThreeStatRules.normal_move_cost(agility, base_step))
     draw_string(font,Vector2(258,821),"T %d  STEP %d  K %d"%[tick,step_cost,int(stats.kills)],HORIZONTAL_ALIGNMENT_CENTER,124,8,Color(.62,.68,.64))
