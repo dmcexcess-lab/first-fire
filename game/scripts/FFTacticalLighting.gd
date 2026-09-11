@@ -25,17 +25,36 @@ const SOURCE_PRESETS := {
 }
 
 static func ambient_level(theme: String, time_of_day: String, indoors: bool) -> float:
-    if time_of_day == "day":
-        return 0.48 if indoors else 0.88
     var profile: Dictionary = NIGHT_AMBIENT_BY_THEME.get(theme, NIGHT_AMBIENT_BY_THEME["alley"])
-    var level := float(profile.get("level", 0.08))
-    return level * 0.72 if indoors else level
+    var night_level := float(profile.get("level", 0.08))
+    if indoors:
+        night_level *= 0.72
+    var day_level := 0.48 if indoors else 0.88
+    match time_of_day:
+        "day": return day_level
+        "dawn": return lerpf(night_level, day_level, 0.42)
+        "dusk": return lerpf(day_level, night_level, 0.58)
+        _: return night_level
 
 static func ambient_tint(theme: String, time_of_day: String) -> Color:
-    if time_of_day == "day":
-        return Color("20221f")
     var profile: Dictionary = NIGHT_AMBIENT_BY_THEME.get(theme, NIGHT_AMBIENT_BY_THEME["alley"])
-    return Color(str(profile.get("tint", "081020")))
+    var night_tint := Color(str(profile.get("tint", "081020")))
+    var day_tint := Color("20221f")
+    match time_of_day:
+        "day": return day_tint
+        "dawn": return night_tint.lerp(Color("3b2b25"), 0.58)
+        "dusk": return day_tint.lerp(Color("271a24"), 0.64)
+        _: return night_tint
+
+static func daylight_available(time_of_day: String) -> bool:
+    return time_of_day in ["day", "dawn", "dusk"]
+
+static func daylight_strength(time_of_day: String) -> float:
+    match time_of_day:
+        "day": return 1.0
+        "dawn": return 0.48
+        "dusk": return 0.38
+        _: return 0.0
 
 static func make_source(pos: Vector2i, kind: String, seed_value: int = 0, requires_power := true) -> Dictionary:
     var preset: Dictionary = SOURCE_PRESETS.get(kind, SOURCE_PRESETS["security"])
@@ -62,11 +81,11 @@ static func radial_contribution(cell: Vector2i, source: Dictionary) -> float:
     var falloff: float = 1.0 - distance / radius
     return clampf(float(source.get("strength", 0.7)) * pow(falloff, 0.72), 0.0, 1.0)
 
-static func window_daylight_contribution(window_pos: Vector2i, cell: Vector2i) -> float:
+static func window_daylight_contribution(window_pos: Vector2i, cell: Vector2i, strength: float = 1.0) -> float:
     var distance := Vector2(cell - window_pos).length()
     if distance > 4.5:
         return 0.0
-    return clampf(0.92 * pow(1.0 - distance / 4.5, 0.65), 0.0, 0.92)
+    return clampf(0.92 * clampf(strength, 0.0, 1.0) * pow(1.0 - distance / 4.5, 0.65), 0.0, 0.92)
 
 static func item_emits_light(item_name: String) -> bool:
     if item_name == "" or not D.GEAR.has(item_name):
