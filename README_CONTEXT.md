@@ -71,6 +71,8 @@ Explore encounters are now a multi-search mini-game rather than a single pickup.
 
 `FFExpeditionRules.gd` owns current travel duration, recruit protection, tactical-event mix, zone caps, and routine haul-count rules.
 
+The SEND OUT location chooser deliberately avoids Godot popup/OptionButton controls because mobile Safari can fail to accept selections from those Web popups. Zone selection uses explicit PREV/NEXT buttons, and the expedition-selection overlay pauses camp simulation until SEND or CANCEL restores the previous pause state.
+
 Expeditions are permanently single-survivor. Multi-survivor dispatch, companion AI, and vehicle logistics are cut from scope.
 
 ## Living camp presentation

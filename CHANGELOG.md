@@ -1,3 +1,11 @@
+## Beta Candidate — Safari SEND OUT Selector Fix — 2026-09-11
+
+- Replaced the SEND OUT zone `OptionButton` popup with explicit touch-safe PREV / NEXT controls and a visible selected-zone detail line.
+- Opening SEND OUT now pauses camp simulation; SEND and CANCEL restore the pause state that existed before the modal opened.
+- Special-site dispatch uses the same modal close/restore path.
+- Added a deterministic architecture smoke guard so the expedition selector cannot silently regress back to a popup `OptionButton`.
+- Save schema remains 7; this is UI/input behavior only.
+
 # First Fire — Changelog
 
 ## Beta Candidate — Physical Survivor Rescue — 2026-09-10

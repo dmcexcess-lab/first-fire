@@ -78,6 +78,9 @@ func _init() -> void:
     if not _check(CampSocial.relationship_label(70) == "Close", "social relationship bands"): return
     if not _check(MobileScroll.TOUCH_BAR_WIDTH >= 28.0, "mobile scrollbar touch target"): return
     if not _check(MobileScroll.touch_scroll_value(50.0, 100.0, 0.0, 100.0, 20.0) == 40, "mobile scrollbar touch mapping"): return
+    var main_source := FileAccess.get_file_as_string("res://scripts/Main.gd")
+    if not _check(not main_source.contains("expedition_zone = OptionButton.new()"), "Safari expedition selector avoids popup OptionButton"): return
+    if not _check(main_source.contains("func _close_expedition_overlay()"), "expedition overlay has modal pause restore"): return
 
     var survivor_look: Dictionary = TacticalVisuals.survivor_appearance(visual_rng)
     if not _check(survivor_look.has("sprite") and survivor_look.has("accent"), "survivor sprite identity"): return

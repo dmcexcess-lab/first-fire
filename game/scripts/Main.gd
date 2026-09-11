@@ -51,7 +51,11 @@ var inspector_overlay: Control
 
 var expedition_overlay: ColorRect
 var expedition_title: Label
-var expedition_zone: OptionButton
+var expedition_zone_label: Label
+var expedition_zone_detail: Label
+var expedition_zone_names: Array = []
+var expedition_zone_index := 0
+var expedition_restore_paused := false
 var expedition_specials: VBoxContainer
 
 var reset_confirm: ConfirmationDialog
@@ -442,9 +446,33 @@ func _build_expedition_overlay():
     v.add_child(expedition_title)
 
     v.add_child(_make_label("Zone", 13))
-    expedition_zone = OptionButton.new()
-    expedition_zone.custom_minimum_size = Vector2(0, 44)
-    v.add_child(expedition_zone)
+    var zone_row = HBoxContainer.new()
+    zone_row.add_theme_constant_override("separation", 6)
+    v.add_child(zone_row)
+
+    var zone_prev = Button.new()
+    zone_prev.text = "PREV"
+    zone_prev.custom_minimum_size = Vector2(72, 46)
+    zone_prev.pressed.connect(_cycle_expedition_zone.bind(-1))
+    zone_row.add_child(zone_prev)
+
+    expedition_zone_label = _make_label("", 14)
+    expedition_zone_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    expedition_zone_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    expedition_zone_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    expedition_zone_label.custom_minimum_size = Vector2(170, 46)
+    zone_row.add_child(expedition_zone_label)
+
+    var zone_next = Button.new()
+    zone_next.text = "NEXT"
+    zone_next.custom_minimum_size = Vector2(72, 46)
+    zone_next.pressed.connect(_cycle_expedition_zone.bind(1))
+    zone_row.add_child(zone_next)
+
+    expedition_zone_detail = _make_label("", 12)
+    expedition_zone_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    expedition_zone_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    v.add_child(expedition_zone_detail)
 
     var send = Button.new()
     send.text = "SEND"
@@ -459,7 +487,7 @@ func _build_expedition_overlay():
     var close = Button.new()
     close.text = "CANCEL"
     close.custom_minimum_size = Vector2(0, 44)
-    close.pressed.connect(func(): expedition_overlay.visible = false)
+    close.pressed.connect(_close_expedition_overlay)
     v.add_child(close)
 
 func _build_inspector_overlay():
@@ -984,13 +1012,15 @@ func _open_expedition_overlay():
     var s: Variant = Game.get_survivor(selected_survivor_id)
     if s == null or s["status"] != "Available":
         return
+    if not expedition_overlay.visible:
+        expedition_restore_paused = Game.sim_paused
     expedition_title.text = "SEND OUT — %s" % s["name"]
-    expedition_zone.clear()
+    expedition_zone_names.clear()
     for zone in D.ZONE_ORDER:
         if Game.unlocked_zones.has(zone):
-            var data = D.ZONES[zone]
-            expedition_zone.add_item("%s — %.0fs — %s — Loot %s" % [zone, float(data["duration"]), data["danger"], Game.zone_loot_state(zone)])
-            expedition_zone.set_item_metadata(expedition_zone.item_count - 1, zone)
+            expedition_zone_names.append(str(zone))
+    expedition_zone_index = 0
+    _refresh_expedition_zone_ui()
     for child in expedition_specials.get_children():
         expedition_specials.remove_child(child)
         child.queue_free()
@@ -1006,17 +1036,51 @@ func _open_expedition_overlay():
             b.pressed.connect(_on_special_site_pressed.bind(site))
             expedition_specials.add_child(b)
     expedition_overlay.visible = true
+    expedition_overlay.move_to_front()
+    if not Game.sim_paused:
+        Game.set_paused(true)
+
+func _cycle_expedition_zone(direction: int) -> void:
+    if expedition_zone_names.size() <= 1:
+        return
+    expedition_zone_index = posmod(expedition_zone_index + direction, expedition_zone_names.size())
+    _refresh_expedition_zone_ui()
+
+func _refresh_expedition_zone_ui() -> void:
+    if expedition_zone_label == null or expedition_zone_detail == null:
+        return
+    if expedition_zone_names.is_empty():
+        expedition_zone_label.text = "NO UNLOCKED ZONES"
+        expedition_zone_detail.text = ""
+        return
+    expedition_zone_index = clampi(expedition_zone_index, 0, expedition_zone_names.size() - 1)
+    var zone := str(expedition_zone_names[expedition_zone_index])
+    var data: Dictionary = D.ZONES.get(zone, {})
+    expedition_zone_label.text = zone
+    expedition_zone_detail.text = "%.0fs | %s | Loot %s" % [float(data.get("duration", 0.0)), str(data.get("danger", "?")), Game.zone_loot_state(zone)]
+
+func _close_expedition_overlay() -> void:
+    if expedition_overlay == null:
+        return
+    expedition_overlay.visible = false
+    if not Game.current_combat.is_empty():
+        if not Game.sim_paused:
+            Game.set_paused(true)
+        return
+    if Game.sim_paused != expedition_restore_paused:
+        Game.set_paused(expedition_restore_paused)
 
 func _on_expedition_send():
-    if expedition_zone.item_count == 0:
+    if expedition_zone_names.is_empty():
         return
-    var zone = str(expedition_zone.get_item_metadata(expedition_zone.selected))
+    expedition_zone_index = clampi(expedition_zone_index, 0, expedition_zone_names.size() - 1)
+    var zone := str(expedition_zone_names[expedition_zone_index])
     if Game.start_expedition(selected_survivor_id, zone):
-        expedition_overlay.visible = false
+        _close_expedition_overlay()
 
 func _on_special_site_pressed(site):
     if Game.start_special_site(selected_survivor_id, site):
-        expedition_overlay.visible = false
+        _close_expedition_overlay()
 
 func _refresh_event_overlay():
     if event_overlay == null:
