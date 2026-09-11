@@ -100,6 +100,8 @@ static func item_contribution(origin: Vector2i, facing: Vector2i, cell: Vector2i
         return 0.0
     var range_factor := clampf(1.0 - distance / max_range, 0.0, 1.0)
     var strength := float(data.get("light_strength", 1.0))
+    if item_name == "Flashlight":
+        strength *= 1.08
     if light_kind == "radial":
         return clampf(strength * pow(range_factor, 0.72), 0.0, 1.0)
     var min_dot: float = clampf(float(data.get("light_spread", 0.52)), -1.0, 0.99)
@@ -107,7 +109,7 @@ static func item_contribution(origin: Vector2i, facing: Vector2i, cell: Vector2i
     if dot < min_dot:
         return 0.0
     var cone_factor := clampf((dot - min_dot) / (1.0 - min_dot), 0.0, 1.0)
-    return clampf(strength * (0.24 + cone_factor * 0.76) * (0.30 + range_factor * 0.70), 0.0, 1.0)
+    return clampf(strength * (0.34 + cone_factor * 0.66) * (0.34 + range_factor * 0.66), 0.0, 1.0)
 
 static func visible_at_distance(light_level: float, distance: int, max_range: int) -> bool:
     if distance <= 1:
@@ -120,10 +122,10 @@ static func visible_at_distance(light_level: float, distance: int, max_range: in
     return light_level >= required
 
 static func darkness_alpha(light_level: float) -> float:
-    return clampf(0.92 - clampf(light_level, 0.0, 1.0) * 0.86, 0.025, 0.89)
+    return clampf(0.94 - clampf(light_level, 0.0, 1.0) * 0.90, 0.02, 0.91)
 
 static func color_wash_alpha(light_level: float) -> float:
-    return clampf((clampf(light_level, 0.0, 1.0) - 0.18) * 0.20, 0.0, 0.15)
+    return clampf((clampf(light_level, 0.0, 1.0) - 0.12) * 0.30, 0.0, 0.23)
 
 static func has_animated_sources(sources: Array, power_on: bool) -> bool:
     for source_value in sources:
