@@ -1,0 +1,29 @@
+name: Temporary camp moodlets integration
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Apply camp-life patch and remove temporary integration
+        run: |
+          set -euxo pipefail
+          python .github/scripts/temp_camp_moodlets_rules.py
+          python .github/scripts/temp_camp_moodlets_game.py
+          python .github/scripts/temp_camp_moodlets_ui.py
+          rm .github/scripts/temp_camp_moodlets_rules.py
+          rm .github/scripts/temp_camp_moodlets_game.py
+          rm .github/scripts/temp_camp_moodlets_ui.py
+          rm .github/workflows/temp-camp-moodlets.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add camp needs moodlets and autonomous downtime"
+          git push origin HEAD:main
