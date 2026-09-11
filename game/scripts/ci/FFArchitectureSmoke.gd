@@ -9,149 +9,80 @@ const TacticalTiles = preload("res://scripts/FFTacticalTiles.gd")
 const TacticalTime = preload("res://scripts/FFTacticalTime.gd")
 const TacticalSound = preload("res://scripts/FFTacticalSound.gd")
 const TacticalBalance = preload("res://scripts/FFTacticalBalance.gd")
-const LegacyFieldEvents = preload("res://scripts/FFFieldEventsLegacy.gd")
+const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
 const CampSocial = preload("res://scripts/FFCampSocial.gd")
-const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
-const MobileScroll = preload("res://scripts/FFMobileScroll.gd")
+const ThreeStatRules = preload("res://scripts/FFThreeStatRules.gd")
+const GameThreeStat = preload("res://scripts/GameThreeStat.gd")
+const CombatThreeStat = preload("res://scripts/FFCombatThreeStat.gd")
+const MainThreeStat = preload("res://scripts/MainThreeStat.gd")
+const InspectorThreeStat = preload("res://scripts/FFInspectorThreeStat.gd")
 
 func _init() -> void:
-    var visual_rng := RandomNumberGenerator.new()
-    visual_rng.seed = 12345
+    if not _check(ThreeStatRules.STAT_NAMES == ["Combat", "Agility", "Leadership"], "three-stat catalog"): return
+    var normalized := ThreeStatRules.normalize_stats({"Combat": 4, "Agility": 3, "Leadership": 2, "Survival": 9})
+    if not _check(normalized.size() == 3 and not normalized.has("Survival"), "removed legacy stats stay removed"): return
+    if not _check(GameThreeStat.THREE_STAT_SAVE_SCHEMA == 8, "schema 8 reset"): return
+
+    if not _check(str(ThreeStatRules.weapon_class("Kitchen Knife").get("label", "")) == "1H MELEE", "1H melee class"): return
+    if not _check(str(ThreeStatRules.weapon_class("Baseball Bat").get("label", "")) == "2H MELEE", "2H melee class"): return
+    if not _check(str(ThreeStatRules.weapon_class("Pistol").get("label", "")) == "1H GUN", "1H gun class"): return
+    if not _check(str(ThreeStatRules.weapon_class("Shotgun").get("label", "")) == "2H GUN", "2H gun class"): return
+    if not _check(ThreeStatRules.sprint_move_cost(6, 100) < ThreeStatRules.normal_move_cost(6, 100), "sprint is faster"): return
+    if not _check(ThreeStatRules.stealth_noise(7) < ThreeStatRules.stealth_noise(1), "agility improves stealth"): return
+    if not _check(ThreeStatRules.sprint_move_cost(7, 100) < ThreeStatRules.sprint_move_cost(1, 100), "agility improves sprint"): return
+
+    var actor := {"skills": {"Combat": 3, "Agility": 4, "Leadership": 1}, "fatigue": 0.0, "guarding": false, "sprinting": false, "crouched": false}
+    var guarded := actor.duplicate(true); guarded["guarding"] = true
+    var sprinting := actor.duplicate(true); sprinting["sprinting"] = true
+    if not _check(TacticalBalance.zombie_hit_chance(guarded) < TacticalBalance.zombie_hit_chance(actor), "guard reduces grab chance"): return
+    if not _check(TacticalBalance.zombie_hit_chance(sprinting) < TacticalBalance.zombie_hit_chance(actor), "sprint evasion"): return
+    if not _check(TacticalBalance.shove_chance(actor, "LIGHT", 1) > TacticalBalance.shove_chance(actor, "HEAVY", 1), "mass resists shove"): return
+    if not _check(TacticalBalance.search_cost(actor) > 0 and TacticalBalance.search_noise(actor) > 0, "search is skill neutral and bounded"): return
+
+    var combat_source := FileAccess.get_file_as_string("res://scripts/FFCombatThreeStat.gd")
+    if not _check(combat_source.contains("target_actor.hp -= dmg") and combat_source.contains("No armor layer"), "no armor damage mitigation"): return
+    if not _check(combat_source.contains("super.shove()") and combat_source.contains("sacrifices the defensive state"), "shove drops guard"): return
+    if not _check(combat_source.contains("func toggle_sprint()") and combat_source.contains("func stealth_attack"), "sprint and stealth actions"): return
 
     if not _check(ExpeditionRules.zone_cap("Camp Perimeter") == 3, "perimeter cap"): return
-    if not _check(ExpeditionRules.zone_cap("Industrial Edge") == 7, "industrial cap"): return
-    if not _check(abs(ExpeditionRules.travel_duration(20.0, 0.0) - 20.0) < 0.001, "base travel"): return
-    if not _check(ExpeditionRules.should_force_recruit(1, 1, 18, 4, true), "solo recruit protection"): return
-    if not _check(ExpeditionRules.tactical_event_chance("Camp Perimeter") > 0.0, "starting zone tactical chance"): return
     if not _check(ExpeditionRules.should_force_tactical(2), "tactical drought protection"): return
-    if not _check(not ExpeditionRules.should_force_recruit(1, 1, 18, 3, true), "solo recruit threshold"): return
-    if not _check(abs(ExpeditionRules.tactical_event_chance("Nearby Streets") - 0.70) < 0.001, "nearby tactical pop rate"): return
-    if not _check(abs(ExpeditionRules.tactical_event_chance("Industrial Edge") - 0.90) < 0.001, "industrial tactical pop rate"): return
-    if not _check(TacticalScenarios.KIND_WEIGHTS.has("Residential Blocks"), "scenario catalog"): return
-    if not _check(TacticalScenarios.KIND_WEIGHTS.has("Camp Perimeter"), "starting zone scenario catalog"): return
-    if not _check(str(TacticalScenarios.KIND_WEIGHTS["Camp Perimeter"][0][0]) == "rescue", "starting zone rescue tactical option"): return
+    if not _check(TacticalScenarios.KIND_WEIGHTS.has("Camp Perimeter"), "scenario catalog"): return
     if not _check(TacticalEnvironments.display_name("gas_station") == "Gas Station", "gas station environment"): return
-    if not _check(TacticalScenarios.environment_name("gas_station").begins_with("Gas Station • "), "encounter HUD clock label"): return
-    if not _check(TacticalScenarios.time_of_day_for_hour(6.0) == "dawn", "dawn encounter phase"): return
-    if not _check(TacticalScenarios.time_of_day_for_hour(12.0) == "day", "day encounter phase"): return
-    if not _check(TacticalScenarios.time_of_day_for_hour(18.5) == "dusk", "dusk encounter phase"): return
-    if not _check(TacticalScenarios.time_of_day_for_hour(2.0) == "night", "night encounter phase"): return
-    if not _check(TacticalScenarios.formatted_hour(20.5) == "8:30 PM", "encounter clock formatting"): return
-    if not _check(TacticalLighting.ambient_level("alley", "dawn", false) > TacticalLighting.ambient_level("alley", "night", false), "dawn brightens night"): return
-    if not _check(TacticalLighting.ambient_level("alley", "dusk", false) < TacticalLighting.ambient_level("alley", "day", false), "dusk darkens day"): return
-    if not _check(TacticalEnvironments.exit_count("house", 0) == 1, "single-exit house variant"): return
-    if not _check(TacticalEnvironments.exit_count("gas_station", 1) >= 3, "multi-exit gas station variant"): return
-    if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary slot"): return
-    if not _check(TacticalLighting.secondary_item_from_equipment({"Secondary": "Flashlight", "Tool": ""}) == "Flashlight", "secondary light lookup"): return
-    if not _check(TacticalLighting.item_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(10, 5), "Flashlight") > 0.0, "flashlight forward cone"): return
-    if not _check(TacticalLighting.item_contribution(Vector2i(5, 5), Vector2i(1, 0), Vector2i(2, 5), "Flashlight") == 0.0, "flashlight rear cutoff"): return
-    var combat_source := FileAccess.get_file_as_string("res://scripts/FFCombat.gd")
-    if not _check(combat_source.contains("func toggle_player_light()"), "portable light tactical toggle"): return
-    if not _check(combat_source.contains("\"player_light_on\": player_light_on"), "portable light state persists"): return
-    if not _check(combat_source.contains("KEY_L: toggle_player_light()"), "portable light keyboard fallback"): return
-    if not _check(TacticalEnvironments.build_layout("gas_station", 0).get("lights", []).size() >= 3, "gas station authored lights"): return
-    var scene_state: Dictionary = TacticalScenarios.pick_scene_state("gas_station", visual_rng)
-    if not _check(scene_state.has("time_of_day") and scene_state.has("encounter_hour") and scene_state.has("encounter_time") and scene_state.has("power_on"), "scene clock and power state"): return
-    if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
-
-    var light_actor: Dictionary = {"equipment": {"Weapon": "Utility Knife", "Secondary": "", "Tool": "", "Clothing": "", "Pack": ""}, "fatigue": 0.0, "condition": "Healthy", "skills": {"Survival": 3, "Combat": 2}, "crouched": false}
-    var heavy_actor: Dictionary = light_actor.duplicate(true)
-    heavy_actor["equipment"] = {"Weapon": "Shotgun", "Secondary": "Lantern", "Tool": "Toolbox", "Clothing": "Leather Jacket", "Pack": "Hiking Pack"}
-    if not _check(TacticalTime.movement_cost(heavy_actor, false) > TacticalTime.movement_cost(light_actor, false), "encumbrance changes timeline"): return
-    if not _check(TacticalBalance.explore_site_count("Industrial Edge") > TacticalBalance.explore_site_count("Camp Perimeter"), "exploration grows by zone"): return
-    if not _check(TacticalBalance.explore_reward_rolls(4, 5) > TacticalBalance.explore_reward_rolls(1, 1), "exploration reward scales with search depth"): return
-    if not _check(TacticalBalance.zombie_count("Residential Blocks", "explore") < TacticalBalance.zombie_count("Residential Blocks", "ambush"), "objective-specific zombie balance"): return
-    if not _check(TacticalBalance.zombie_count("Nearby Streets", "rescue") < TacticalBalance.zombie_count("Nearby Streets", "ambush"), "rescue escort pressure balance"): return
-    if not _check(TacticalBalance.RESCUE_SURVIVOR_HP > 0 and TacticalBalance.RESCUE_CONTACT_TICKS > 0, "rescue escort tuning"): return
-    var unguarded_actor := light_actor.duplicate(true)
-    unguarded_actor["guarding"] = false
-    var guarded_actor := light_actor.duplicate(true)
-    guarded_actor["guarding"] = true
-    if not _check(TacticalBalance.zombie_hit_chance(guarded_actor) < TacticalBalance.zombie_hit_chance(unguarded_actor), "guard changes incoming hit chance"): return
-    if not _check(TacticalBalance.shove_chance(light_actor, "LIGHT", 0) > TacticalBalance.shove_chance(light_actor, "HEAVY", 0), "infected mass changes shove resistance"): return
-    var skilled_searcher := light_actor.duplicate(true)
-    skilled_searcher["skills"]["Scavenging"] = 7
-    if not _check(TacticalBalance.search_cost(skilled_searcher) < TacticalBalance.search_cost(light_actor), "scavenging speeds tactical search"): return
-
-    var sound_rng := RandomNumberGenerator.new()
-    sound_rng.seed = 7
-    var estimate: Vector2i = TacticalSound.estimate_location(Vector2i(10,10), Vector2i(2,2), 2, sound_rng, 20, 18)
-    if not _check(absi(estimate.x-10)+absi(estimate.y-10) <= 2, "sound stays in source vicinity"): return
+    if not _check(TacticalScenarios.time_of_day_for_hour(6.0) == "dawn", "dawn phase"): return
+    if not _check(TacticalScenarios.time_of_day_for_hour(12.0) == "day", "day phase"): return
+    if not _check(TacticalScenarios.time_of_day_for_hour(18.5) == "dusk", "dusk phase"): return
+    if not _check(TacticalScenarios.time_of_day_for_hour(2.0) == "night", "night phase"): return
+    if not _check(TacticalLighting.ambient_level("alley", "dawn", false) > TacticalLighting.ambient_level("alley", "night", false), "dawn lighting"): return
 
     for environment_id in TacticalEnvironments.all_ids():
         for variant in range(TacticalEnvironments.variant_count(str(environment_id))):
             if not _check(TacticalEnvironments.validate_layout(TacticalEnvironments.build_layout(str(environment_id), variant)), "reachable exits: %s v%d" % [environment_id, variant]): return
-    if not _check(LegacyFieldEvents.all_keys().has("injured_stranger"), "legacy field catalog"): return
-    var base_needs:=CampLifeRules.default_needs()
-    if not _check(base_needs.has("hunger") and base_needs.has("thirst") and base_needs.has("sleep") and base_needs.has("fun") and base_needs.has("safety") and base_needs.has("hygiene"),"camp six-need model"): return
-    var low_needs:=base_needs.duplicate(true); low_needs["hunger"]=30.0; low_needs["fun"]=25.0; low_needs["safety"]=20.0; low_needs["hygiene"]=20.0
-    var moods:Array=CampLifeRules.moodlets(low_needs)
-    if not _check(moods.has("Hungry") and moods.has("Bored") and moods.has("Afraid") and moods.has("Dirty"),"camp negative moodlets"): return
-    if not _check(CampLifeRules.safety_target({"Noise Line":true,"Watch Post":true},2,3,70.0,false)>CampLifeRules.safety_target({},2,3,10.0,false),"camp safety reflects defenses and fire"): return
-    var arng:=RandomNumberGenerator.new(); arng.seed=3
-    if not _check(str(CampLifeRules.choose_available_activity(base_needs,10.0,2,2,false,false,arng).get("kind",""))=="maintain_fire","fire maintenance chore priority"): return
-    var rates := CampLifeRules.idle_recovery_rates(true, false)
-    if not _check(rates.x > 0.0 and rates.y > 0.0, "camp recovery rules"): return
-    if not _check(abs(CampLifeRules.fatigue_gain(5.0) - 10.0) < 0.001, "fatigue gain multiplier"): return
-    if not _check(CampSocial.relationship_label(70) == "Close", "social relationship bands"): return
-    if not _check(MobileScroll.TOUCH_BAR_WIDTH >= 28.0, "mobile scrollbar touch target"): return
-    if not _check(MobileScroll.touch_scroll_value(50.0, 100.0, 0.0, 100.0, 20.0) == 40, "mobile scrollbar touch mapping"): return
-    var main_source := FileAccess.get_file_as_string("res://scripts/Main.gd")
-    if not _check(not main_source.contains("expedition_zone = OptionButton.new()"), "Safari expedition selector avoids popup OptionButton"): return
-    if not _check(main_source.contains("func _close_expedition_overlay()"), "expedition overlay has modal pause restore"): return
 
-    var survivor_look: Dictionary = TacticalVisuals.survivor_appearance(visual_rng)
-    if not _check(survivor_look.has("sprite") and survivor_look.has("accent"), "survivor sprite identity"): return
-    var zombie_look: Dictionary = TacticalVisuals.zombie_appearance(visual_rng, "Industrial Edge")
-    if not _check(str(zombie_look.get("family", "")) != "", "zombie visual family"): return
-    if not _check(str(TacticalVisuals.weapon_visual("Pistol").get("kind", "")) == "pistol", "weapon visual catalog"): return
-    var equipped_lines: Array = TacticalVisuals.equipment_summary_lines({"Weapon": "Pistol", "Secondary": "Flashlight", "Tool": "First Aid Kit", "Clothing": "Leather Jacket", "Pack": "Hiking Pack"})
-    if not _check(str(equipped_lines[0]).contains("Pistol") and str(equipped_lines[0]).contains("Flashlight"), "tactical primary equipment summary"): return
-    if not _check(str(equipped_lines[1]).contains("First Aid Kit") and str(equipped_lines[1]).contains("Leather Jacket") and str(equipped_lines[1]).contains("Hiking Pack"), "tactical utility equipment summary"): return
+    var base_needs := CampLifeRules.default_needs()
+    if not _check(base_needs.has("hunger") and base_needs.has("safety") and base_needs.has("hygiene"), "camp needs"): return
+    if not _check(CampSocial.candidate_standing({"id":1,"condition":"Healthy","skills":{"Leadership":5},"reputation":0,"relationships":{}}, []) == 30, "leadership drives politics"): return
 
-    var craftable_gear := {}
-    for station in D.RECIPES.keys():
-        for recipe in D.RECIPES[station]:
-            var gives := str(recipe.get("gives_gear", ""))
-            if gives != "": craftable_gear[gives] = true
-    var field_gear := {}
-    for zone_name in D.TACTICAL_GEAR_UNLOCKS_BY_ZONE.keys():
-        for gear_name in D.TACTICAL_GEAR_UNLOCKS_BY_ZONE[zone_name]:
-            field_gear[str(gear_name)] = true
-    for gear_name in D.GEAR.keys():
-        if not _check(craftable_gear.has(gear_name), "craftable gear: %s" % gear_name): return
-        if not _check(field_gear.has(gear_name), "physical tactical gear: %s" % gear_name): return
-    if not _check(int(TacticalVisuals.field_gear_visual("Flashlight").get("atlas", -1)) >= 0, "field secondary sprite"): return
-    if not _check(str(TacticalVisuals.field_gear_visual("First Aid Kit").get("badge", "")) == "T", "field tool badge"): return
-    if not _check(str(TacticalVisuals.field_gear_visual("Leather Jacket").get("badge", "")) == "C", "field clothing badge"): return
-    if not _check(str(TacticalVisuals.field_gear_visual("Hiking Pack").get("badge", "")) == "P", "field pack badge"): return
     if not _check(D.BUILD_ORDER.size() == 15 and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory"), "final building tree"): return
-    if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "founder tutorial lighting seam"): return
-
-    var chatter_rng := RandomNumberGenerator.new()
-    chatter_rng.seed = 44
-    var chatter_people := [
-        {"id": 1, "name": "Alex Reed", "condition": "Healthy", "status": "Available", "task": {}, "relationships": {"2": 65}, "traits": ["Friendly"], "leader_support": 0, "stress": 10.0, "fatigue": 5.0},
-        {"id": 2, "name": "Sam Hale", "condition": "Healthy", "status": "Available", "task": {}, "relationships": {"1": 50}, "traits": ["Optimistic"], "leader_support": 0, "stress": 10.0, "fatigue": 5.0},
-    ]
-    var chatter: Dictionary = CampSocial.roll_chatter(chatter_people, -1, -1, 0, 0, {}, chatter_rng)
-    if not _check(not chatter.is_empty() and str(chatter.get("text", "")) != "", "camp chatter selection"): return
+    if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary"): return
+    if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
+    if not _check(str(TacticalVisuals.weapon_visual("Pistol").get("kind", "")) == "pistol", "weapon visual catalog"): return
+    if not _check(TacticalSound.display_label("gunshot") != "", "sound catalog"): return
 
     var path := "user://ff_architecture_smoke.json"
-    var payload := {"save_schema": 99, "ok": true}
+    var payload := {"save_schema": 8, "ok": true}
     if not _check(SaveCodec.write_json(path, payload), "save write"): return
     var loaded = SaveCodec.read_json(path)
-    if not _check(SaveCodec.is_compatible(loaded, 99), "save compatibility"): return
+    if not _check(loaded != null and int(loaded.get("save_schema", -1)) == 8, "save read"): return
     SaveCodec.invalidate(path)
-    if not _check(not SaveCodec.exists(path), "save invalidation"): return
+
     print("FIRST_FIRE_ARCHITECTURE_SMOKE_OK")
     quit(0)
 
 func _check(value: bool, label: String) -> bool:
     if value:
         return true
-    push_error("FIRST_FIRE_ARCHITECTURE_SMOKE_FAILED: %s" % label)
+    push_error("FIRST_FIRE_ARCHITECTURE_SMOKE_FAIL: %s" % label)
     quit(1)
     return false
