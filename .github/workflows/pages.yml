@@ -38,6 +38,7 @@ jobs:
           test -f game/scripts/FFTacticalTiles.gd
           test -f game/scripts/FFTacticalTime.gd
           test -f game/scripts/FFTacticalSound.gd
+          test -f game/scripts/FFTacticalBalance.gd
           test -f game/scripts/FFExpeditionRules.gd
           test -f game/scripts/FFTacticalScenarios.gd
           test -f game/scripts/FFFieldEventsLegacy.gd
@@ -67,10 +68,13 @@ jobs:
           test ! -e .github/scripts/temp_field_loot_fix.py
           test ! -e .github/scripts/temp_field_loot_fix_trigger.txt
           test ! -e .github/workflows/temp-field-loot-fix.yml
+          test ! -e .github/scripts/temp_tactical_depth_balance_patch.py
+          test ! -e .github/workflows/temp-tactical-depth-balance.yml
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
           grep -q 'const TacticalVisuals = preload' game/scripts/Game.gd
+          grep -q 'const TacticalBalance = preload' game/scripts/Game.gd
           grep -q 'signal camp_chatter_requested' game/scripts/Game.gd
           grep -q 'const SAVE_SCHEMA_VERSION := 7' game/scripts/Game.gd
           grep -q 'const MAX_POPULATION := 18' game/scripts/Game.gd
@@ -99,6 +103,10 @@ jobs:
           grep -q 'const TacticalTiles = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalTime = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalSound = preload' game/scripts/FFCombat.gd
+          grep -q 'const TacticalBalance = preload' game/scripts/FFCombat.gd
+          grep -q 'func guard()' game/scripts/FFCombat.gd
+          grep -q 'func shove()' game/scripts/FFCombat.gd
+          grep -q 'func search_explore_cell' game/scripts/FFCombat.gd
           grep -q 'const Environments = preload' game/scripts/FFTacticalScenarios.gd
           grep -q 'var current_combat := {}' game/scripts/Game.gd
           grep -q 'func resolve_combat' game/scripts/Game.gd
