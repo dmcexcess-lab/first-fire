@@ -1,12 +1,12 @@
 # First Fire — Project Context
 
-> **MANDATORY CONTEXT RULE FOR GPT:** At the start of every new user prompt that requests code or repository changes, fetch and reread both `README_SOPS.md` and this file from current `main`, then inspect the repo state relevant to that prompt. This happens **once per prompt/change request**, not before every individual edit, file write, or commit inside the same coherent batch.
+> **MANDATORY CONTEXT RULE FOR GPT:** At the start of every new user prompt that requests code or repository changes, fetch and reread both `README_SOPS.md` and this file from current `main`, then inspect the repo state relevant to that prompt. This happens once per coherent prompt/change request.
 
-This file records durable product/design context. `README_SOPS.md` records how to work on the repo. `ROADMAP.md` records intended development. `ARCHITECTURE.md` records current module ownership. Newest explicit user instruction plus current repo state wins over older context.
+This file records durable product/design context. `README_SOPS.md` records process, `ARCHITECTURE.md` records module ownership, and `ROADMAP.md` records intended direction. Newest explicit user instruction plus current `main` wins over older context.
 
 ## Current game
 
-**First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game. It mixes menu-driven camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
+**First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game combining camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
 
 Current milestone: **Beta Candidate — Feature Freeze**.
 
@@ -14,153 +14,134 @@ Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
 Core navigation: **CAMP | CRAFT | BUILD | SURVIVORS**.
 
-First Fire is considered **feature-complete at the pillar level**. The roadmap is about deepening and unifying the existing loop rather than adding another major game mode.
+Feature-freeze means deepen/unify existing systems rather than add new pillars.
 
 ## Design pillars
 
-- **Simulation first.** Drama comes from interacting systems and persistent state, not an AI director manufacturing crises.
-- **Survivors are people.** Skills, gear, health, fatigue, stress, relationships, history, wounds, and deaths matter.
-- **No conventional character levels.** Capability comes from use-based skills, equipment, condition, team composition, and camp infrastructure.
+- **Simulation first.** Drama comes from interacting systems and persistent state.
+- **Survivors are people.** Gear, health, fatigue, stress, relationships, history, wounds, deaths, and a small number of meaningful stats matter.
+- **No conventional levels.** Capability comes from three use-based stats, equipment, condition, traits, tactical decisions, and camp infrastructure.
 - **Persistent consequences.** Field outcomes feed back into camp/world state.
-- **Extraction over extermination.** Loot, rescue, investigation, survival, and escape matter more than clearing every enemy.
-- **Low content count, high implementation depth.** Deepen existing systems before multiplying shallow content.
-- **Low pointless micromanagement.** Idle recovery and social behavior should be systemic/autonomous when natural.
-- **Phone/Web first.** Touch, portrait layout, browser lifecycle, storage, pause/resume, and mobile Safari constraints are architectural inputs.
-- **Original presentation.** First Fire art should avoid third-party franchise names, logos, characters, or other recognizable branded identifiers unless explicitly requested and appropriate.
+- **Extraction over extermination.** Survival, rescue, investigation, loot, and escape matter more than clearing every enemy.
+- **Low content count, high implementation depth.**
+- **Low pointless micromanagement.** Routine recovery/social behavior should be systemic where natural.
+- **Phone/Web first.** Touch, portrait layout, browser lifecycle, storage, pause/resume, and mobile Safari are architectural inputs.
+- **Original presentation.** Avoid third-party franchise identifiers unless explicitly requested and appropriate.
 
-## Outside world vs. camp narrative
+## Three-stat survivor model
 
-The roadmap establishes a clean presentation rule:
+The active survivor progression model contains exactly three stats:
 
-- **Outside world = tactical/physical.**
-- **Camp social life/politics = narrative/dialogue.**
+- **Combat** — melee/firearm handling and combat output.
+- **Agility** — movement, stealth, sprinting, avoidance, and physical escape.
+- **Leadership** — camp influence, social decisions, candidate standing, and politics.
 
-Alpha 0.2 still contains text-based field events. They are now deliberately isolated as legacy behavior in `FFFieldEventsLegacy.gd`. Alpha 0.3 should convert those events into tactical situations one by one and then delete that module.
+The former **Scavenging, Survival, Medical, Technical, and Social** stats are removed from the active survivor model. Do not recreate them as hidden parallel progression systems. Crafting, treatment, searching, scavenging, and technical interactions should instead use authored rules, tools, resources, traits, infrastructure, condition, and player choices where appropriate.
 
-Tactical encounters pause normal settlement simulation. Tactical thinking time must not consume camp food, advance construction/recovery, or fire unrelated camp events.
+Backgrounds now seed the three current stats rather than six specialist skills. XP/progression is only valid for Combat, Agility, and Leadership.
 
 ## Tactical combat
 
-Tactical encounters use the actual expedition survivor(s), not temporary avatars. Current principles include grid turns, directional vision/facing, fog of war, remembered last-seen enemies, approximate sound information, doors, glass, obstacles, explosive hazards, stealth/rear advantages, melee, firearms, and pre-placed zombies.
+Outside-world danger is tactical/physical. Camp social life/politics remains narrative/dialogue.
 
-Current tactical encounter types include:
+Tactical encounters use the actual expedition survivor. Current encounter types are **Survivor Rescue, Explore Location, and Ambush**. Wounds, deaths, fatigue, stress, ammunition use, and Combat XP return to camp state. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
 
-- **Survivor Rescue** — now a physical escort objective: reach a named stranded survivor, make contact, keep them alive, and extract together. The rescued person cannot fight; infected can attack them; abandoning the rescue remains a valid self-extraction. The same survivor identity/appearance/condition carries into the post-extraction recruitment offer. Rescue can now occur from Camp Perimeter onward.
-- **Explore Location**
-- **Ambush**
+The active combat layer is intentionally compact:
 
-Wounds, deaths, fatigue, stress, ammunition use, and Combat XP return to camp state. Active tactical encounters persist across browser reloads.
+- **1H Melee** — faster/lighter one-handed melee profile.
+- **2H Melee** — slower/heavier melee profile; the improvised spear retains extended straight-line reach.
+- **1H Gun** — pistol class.
+- **2H Gun** — shotgun class, including spread behavior.
+- **Stealth** — Agility-driven quieter movement with positional stealth-attack opportunity; slower than normal movement.
+- **Sprint** — Agility-driven faster movement, louder noise, and improved grab avoidance.
+- **Guard** — spend time on defense to reduce the next infected grab threat.
+- **Shove** — spacing/stagger action; heavier infected resist it more, and attempting a shove always drops Guard before resolution.
 
-`FFCombat.gd` owns tactical runtime mechanics. `FFTacticalScenarios.gd` owns encounter objectives and combines them with a compatible place. `FFTacticalEnvironments.gd` owns recognizable authored tactical places, environment geometry, props, party entry points, and escape-route definitions. `FFTacticalVisuals.gd` owns persistent survivor appearance generation, zombie visual families, weapon silhouettes, and character rendering.
+**There is no armor mitigation.** Clothing must not cancel or reduce incoming physical damage. Clothing may remain as identity/weight/crafting/utility gear, but it is not an armor stat layer.
 
-Objective and place are now separate: rescue/search/ambush situations can occur across compatible back alleys, gas stations, residential houses, apartments, corner stores, warehouse yards, and drainage washes. Every tactical map declares at least one reachable exit; some have one route and some have multiple. Reaching any exit is always a valid retreat even when the optional rescue/search objective was not completed.
+Combat and Agility are the only survivor stats that affect tactical fighting/movement. Leadership does not secretly improve attacks.
 
-Survivors keep persistent modular tactical appearances. Zombies use varied civilian/worker/service/medical/decayed/heavy visual families, while those families remain cosmetic until a future gameplay change explicitly says otherwise. Equipped weapons are drawn as separate readable silhouettes beside survivors.
+`FFThreeStatRules.gd` owns the three-stat catalog, weapon classes/profiles, and Agility movement/stealth/sprint math. `FFTacticalBalance.gd` owns tactical tuning using Combat/Agility only. `FFCombatThreeStat.gd` is the active tactical specialization over the established `FFCombat.gd` board/runtime foundation.
 
-Alpha 0.3D replaces the procedural tactical tokens/flat prop drawing with a reusable original sprite/tile atlas and adds randomized **day/night + powered/unpowered** scene states. The same authored place can therefore play in daylight, powered night light, or near-black blackout conditions. Daylight enters authored interiors through windows; glass transmits vision/light while walls, closed doors, and tall props occlude it.
+## Tactical world
 
-Player vision is now shorter and truly light-dependent instead of being a light-independent cone with a dark filter drawn afterward. Zombie sight also responds to how illuminated the target is, so carrying a bright radial light improves awareness while making the carrier easier to detect.
+`FFTacticalScenarios.gd` owns objectives/scenario selection. `FFTacticalEnvironments.gd` owns authored places/geometry/props/entries/exits. `FFTacticalLighting.gd` owns tactical lighting rules. `FFTacticalTiles.gd` owns atlas rendering. `FFTacticalTime.gd` owns low-level action-time/load/fatigue/condition timing. `FFTacticalSound.gd` owns labels/localization helpers. `FFTacticalVisuals.gd` owns survivor/infected/weapon rendering.
 
-Tactical action time is authoritative: equipped weight, fatigue, injuries, stance, survivor skill, weapon action time, and per-zombie pace/mass profiles feed the actual tick scheduler. Sound markers use bounded fuzzy localization near the true source, surface-specific footsteps and more ambient/infected noises, and nearby infected share awareness when one spots the party. A nonlethal melee hit reveals the attacker to that infected even when the approach was stealthy. Adjacent doors are now tap/click interactions, allowing explicit closing instead of treating an open door tap as movement.
+Authored environments include back alleys, gas stations, houses, apartments, stores, warehouse yards, and drainage washes. Every map has reachable exits and retreat remains valid.
 
-Beta tactical depth adds two explicit defensive decisions without adding a new combat mode: **Guard** spends time to sharply reduce the next infected grab chance, while **Shove** trades damage for spacing/stagger and is harder against heavier infected. Weapon handling is more distinct: knives are quick/accurate, the improvised spear can attack two cells in a straight line, heavier melee weapons create more displacement, and a shotgun can catch infected adjacent to its primary impact.
-
-Explore encounters are now a multi-search mini-game rather than a single pickup. Each location contains several physically reachable search spots (3 in early zones up to 5 in Industrial), the marked gear is hidden in one of them, each search consumes tactical time and makes rummaging noise, and partial supplies survive an early retreat even when the target gear was not found. Exploration gets slightly fewer infected than an ambush so the larger traversal/search loop remains playable rather than becoming a mandatory clear.
+Tactical scene lighting uses the actual settlement clock at encounter creation with DAWN / DAY / DUSK / NIGHT phases plus independently powered/unpowered environments. Light affects actual visibility/detectability. Portable Secondary lights can be switched on/off and persist in tactical runtime.
 
 ## Expedition logistics
 
-`FFExpeditionRules.gd` owns current travel duration, recruit protection, tactical-event mix, zone caps, and routine haul-count rules.
+`FFExpeditionRules.gd` owns single-survivor travel/logistics, recruit protection, encounter mix, zone caps, and haul counts. Expeditions are permanently single-survivor; multi-survivor dispatch, companion AI, and vehicles are cut.
 
-The SEND OUT location chooser deliberately avoids Godot popup/OptionButton controls because mobile Safari can fail to accept selections from those Web popups. Zone selection uses explicit PREV/NEXT buttons, and the expedition-selection overlay pauses camp simulation until SEND or CANCEL restores the previous pause state.
+Agility is the active survivor stat used for expedition travel pace. Routine loot/searching no longer receives a Scavenging-stat bonus.
 
-Expeditions are permanently single-survivor. Multi-survivor dispatch, companion AI, and vehicle logistics are cut from scope.
+The SEND OUT selector uses touch-safe PREV/NEXT controls rather than popup `OptionButton` controls because of mobile Safari behavior. Its modal pauses camp simulation until SEND/CANCEL restores the previous pause state.
 
-## Living camp presentation
+## Living camp and camp life
 
-The management menus now share a persistent **2D tactical-style living camp view** instead of separate decorative tab splash images. It uses the same tactical tile/character visual language while remaining presentation-only. Built structures appear at stable visual anchors; survivors physically move toward the station implied by their real task/status (crafting, building, tending, recovery), available survivors idle around camp, and expedition survivors are absent. The pause/main menu uses the same living camp as its background. Camp lighting follows the real settlement clock, with fire/cabin glow after dark.
+The persistent 2D tactical-style living camp is final camp presentation. `FFCampView.gd` is presentation-only.
 
-For Alpha/Beta-candidate playtesting, every new founder starts with a **Flashlight equipped in Secondary** so day/night and blackout tactical lighting can always be exercised immediately. Save schema 7 is the final planned Alpha invalidation before Beta save stability. Explore tactical objectives now expose real named gear pickups from a zone-tiered catalog; a pickup is only committed to camp inventory after the survivor reaches it and escapes alive.
+`FFCampLifeRules.gd` owns six persistent needs—Hunger, Thirst, Sleep, Fun, Safety, Hygiene—plus moodlets, fire maintenance, autonomous downtime, recovery, treatment modifiers, and camp cadence.
 
-## Autonomous camp life
+Treatment is physical-wound aware:
+- **Hurt:** 1 Sterile Dressing; minor recovery capped to 30s.
+- **Wounded:** 1 Sterile Dressing; timed wound care.
+- **Critical:** 1 Medicine; timed emergency stabilization to Wounded, after which normal wound care applies.
 
-`FFCampLifeRules.gd` owns camp-life cadence/recovery tuning plus six survivor needs: hunger, thirst, sleep, fun, safety, and hygiene. Needs produce visible moodlets and feed stress. Available survivors autonomously perform interruptible camp life such as maintaining the fire, resting, washing up, and watching the fire while remaining available for player-assigned work. Watching the fire is currently the only item-free leisure action; future leisure actions such as cards or guitar must be backed by a real camp item before they can enter the activity pool. Fire maintenance consumes Wood only when completed, and fire strength affects camp safety and the living-camp glow. The SURVIVORS roster now updates fatigue, stress, condition, activity and expedition countdowns in place on the regular simulation tick, without rebuilding the menu or requiring a tab change. Treatment remains simulation-owned: Hurt consumes a Sterile Dressing and caps minor-injury recovery at 30 seconds; Wounded consumes a Sterile Dressing and begins timed wound care; only Critical injuries consume Medicine and require emergency timed treatment. Critical treatment steps the survivor down to Wounded, after which wound care continues through the physical-injury path. Disease/illness is not currently part of the survivor condition model. The survivor inspector explains the requirement/result and reminds the player that its modal pause stops treatment time until closed.
+Disease/illness is not currently part of the survivor condition model and should remain a separate future axis if added.
 
-`FFCampSocial.gd` owns relationship/social-selection rules, political standing, and autonomous camp chatter. Chatter is selected from real relationship, shortage, personality, leadership-support and policy state; `Game.gd` applies its small consequences and `FFCampView.gd` only renders the callout.
+Treatment time does not depend on a removed Medical stat. Craft/build duration does not depend on a removed Technical stat.
 
-Future interactions should be influenced by personality, relationships, stress, health, fatigue, injuries, recent losses/successes, resource security, comfort/crowding, shared history, politics/leadership, and overall camp vibe. Routine interactions should occur autonomously; the player handles conditions and meaningful consequences rather than scheduling conversations.
+`FFCampSocial.gd` owns relationships, chatter, candidate standing, and politics. **Leadership** is the active progression stat for social/political capability.
 
+## Time / economy
 
-## Current economy / time
-
-For Alpha testing, one full in-game day is **2 real active minutes**.
+For testing, one full in-game day is **2 real active minutes**.
 
 Fire Pit conversions:
 - **1 Raw Food → 2 Cooked Food**
 - **1 Dirty Water → 2 Clean Water**
 
-Routine scavenging remains intentionally constrained after early over-looting:
-- Camp Perimeter: 0–3 items, 25% empty
-- Nearby: max 4, 15% empty
-- Residential: max 5, 8% empty
-- Commercial: max 6, 4% empty
-- Industrial: max 7, 2% empty
-
-Loot priority is approximately **Dirty Water → Raw Food → materials → Clean Water → Cooked Food**.
-
-## Current Alpha 0.3A playtest tuning
-
-- Tactical encounter chance rolls independently from legacy text events and now includes the starting zone: **65% Camp Perimeter / 70% Nearby / 75% Residential / 82% Commercial / 90% Industrial**.
-- Tactical drought protection guarantees a tactical encounter on the next normal field run after two consecutive ordinary runs without one.
-- Expedition dispatch no longer has a loot-focus selector; routine loot follows the zone's natural loot table plus survivor skill/equipment rules.
-- Fatigue gains from expeditions, tactical encounters, crafting/building, and garden work are currently **2×** their original Alpha values. Idle recovery rates are unchanged.
+Routine scavenging stays constrained by zone caps/depletion, pack capacity, and authored loot distribution rather than a Scavenging stat.
 
 ## Saves
 
-Alpha save compatibility is **not sacred**. Use explicit save schema versions and invalidate old saves cleanly when meaningful schema/system changes occur instead of accumulating migrations.
+Current save schema remains **7**.
 
-Current save schema: **7**.
+Current survivor-model marker is **`combat-agility-leadership-v1`**. A schema-7 save containing the previous six-skill survivor shape is deliberately invalidated and restarted rather than migrated. This is an intentional compatibility break for the combat/stat reset.
 
-The save filename remains `user://first_fire_alpha01.json` intentionally for compatibility. Its legacy name alone is not a reason to wipe a working Alpha save.
+The filename remains `user://first_fire_alpha01.json` intentionally.
 
-`FFSaveCodec.gd` owns persistence file/JSON mechanics. `Game.gd` still owns the actual state schema while Alpha remains fluid.
+`FFSaveCodec.gd` owns JSON/file transport; active state specialization is in `GameThreeStat.gd`, which extends the established `Game.gd` orchestration foundation.
 
 ## Canonical technical reality
 
-The one-time source razor replaced the historical ZIP/patch/Base64 reconstruction pipeline.
+Canonical Godot source lives directly under `game/`; CI builds that directory directly. Current Web CI uses **Godot 4.7.1** and runs canonical validation, import/parse, architecture smoke, startup smoke, Web export, error-log rejection, Pages artifact upload, and Pages deployment.
 
-**Canonical Godot source now lives directly under `game/`.** CI builds that directory directly.
+The active project seams are:
+- `project.godot` autoload → `GameThreeStat.gd`
+- `main.tscn` → `MainThreeStat.gd`
+- active tactical runtime → `FFCombatThreeStat.gd`
+- active survivor inspector → `FFInspectorThreeStat.gd`
 
-Current important module boundaries are documented in `ARCHITECTURE.md`.
+These specialize mature base scripts with a small blast radius. Legacy six-skill strings may remain inside inherited base/legacy event code for compatibility while the active runtime exposes only the three current stats. New gameplay must target the three-stat owners rather than revive the legacy model.
 
-`Game.gd` remains the persistent state/orchestration facade, but new durable roadmap rules should not be dumped into it. Existing compatibility wrappers may remain until their callers can be safely simplified.
+## Frozen scope
 
-Current Web CI uses **Godot 4.7.1** and runs import/parse, architecture, startup, and export gates before Pages deployment.
-
-## Frozen-scope ownership summary
-
-- tactical field play/conversion → `FFTacticalScenarios` + `FFTacticalEnvironments` + `FFCombat`
-- single-survivor expedition logistics → `FFExpeditionRules`
-- relationships/politics/autonomous chatter → `FFCampSocial`
-- camp cadence/recovery/building effects → `FFCampLifeRules`
-- living 2D camp/menu visualization → `FFCampView`
-- saves → `FFSaveCodec` transport + current Game schema
-
-There is no future pets, vehicles, companion-expedition, or 3D-camp owner. The 2D camp is final presentation.
-
-Final population ceiling is **18**. At **15+ survivors + every building + an elected leader**, the settlement is marked mature, but the game continues indefinitely.
+No pets, vehicles, tactical companion expeditions, multi-survivor dispatch, or 3D camp. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which the game continues indefinitely.
 
 ## Source-of-truth order
 
 1. Newest explicit user instruction
-2. Current `main` repo state
+2. Current `main`
 3. `README_SOPS.md`
 4. `README_CONTEXT.md`
 5. `ARCHITECTURE.md`
 6. `ROADMAP.md`
 7. `CHANGELOG.md`
 8. Conversation memory only as supporting context
-
-At the start of **each new code/change prompt**, reread SOP + context once, then perform that prompt's coherent batch without rereading between individual edits.
 
 ## Required code-change response footer
 
