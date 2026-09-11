@@ -455,7 +455,8 @@ func _process_camp_chatter(delta):
     camp_chatter_requested.emit(chatter)
 
 func _process_survivors(delta):
-    var pop:=population(); var capacity:=shelter_capacity()
+    var pop: int = int(population())
+    var capacity: int = int(shelter_capacity())
     var hygiene_support:=bool(buildings.get("Rain Catcher",false)) or bool(buildings.get("Water Tank",false))
     for s in survivors:
         if s["condition"]=="Dead": continue
@@ -1434,7 +1435,8 @@ func _daily_tick():
     else:
         water_shortage_days = 0
 
-    var everyone_fed:=food_missing==0; var everyone_watered:=water_missing==0
+    var everyone_fed: bool = int(food_missing) == 0
+    var everyone_watered: bool = int(water_missing) == 0
     for s in survivors:
         if s["condition"]!="Dead": s["needs"]=CampLifeRules.apply_daily_rations(s.get("needs",{}),everyone_fed,everyone_watered)
 
