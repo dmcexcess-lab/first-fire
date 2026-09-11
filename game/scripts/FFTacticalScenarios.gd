@@ -23,7 +23,7 @@ static func pick_environment(zone: String, kind: String, rng: RandomNumberGenera
     return Environments.pick(zone, kind, rng)
 
 static func environment_name(environment_id: String) -> String:
-    return Environments.display_name(environment_id)
+    return "%s • %s" % [Environments.display_name(environment_id), formatted_hour(current_encounter_hour())]
 
 static func environment_variant(environment_id: String, rng: RandomNumberGenerator) -> int:
     return Environments.pick_variant(environment_id, rng)
