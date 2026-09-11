@@ -1,0 +1,36 @@
+name: Temporary tactical survivor rescue integration
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply survivor rescue tactical pass
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if grep -q 'Physical Survivor Rescue' CHANGELOG.md; then
+            echo 'Rescue tactical pass already applied.'
+            exit 0
+          fi
+          test -f .github/scripts/temp_rescue_tactical_patch.py
+          python3 .github/scripts/temp_rescue_tactical_patch.py | tee /tmp/rescue-tactical.log
+          grep -q 'FIRST_FIRE_RESCUE_TACTICAL_PATCH_OK' /tmp/rescue-tactical.log
+          grep -q 'func contact_rescuee' game/scripts/FFCombat.gd
+          grep -q 'rescue_candidate' game/scripts/Game.gd
+          grep -q 'starting zone rescue tactical option' game/scripts/ci/FFArchitectureSmoke.gd
+          test ! -e .github/scripts/temp_rescue_tactical_patch.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game/scripts/FFTacticalScenarios.gd game/scripts/FFTacticalBalance.gd game/scripts/FFCombat.gd game/scripts/Game.gd game/scripts/ci/FFArchitectureSmoke.gd README_CONTEXT.md ARCHITECTURE.md CHANGELOG.md .github/scripts/temp_rescue_tactical_patch.py
+          git commit -m 'Add physical tactical survivor rescues'
+          git push origin HEAD:main
