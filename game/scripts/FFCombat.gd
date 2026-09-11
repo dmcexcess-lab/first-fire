@@ -737,12 +737,12 @@ func can_melee_reach(target: Vector2i) -> bool:
     var reach := maxi(1, int(player.weapon.get("reach", 1)))
     if distance < 1 or distance > reach:
         return false
-    var diff := target - player.pos
+    var diff: Vector2i = target - player.pos
     if diff.x != 0 and diff.y != 0:
         return false
     var dir := dominant(diff)
     for step in range(1, distance):
-        var between := player.pos + dir * step
+        var between: Vector2i = player.pos + dir * step
         if blocked(between) or zombie_at(between) != -1:
             return false
     return line_clear(player.pos, target)
@@ -851,7 +851,7 @@ func guard() -> void:
     commit_action(TacticalTime.interaction_cost(player, 55))
 
 func shove() -> void:
-    var target := player.pos + player.facing
+    var target: Vector2i = player.pos + player.facing
     var zi := zombie_at(target)
     if zi == -1:
         msg = "No infected directly in front of you to shove."
