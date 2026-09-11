@@ -3,6 +3,7 @@ class_name FFInspector
 
 const D = preload("res://scripts/FFData.gd")
 const MobileScroll = preload("res://scripts/FFMobileScroll.gd")
+const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
 
 signal send_survivor(survivor_id: int)
 
@@ -188,6 +189,12 @@ func _render_survivor() -> void:
     body.add_child(_make_label("%s  •  %s  •  %s" % [str(survivor.get("background", "Unknown")), condition, status], 14))
     body.add_child(_make_label("Traits: %s" % ", ".join(survivor.get("traits", [])), 13))
     body.add_child(_make_label("Fatigue %.0f / 100  •  Stress %.0f / 100" % [float(survivor.get("fatigue", 0.0)), float(survivor.get("stress", 0.0))], 14))
+    var needs:Dictionary=CampLifeRules.normalize_needs(survivor.get("needs",{}))
+    body.add_child(_make_label("Hunger %.0f  •  Thirst %.0f  •  Sleep %.0f" % [float(needs["hunger"]),float(needs["thirst"]),float(needs["sleep"])],12))
+    body.add_child(_make_label("Fun %.0f  •  Safety %.0f  •  Clean %.0f" % [float(needs["fun"]),float(needs["safety"]),float(needs["hygiene"])],12))
+    body.add_child(_make_label("Moodlets: %s" % " • ".join(CampLifeRules.moodlets(needs)),13))
+    var camp_activity:Dictionary=survivor.get("camp_activity",{})
+    if status=="Available" and not camp_activity.is_empty(): body.add_child(_make_label("Now: %s" % str(camp_activity.get("label","At camp")),12))
     var treatment_status: String = _treatment_status_line(survivor)
     if treatment_status != "":
         body.add_child(_make_label(treatment_status, 12))

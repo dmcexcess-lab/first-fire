@@ -128,6 +128,12 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
         return building_cell("Garden Plot") + Vector2i(1, 0)
     if status == "Recovering":
         return Vector2i(12, 6) if bool(Game.buildings.get("Cabin", false)) else SLEEP_CELL
+    var camp_activity: Dictionary = survivor.get("camp_activity", {})
+    match str(camp_activity.get("kind", "")):
+        "maintain_fire", "watch_fire", "guitar": return FIRE_CELL + Vector2i(0, 1)
+        "cards": return building_cell("Communal Table") + Vector2i(0, -1) if bool(Game.buildings.get("Communal Table", false)) else FIRE_CELL + Vector2i(1, 1)
+        "rest": return Vector2i(12, 6) if bool(Game.buildings.get("Cabin", false)) else SLEEP_CELL
+        "wash": return building_cell("Water Tank") + Vector2i(1, 0) if bool(Game.buildings.get("Water Tank", false)) else building_cell("Rain Catcher") + Vector2i(1, 0)
     if float(survivor.get("fatigue", 0.0)) >= 78.0:
         return Vector2i(12, 6) if bool(Game.buildings.get("Cabin", false)) else SLEEP_CELL
     if float(survivor.get("stress", 0.0)) >= 68.0:
@@ -246,8 +252,9 @@ func _draw_fire(origin: Vector2, tile: float) -> void:
     draw_circle(center, tile * 0.28, Color("33261f"))
     draw_line(center + Vector2(-tile * 0.18, tile * 0.12), center + Vector2(tile * 0.18, -tile * 0.12), Color("6d4b2f"), maxf(1.0, tile * 0.07))
     draw_line(center + Vector2(-tile * 0.18, -tile * 0.12), center + Vector2(tile * 0.18, tile * 0.12), Color("6d4b2f"), maxf(1.0, tile * 0.07))
-    draw_circle(center + Vector2(0, -tile * 0.03), tile * 0.16, Color(1.0, 0.34, 0.10, 0.88))
-    draw_circle(center + Vector2(0, -tile * 0.08), tile * 0.09, Color(1.0, 0.82, 0.28, 0.94))
+    var fire_scale:=clampf(float(Game.fire_level)/100.0,0.10,1.0)
+    draw_circle(center+Vector2(0,-tile*0.03),tile*(0.07+0.12*fire_scale),Color(1.0,0.34,0.10,0.40+0.50*fire_scale))
+    draw_circle(center+Vector2(0,-tile*0.08),tile*(0.04+0.07*fire_scale),Color(1.0,0.82,0.28,0.48+0.48*fire_scale))
 
 func _draw_noise_line(origin: Vector2, tile: float) -> void:
     var color := Color("8e826d")
@@ -322,9 +329,10 @@ func _draw_night(origin: Vector2, tile: float) -> void:
         return
     draw_rect(map_rect, Color(0.015, 0.035, 0.085, alpha))
     var fire_center := _cell_center(FIRE_CELL, origin, tile)
-    draw_circle(fire_center, tile * 2.25, Color(1.0, 0.36, 0.10, 0.055))
-    draw_circle(fire_center, tile * 1.55, Color(1.0, 0.48, 0.12, 0.085))
-    draw_circle(fire_center, tile * 0.90, Color(1.0, 0.68, 0.20, 0.14))
+    var fire_strength:=clampf(float(Game.fire_level)/100.0,0.0,1.0)
+    draw_circle(fire_center,tile*(0.8+1.45*fire_strength),Color(1.0,0.36,0.10,0.055*fire_strength))
+    draw_circle(fire_center,tile*(0.6+0.95*fire_strength),Color(1.0,0.48,0.12,0.085*fire_strength))
+    draw_circle(fire_center,tile*(0.4+0.50*fire_strength),Color(1.0,0.68,0.20,0.14*fire_strength))
     if bool(Game.buildings.get("Cabin", false)):
         var cabin_center := _cell_center(Vector2i(12, 5), origin, tile)
         draw_circle(cabin_center, tile * 1.7, Color(1.0, 0.72, 0.34, 0.075))
@@ -364,7 +372,7 @@ func _draw_survivors(origin: Vector2, tile: float) -> void:
         var first_name := str(survivor.get("name", "Survivor")).get_slice(" ", 0)
         var font_size: int = maxi(8, int(tile * 0.34))
         draw_string(font, center + Vector2(-tile * 0.52, -tile * 0.48), first_name, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, font_size, Color(0.96, 0.97, 0.92, 0.96))
-        var activity := _activity_short(status)
+        var activity := _activity_short(survivor)
         if activity != "":
             draw_string(font, center + Vector2(-tile * 0.52, tile * 0.62), activity, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, maxi(7, font_size - 2), Color(0.87, 0.78, 0.49, 0.95))
 
@@ -403,10 +411,19 @@ func _draw_chatter(origin: Vector2, tile: float) -> void:
     draw_string(font, box.position + Vector2(4.0, 11.0), header, HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 8.0, 8, border)
     draw_string(font, box.position + Vector2(4.0, 25.0), str(chatter_entry.get("text", "...")), HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 8.0, 8, Color(0.94, 0.94, 0.88, 0.98))
 
-func _activity_short(status: String) -> String:
+func _activity_short(survivor: Dictionary) -> String:
+    var status:=str(survivor.get("status","Available"))
     match status:
         "Crafting": return "CRAFT"
         "Building": return "BUILD"
         "Recovering": return "RECOVER"
         "Tending": return "GARDEN"
-        _: return ""
+    var a:Dictionary=survivor.get("camp_activity",{})
+    match str(a.get("kind","")):
+        "maintain_fire": return "FIRE"
+        "watch_fire": return "WATCH FIRE"
+        "cards": return "CARDS"
+        "guitar": return "GUITAR"
+        "rest": return "REST"
+        "wash": return "WASH"
+    return ""

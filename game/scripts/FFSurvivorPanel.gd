@@ -10,6 +10,7 @@ signal send_survivor(survivor_id: int)
 var condition_labels: Dictionary = {}
 var activity_labels: Dictionary = {}
 var vitals_labels: Dictionary = {}
+var moodlet_labels: Dictionary = {}
 var send_buttons: Dictionary = {}
 var expedition_state_labels: Dictionary = {}
 
@@ -23,6 +24,7 @@ func _clear_live_refs() -> void:
     condition_labels.clear()
     activity_labels.clear()
     vitals_labels.clear()
+    moodlet_labels.clear()
     send_buttons.clear()
     expedition_state_labels.clear()
 
@@ -179,6 +181,8 @@ func _survivor_card(survivor: Dictionary) -> Control:
     var vitals_label = _make_label("Fatigue %.0f  •  Stress %.0f" % [float(survivor.get("fatigue", 0.0)), float(survivor.get("stress", 0.0))], 12)
     box.add_child(vitals_label)
     vitals_labels[sid] = vitals_label
+    var moodlet_label=_make_label("Mood: %s" % " • ".join(Game.survivor_moodlets(survivor)),11)
+    box.add_child(moodlet_label); moodlet_labels[sid]=moodlet_label
 
     var actions = HBoxContainer.new()
     actions.add_theme_constant_override("separation", 4)
@@ -216,6 +220,8 @@ func _refresh_live_values() -> void:
             activity_labels[sid].text = activity
         if vitals_labels.has(sid) and is_instance_valid(vitals_labels[sid]):
             vitals_labels[sid].text = "Fatigue %.0f  •  Stress %.0f" % [float(survivor.get("fatigue", 0.0)), float(survivor.get("stress", 0.0))]
+        if moodlet_labels.has(sid) and is_instance_valid(moodlet_labels[sid]):
+            moodlet_labels[sid].text="Mood: %s" % " • ".join(Game.survivor_moodlets(survivor))
         if send_buttons.has(sid) and is_instance_valid(send_buttons[sid]):
             send_buttons[sid].disabled = condition == "Dead" or status != "Available"
     for expedition in Game.expeditions:
@@ -255,6 +261,8 @@ func _activity_text(survivor: Dictionary) -> String:
         if not active_task.is_empty():
             return "%s — %.0fs remaining" % [status, float(active_task.get("remaining", 0.0))]
     if status == "Available":
+        var a:Dictionary=survivor.get("camp_activity",{})
+        if not a.is_empty(): return "At camp — %s" % str(a.get("label","available"))
         return "At camp — available"
     return status
 

@@ -1,3 +1,11 @@
+## Beta Candidate — Camp Needs, Moodlets & Autonomous Downtime — 2026-09-11
+
+- Added six persistent survivor needs: Hunger, Thirst, Sleep, Fun, Safety, and Hygiene. Sleep stays synchronized with existing Fatigue instead of creating a second exhaustion system.
+- Added positive/negative moodlets; unmet needs add gradual stress pressure, while existing daily food/water upkeep feeds Hunger/Thirst without duplicating resource consumption.
+- Added interruptible autonomous camp life for Available survivors: maintaining the fire, resting, washing up, watching the fire, playing cards, and playing guitar.
+- Fire strength now persists, decays with camp time, affects safety and camp glow, and consumes 1 Wood when maintenance completes. Player work/expeditions always override autonomous activity.
+- Survivor roster and inspector expose moodlets/needs and current autonomous activity. Existing schema-7 saves receive backward-compatible defaults; schema remains 7.
+
 ## Beta Candidate — Tactical Clock & Portable Light Control — 2026-09-11
 
 - Tactical encounters now use the settlement clock at encounter creation, exposing DAWN / DAY / DUSK / NIGHT instead of an unrelated random day/night roll.

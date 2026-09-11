@@ -84,6 +84,14 @@ func _init() -> void:
         for variant in range(TacticalEnvironments.variant_count(str(environment_id))):
             if not _check(TacticalEnvironments.validate_layout(TacticalEnvironments.build_layout(str(environment_id), variant)), "reachable exits: %s v%d" % [environment_id, variant]): return
     if not _check(LegacyFieldEvents.all_keys().has("injured_stranger"), "legacy field catalog"): return
+    var base_needs:=CampLifeRules.default_needs()
+    if not _check(base_needs.has("hunger") and base_needs.has("thirst") and base_needs.has("sleep") and base_needs.has("fun") and base_needs.has("safety") and base_needs.has("hygiene"),"camp six-need model"): return
+    var low_needs:=base_needs.duplicate(true); low_needs["hunger"]=30.0; low_needs["fun"]=25.0; low_needs["safety"]=20.0; low_needs["hygiene"]=20.0
+    var moods:Array=CampLifeRules.moodlets(low_needs)
+    if not _check(moods.has("Hungry") and moods.has("Bored") and moods.has("Afraid") and moods.has("Dirty"),"camp negative moodlets"): return
+    if not _check(CampLifeRules.safety_target({"Noise Line":true,"Watch Post":true},2,3,70.0,false)>CampLifeRules.safety_target({},2,3,10.0,false),"camp safety reflects defenses and fire"): return
+    var arng:=RandomNumberGenerator.new(); arng.seed=3
+    if not _check(str(CampLifeRules.choose_available_activity(base_needs,10.0,2,2,false,false,arng).get("kind",""))=="maintain_fire","fire maintenance chore priority"): return
     var rates := CampLifeRules.idle_recovery_rates(true, false)
     if not _check(rates.x > 0.0 and rates.y > 0.0, "camp recovery rules"): return
     if not _check(abs(CampLifeRules.fatigue_gain(5.0) - 10.0) < 0.001, "fatigue gain multiplier"): return

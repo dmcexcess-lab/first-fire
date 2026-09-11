@@ -77,7 +77,7 @@ Temporary Alpha 0.2 compatibility owner for remaining **outside-world text-event
 Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and routine haul-count distributions. Multi-survivor dispatch and vehicles are not part of the final design.
 
 ### `FFCampLifeRules.gd`
-Camp-life cadence, idle recovery, injury/treatment modifiers, defensive-building risk, rain-catcher output, and chatter timing.
+Camp-life cadence, six survivor needs/moodlets, autonomous downtime/chore selection, fire maintenance tuning, idle recovery, injury/treatment modifiers, defensive-building risk, rain-catcher output, and chatter timing.
 
 ### `FFCampSocial.gd`
 Relationship mutation/labels, candidate standing, leadership support, pair selection, and autonomous camp chatter. Personality, stress, shortages, relationship state, leadership opinion and policy can shape quiet interactions; Game applies consequences and the camp view renders them.

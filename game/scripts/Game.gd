@@ -64,6 +64,7 @@ var game_over := false
 var settlement_mature := false
 var settlement_mature_shown := false
 var recent_expedition_ids := []
+var fire_level := CampLifeRules.FIRE_START_LEVEL
 
 func _ready():
     rng.randomize()
@@ -126,6 +127,7 @@ func new_game():
     settlement_mature = false
     settlement_mature_shown = false
     recent_expedition_ids = []
+    fire_level = CampLifeRules.FIRE_START_LEVEL
     camp_event_accum = 0.0
     camp_event_cooldown = CampLifeRules.NEW_GAME_EVENT_COOLDOWN
     camp_chatter_accum = 0.0
@@ -149,6 +151,7 @@ func _process(delta):
     if camp_event_cooldown > 0.0:
         camp_event_cooldown = max(0.0, camp_event_cooldown - delta)
 
+    fire_level = maxf(0.0, fire_level - CampLifeRules.FIRE_DECAY_PER_SECOND * float(delta))
     _process_survivors(delta)
     _process_camp_chatter(delta)
     _process_expeditions(delta)
@@ -247,6 +250,8 @@ func _generate_survivor(founder = false, preferred_background = ""):
         "traits": [],
         "fatigue": 0.0,
         "stress": 10.0 if not founder else 5.0,
+        "needs": CampLifeRules.default_needs(),
+        "camp_activity": {},
         "condition": "Healthy",
         "injury_remaining": 0.0,
         "status": "Available",
@@ -362,6 +367,8 @@ func _add_recruit_candidate(candidate: Dictionary, rescuer_ids = []) -> Variant:
         next_survivor_id = maxi(next_survivor_id, int(s["id"]) + 1)
     s["status"] = "Available"
     s["task"] = {}
+    s["needs"] = CampLifeRules.normalize_needs(s.get("needs", {}))
+    s["camp_activity"] = {}
     s["relationships"] = {}
     if not s.has("history"):
         s["history"] = []
@@ -448,36 +455,66 @@ func _process_camp_chatter(delta):
     camp_chatter_requested.emit(chatter)
 
 func _process_survivors(delta):
+    var pop:=population(); var capacity:=shelter_capacity()
+    var hygiene_support:=bool(buildings.get("Rain Catcher",false)) or bool(buildings.get("Water Tank",false))
     for s in survivors:
-        if s["condition"] == "Dead":
-            continue
-
-        # Idle survivors recover automatically while remaining Available for work.
-        if s["status"] == "Available":
-            var caretaker_leader := false
-            if leader_id != -1:
-                var leader: Variant = get_survivor(leader_id)
-                caretaker_leader = leader != null and leader["leader_ability"] == "Caretaker"
-            var recovery := CampLifeRules.idle_recovery_rates(bool(buildings.get("Cabin", false)), caretaker_leader, bool(buildings.get("Communal Table", false)))
-            s["fatigue"] = max(0.0, float(s["fatigue"]) - recovery.x * delta)
-            s["stress"] = max(0.0, float(s["stress"]) - recovery.y * delta)
-            if s["condition"] == "Hurt" or s["condition"] == "Wounded":
-                s["injury_remaining"] = max(0.0, float(s["injury_remaining"]) - delta * CampLifeRules.injury_recovery_multiplier(bool(buildings.get("Infirmary", false))))
-                if s["injury_remaining"] <= 0.0:
-                    if s["condition"] == "Wounded":
-                        s["condition"] = "Hurt"
-                        s["injury_remaining"] = 60.0
+        if s["condition"]=="Dead": continue
+        if not s.has("needs"): s["needs"]=CampLifeRules.default_needs()
+        if not s.has("camp_activity"): s["camp_activity"]={}
+        var away:=["Expedition","Pending Expedition Event","Tactical Encounter"].has(str(s.get("status","Available")))
+        var safety:=CampLifeRules.safety_target(buildings,pop,capacity,fire_level,away)
+        s["needs"]=CampLifeRules.update_needs(s.get("needs",{}),float(s.get("fatigue",0.0)),float(delta),safety,hygiene_support,away)
+        s["stress"]=clampf(float(s.get("stress",0.0))+CampLifeRules.need_stress_rate(s["needs"])*float(delta),0.0,100.0)
+        if s["status"]=="Available":
+            var caretaker:=false
+            if leader_id!=-1:
+                var leader:Variant=get_survivor(leader_id)
+                caretaker=leader!=null and leader["leader_ability"]=="Caretaker"
+            var recovery:=CampLifeRules.idle_recovery_rates(bool(buildings.get("Cabin",false)),caretaker,bool(buildings.get("Communal Table",false)))
+            s["fatigue"]=max(0.0,float(s["fatigue"])-recovery.x*delta)
+            s["stress"]=max(0.0,float(s["stress"])-recovery.y*delta)
+            s["needs"]=CampLifeRules.update_needs(s["needs"],float(s["fatigue"]),0.0,safety,hygiene_support,false)
+            _process_camp_activity(s,float(delta),pop,hygiene_support)
+            if s["condition"]=="Hurt" or s["condition"]=="Wounded":
+                s["injury_remaining"]=max(0.0,float(s["injury_remaining"])-delta*CampLifeRules.injury_recovery_multiplier(bool(buildings.get("Infirmary",false))))
+                if s["injury_remaining"]<=0.0:
+                    if s["condition"]=="Wounded":
+                        s["condition"]="Hurt"; s["injury_remaining"]=60.0
                         s["history"].append("Day %d — Recovered from a serious wound." % day)
                     else:
-                        s["condition"] = "Healthy"
+                        s["condition"]="Healthy"
                         s["history"].append("Day %d — Recovered from minor injuries." % day)
-        elif ["Crafting", "Building", "Recovering", "Tending"].has(s["status"]):
-            if s["task"].is_empty():
-                s["status"] = "Available"
-                continue
-            s["task"]["remaining"] = max(0.0, float(s["task"]["remaining"]) - delta)
-            if float(s["task"]["remaining"]) <= 0.0:
-                _complete_task(s)
+        elif ["Crafting","Building","Recovering","Tending"].has(s["status"]):
+            s["camp_activity"]={}
+            if s["task"].is_empty(): s["status"]="Available"; continue
+            s["task"]["remaining"]=max(0.0,float(s["task"]["remaining"])-delta)
+            if float(s["task"]["remaining"])<=0.0: _complete_task(s)
+
+func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:bool)->void:
+    var activity:Dictionary=s.get("camp_activity",{})
+    if activity.is_empty():
+        activity=CampLifeRules.choose_available_activity(s.get("needs",{}),fire_level,int(resources.get("Wood",0)),pop,bool(buildings.get("Communal Table",false)),hygiene_support,rng)
+        s["camp_activity"]=activity
+        if activity.is_empty(): return
+    activity["remaining"]=maxf(0.0,float(activity.get("remaining",0.0))-delta); s["camp_activity"]=activity
+    if float(activity.get("remaining",0.0))>0.0: return
+    var kind:=str(activity.get("kind",""))
+    if kind=="maintain_fire":
+        if int(resources.get("Wood",0))>0:
+            resources["Wood"]=int(resources.get("Wood",0))-1
+            fire_level=clampf(fire_level+CampLifeRules.FIRE_MAINTAIN_GAIN,0.0,100.0)
+            s["stress"]=maxf(0.0,float(s.get("stress",0.0))-1.0)
+    else:
+        var result:=CampLifeRules.complete_activity(s.get("needs",{}),float(s.get("fatigue",0.0)),kind)
+        s["needs"]=result.get("needs",s.get("needs",{})); s["fatigue"]=float(result.get("fatigue",s.get("fatigue",0.0)))
+        if kind in ["watch_fire","cards","guitar"]: s["stress"]=maxf(0.0,float(s.get("stress",0.0))-2.0)
+    s["camp_activity"]={}
+
+func _clear_camp_activity(s)->void:
+    if s!=null: s["camp_activity"]={}
+
+func survivor_moodlets(survivor:Dictionary)->Array:
+    return CampLifeRules.moodlets(survivor.get("needs",{}))
 
 func treat_survivor(sid):
     var s: Variant = get_survivor(sid)
@@ -485,6 +522,7 @@ func treat_survivor(sid):
         return false
     if s["status"] != "Available":
         return false
+    _clear_camp_activity(s)
     if s["condition"] == "Hurt":
         if int(components.get("Sterile Dressing", 0)) <= 0:
             toast_requested.emit("You need a Sterile Dressing.")
@@ -599,6 +637,7 @@ func start_craft(sid, station, recipe_id):
         toast_requested.emit("Not enough materials.")
         return false
     _pay(recipe.get("cost", {}), cc)
+    _clear_camp_activity(s)
     var duration = _work_duration(s, float(recipe["time"]))
     s["status"] = "Crafting"
     s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(float(recipe["time"]) / 5.0))
@@ -622,6 +661,7 @@ func start_build(sid, building):
         toast_requested.emit("Not enough materials/components.")
         return false
     _pay(data.get("cost", {}), data.get("component_cost", {}))
+    _clear_camp_activity(s)
     var duration = _work_duration(s, float(data["time"]))
     s["status"] = "Building"
     s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(float(data["time"]) / 5.0))
@@ -639,6 +679,7 @@ func tend_garden(sid):
     var s: Variant = get_survivor(sid)
     if s == null or s["status"] != "Available":
         return false
+    _clear_camp_activity(s)
     s["status"] = "Tending"
     s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(4.0))
     s["task"] = {"kind": "garden", "remaining": _work_duration(s, 8.0), "duration": 8.0}
@@ -707,6 +748,7 @@ func start_expedition(primary_id, zone):
         var s: Variant = get_survivor(sid)
         if s == null or s["status"] != "Available" or s["condition"] == "Dead":
             return false
+        _clear_camp_activity(s)
         if zone in ["Commercial Fringe", "Industrial Edge"] and float(s["fatigue"]) >= 95.0:
             toast_requested.emit("%s is too exhausted for that trip." % s["name"])
             return false
@@ -1391,6 +1433,10 @@ func _daily_tick():
         _apply_shortage("water", water_shortage_days)
     else:
         water_shortage_days = 0
+
+    var everyone_fed:=food_missing==0; var everyone_watered:=water_missing==0
+    for s in survivors:
+        if s["condition"]!="Dead": s["needs"]=CampLifeRules.apply_daily_rations(s.get("needs",{}),everyone_fed,everyone_watered)
 
     if buildings.get("Rain Catcher", false):
         resources["Dirty Water"] = int(resources.get("Dirty Water", 0)) + CampLifeRules.rain_catcher_yield(bool(buildings.get("Water Tank", false)))
@@ -2762,6 +2808,7 @@ func save_game():
         "garden_tended_day": garden_tended_day,
         "game_over": game_over, "settlement_mature": settlement_mature, "settlement_mature_shown": settlement_mature_shown,
         "recent_expedition_ids": recent_expedition_ids,
+        "fire_level": fire_level,
     }
     SaveCodec.write_json(SAVE_PATH, data)
 
@@ -2807,6 +2854,10 @@ func load_game():
     settlement_mature = bool(parsed.get("settlement_mature", false))
     settlement_mature_shown = bool(parsed.get("settlement_mature_shown", false))
     recent_expedition_ids = parsed.get("recent_expedition_ids", [])
+    fire_level=clampf(float(parsed.get("fire_level",CampLifeRules.FIRE_START_LEVEL)),0.0,100.0)
+    for s in survivors:
+        s["needs"]=CampLifeRules.normalize_needs(s.get("needs",{}))
+        if not s.has("camp_activity"): s["camp_activity"]={}
     # Returning to a saved game is always paused until the player explicitly resumes.
     sim_paused = true
     state_changed.emit()

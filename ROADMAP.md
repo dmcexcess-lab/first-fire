@@ -30,6 +30,8 @@ Removing these is intentional scope control, not deferred work.
 Finish tuning the systems that already exist:
 
 - autonomous relationship/politics-based chatter in the living camp;
+- survivor moodlets driven by hunger, thirst, sleep, fun, safety, and hygiene, with autonomous interruptible camp chores/leisure rather than manual routine scheduling;
+- fire maintenance as the first persistent camp chore, plus downtime such as watching the fire, cards, and guitar;
 - relationship drift from meaningful positive/negative interactions;
 - shortages and repeated expedition duty feeding camp opinion;
 - coordinator → formal election progression;
