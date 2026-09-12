@@ -29,7 +29,7 @@ jobs:
       - name: Drive live First Fire canvas
         shell: bash
         run: |
-          cat > /tmp/playtest.mjs <<'EOF'
+          cat > playtest.mjs <<'EOF'
           import { chromium } from 'playwright';
           import fs from 'fs';
           fs.mkdirSync('qa', { recursive: true });
@@ -63,9 +63,10 @@ jobs:
           fs.writeFileSync('qa/console.txt', consoleLines.join('\n'));
           await browser.close();
           EOF
-          node /tmp/playtest.mjs
+          node playtest.mjs
 
       - name: Upload QA evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: chromium-playtest
