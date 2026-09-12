@@ -1,0 +1,29 @@
+name: Temporary pet and combat tuning
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor == 'dmcexcess-lab'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply tuning patch
+        run: python .github/scripts/temp_pet_combat_tuning.py
+      - name: Commit canonical changes and remove temporary writer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "dmcexcess-lab"
+          git config user.email "dmcexcess@gmail.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Tune tactical movement combat and pet bonds"
+          git push origin HEAD:main
