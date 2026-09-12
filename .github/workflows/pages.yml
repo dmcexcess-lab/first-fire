@@ -71,6 +71,7 @@ jobs:
           test ! -e .github/scripts/temp_tactical_depth_balance_patch.py
           test ! -e .github/workflows/temp-tactical-depth-balance.yml
           test ! -e .github/workflows/temp-live-playtest.yml
+          test ! -e .github/workflows/temp-tactical-map-depth.yml
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
@@ -88,7 +89,8 @@ jobs:
           grep -q 'func _pick_tactical_gear' game/scripts/Game.gd
           grep -q '"field_gear"' game/scripts/Game.gd
           grep -q 'field_gear_visual' game/scripts/FFTacticalVisuals.gd
-          grep -q 'TacticalVisuals.field_gear_visual' game/scripts/FFCombat.gd
+          grep -q 'func search_loot_container' game/scripts/FFCombat.gd
+          grep -q '"container_loot"' game/scripts/FFCombat.gd
           grep -q 'const CampView = preload' game/scripts/Main.gd
           grep -Fq '"Workbench": Vector2i(10, 2)' game/scripts/FFCampView.gd
           grep -Fq '"Cabin": Vector2i(12, 5)' game/scripts/FFCampView.gd
