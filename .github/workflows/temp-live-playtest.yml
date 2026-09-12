@@ -1,0 +1,73 @@
+name: Temporary live Chromium playtest
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/temp-live-playtest.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  playtest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Drive live First Fire canvas
+        shell: bash
+        run: |
+          cat > /tmp/playtest.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          fs.mkdirSync('qa', { recursive: true });
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({ viewport: { width:390, height:844 }, deviceScaleFactor:1 });
+          const consoleLines=[];
+          page.on('console', m => consoleLines.push(`console:${m.type()}:${m.text()}`));
+          page.on('pageerror', e => consoleLines.push(`pageerror:${e.message}`));
+          await page.goto('https://dmcexcess-lab.github.io/first-fire/', {waitUntil:'load', timeout:120000});
+          await page.waitForTimeout(9000);
+          const canvas = page.locator('canvas').first();
+          const box = await canvas.boundingBox();
+          if (!box) throw new Error('Godot canvas not found');
+          console.log('CANVAS', JSON.stringify(box));
+          async function shot(name){ await page.screenshot({path:`qa/${name}.png`, fullPage:true}); }
+          async function clickGame(gx,gy){
+            const b=await canvas.boundingBox();
+            const x=b.x+(gx/390)*b.width;
+            const y=b.y+(gy/844)*b.height;
+            console.log('CLICK', gx, gy, '=>', x, y);
+            await page.mouse.click(x,y);
+            await page.waitForTimeout(1800);
+          }
+          await shot('01_loaded');
+          await clickGame(195,354); // NEW GAME predicted center
+          await shot('02_after_new_game');
+          await clickGame(93,524); // tutorial SKIP predicted center
+          await shot('03_after_skip');
+          await clickGame(343,810); // SURVIVORS nav
+          await shot('04_survivors');
+          fs.writeFileSync('qa/console.txt', consoleLines.join('\n'));
+          await browser.close();
+          EOF
+          node /tmp/playtest.mjs
+
+      - name: Upload QA evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-playtest
+          path: qa
+          retention-days: 1
