@@ -47,10 +47,10 @@ There is **no armor mitigation** in the active combat or abstract-injury paths. 
 Shared declarative catalogs. Item names, recipes, zones, buildings, backgrounds, and gear data live here. Legacy `protect`, old background skill-bonus fields, or other stale catalog metadata are not authoritative when contradicted by the active three-stat rules; remove them when a focused cleanup safely owns that data.
 
 ### `Game.gd`
-Persistent state/orchestration foundation: camp ticks, expedition sequencing, event/tactical transitions, and schema-7 state transport shape. The active runtime is `GameThreeStat.gd`, which specializes this foundation for the current stat/combat model.
+Persistent state/orchestration foundation: camp ticks, survivor work assignment, camp-maintenance and pet state, expedition sequencing, event/tactical transitions, and schema-7 state transport shape. The active runtime is `GameThreeStat.gd`, which specializes this foundation for the current stat/combat model.
 
 ### `Main.gd`
-Top-level UI/input foundation. The active main scene uses `MainThreeStat.gd`, which keeps the mature UI while routing survivor inspection and tactical play to the current three-stat implementations.
+Top-level UI/input foundation. The active main scene uses `MainThreeStat.gd`, which keeps the mature UI while routing survivor inspection and tactical play to the current three-stat implementations. CAMP presents the touch-first work board and pet-care interactions; authoritative progress/resources remain in `Game.gd`.
 
 ### `FFCampView.gd`
 Living 2D camp presentation. It reads authoritative state and maps it to visual stations/cosmetic survivor motion only. It must not own work timing, resources, survivor rules, or pathfinding gameplay.
@@ -59,7 +59,7 @@ Living 2D camp presentation. It reads authoritative state and maps it to visual 
 Concise Survivors-tab dashboard: CAMP/OUT/BUSY/LOST summary, outside-camp cards, recent returns, and roster. Detailed three-stat presentation belongs to `FFInspectorThreeStat.gd`.
 
 ### `FFCombat.gd`
-Established tactical board/runtime foundation: map state, actors, zombies, vision/fog, facing, sound propagation, doors/glass/hazards, physical loot-container state, objectives, rescue escort state, persistence, and rendering integration. Current player combat rules are specialized by `FFCombatThreeStat.gd`.
+Established tactical board/runtime foundation: map state, actors, zombies, vision/fog, facing, sound propagation, doors/glass/hazards, physical loot-container state, objectives, survivor/pet rescue escort state, persistence, and rendering integration. Current player combat rules are specialized by `FFCombatThreeStat.gd`.
 
 ### `FFTacticalBalance.gd`
 Pure tactical tuning. Current formulas use Combat and Agility only. It owns infected counts/HP/damage, container search/loot tuning, Shove resistance/stagger, and zombie hit chance. Search/explore rewards are no longer improved by a Scavenging stat.
@@ -83,13 +83,13 @@ Ambient profiles, authored/fixed light math, Secondary portable-light profiles, 
 Surface-aware labels, bounded fuzzy source estimates, and ambient sound profiles. Tactical propagation/AI state remains in combat runtime.
 
 ### `FFTacticalVisuals.gd`
-Persistent survivor appearances, infected visual families, weapons, corpses, impact effects, and tactical character rendering. Presentation only.
+Persistent survivor appearances, infected visual families, rescued-pet rendering, weapons, corpses, impact effects, and tactical character rendering. Presentation only.
 
 ### `FFExpeditionRules.gd`
 Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and haul-count distributions. Agility is the active survivor stat passed into travel timing by `GameThreeStat.gd`.
 
 ### `FFCampLifeRules.gd`
-Camp needs/moodlets, autonomous downtime/chore selection, fire maintenance, recovery, treatment modifiers, defense-building effects, and camp cadence.
+Pure camp-life tuning for survivor idle needs/moodlets, pet needs/care effects, fire and camp-maintenance decay, recovery/treatment modifiers, defense-building effects, and camp cadence. Eating/drinking, sleeping, and fun remain systemic idle behavior; productive chores, maintenance, crafting/building, pet care, and expeditions are assigned by the player through `Game.gd`.
 
 ### `FFCampSocial.gd`
 Relationships, chatter, political standing, and leadership support. **Leadership** is the active progression stat for candidate standing and social/political checks.
