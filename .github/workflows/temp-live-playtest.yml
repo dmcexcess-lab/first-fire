@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           npm init -y >/dev/null 2>&1
-          npm install playwright@1.55.0 >/dev/null
+          npm install playwright@1.55.0 pngjs@7.0.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
 
       - name: Drive live First Fire canvas at night
@@ -31,6 +31,7 @@ jobs:
         run: |
           cat > playtest.mjs <<'EOF'
           import { chromium } from 'playwright';
+          import { PNG } from 'pngjs';
           import fs from 'fs';
           fs.mkdirSync('qa', { recursive: true });
           const browser = await chromium.launch({headless:true});
@@ -45,29 +46,44 @@ jobs:
           async function shot(name){ await page.screenshot({path:`qa/${name}.png`,fullPage:true}); }
           async function clickGame(gx,gy,wait=500){ const b=await canvas.boundingBox(); await page.mouse.click(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height); await page.waitForTimeout(wait); }
           async function mouseGame(gx,gy){ const b=await canvas.boundingBox(); await page.mouse.move(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height); }
-          async function dispatch(waitMs=15000){
+          async function tacticalState(){
+            const png=PNG.sync.read(await canvas.screenshot());
+            const x=10, y=649, idx=(y*png.width+x)*4;
+            const rgb=[png.data[idx],png.data[idx+1],png.data[idx+2]];
+            console.log('TACTICAL_SAMPLE',rgb.join(','));
+            return rgb[0]>45 && rgb[1]>45 && rgb[2]>45;
+          }
+          async function dispatch(){
             await clickGame(343,810,600);
             await mouseGame(195,650); await page.mouse.wheel(0,540); await page.waitForTimeout(700);
-            await clickGame(280,749,600); await clickGame(195,465,600); await page.waitForTimeout(waitMs);
+            await clickGame(280,749,600); await clickGame(195,465,600); await page.waitForTimeout(15000);
           }
           await clickGame(195,354,900); // NEW GAME
           await clickGame(93,524,600); // SKIP
-          await dispatch(); // first perimeter run, normally routine
-          await shot('01_after_first_return');
-          // One full game day is 120 real active seconds; ~55s advances about 11h.
-          await page.waitForTimeout(55000);
-          await shot('02_camp_late_day');
-          await dispatch(); // second run: drought/random tactical, now at night
-          await shot('03_tactical_night_light_on');
-          await clickGame(197,721,700); // LIGHT OFF
-          await shot('04_tactical_night_light_off');
-          await clickGame(76,809,600); // STEALTH on while light remains off
-          // Rotate enough times to advance tactical time and invite ambient/off-screen noises.
-          for(let i=0;i<40;i++) await clickGame(314,739,90);
-          await page.waitForTimeout(600);
-          await shot('05_night_sound_check_light_off');
-          await clickGame(197,721,700); // LIGHT ON again
-          await shot('06_night_light_restored');
+          await shot('01_camp_morning');
+          // 60 real active seconds = 12 in-game hours, moving the 08:00 start to evening.
+          await page.waitForTimeout(60000);
+          await shot('02_camp_evening');
+          await dispatch();
+          await shot('03_after_dispatch_1');
+          let tactical=await tacticalState();
+          console.log('TACTICAL_AFTER_1',tactical);
+          if(!tactical){
+            await dispatch();
+            await shot('04_after_dispatch_2');
+            tactical=await tacticalState();
+            console.log('TACTICAL_AFTER_2',tactical);
+          }
+          if(!tactical) throw new Error('No tactical encounter reached after two evening perimeter runs');
+          await shot('05_night_tactical_light_on');
+          await clickGame(197,721,650); // LIGHT OFF
+          await shot('06_night_tactical_light_off');
+          await clickGame(76,809,500); // STEALTH
+          for(let i=0;i<28;i++) await clickGame(314,739,85); // advance time, listen for fuzzy sounds
+          await page.waitForTimeout(500);
+          await shot('07_night_sound_check');
+          await clickGame(197,721,650); // LIGHT ON
+          await shot('08_night_tactical_light_restored');
           fs.writeFileSync('qa/console.txt',consoleLines.join('\n'));
           await browser.close();
           EOF
