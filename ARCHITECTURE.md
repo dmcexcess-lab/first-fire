@@ -59,10 +59,10 @@ Living 2D camp presentation. It reads authoritative state and maps it to visual 
 Concise Survivors-tab dashboard: CAMP/OUT/BUSY/LOST summary, outside-camp cards, recent returns, and roster. Detailed three-stat presentation belongs to `FFInspectorThreeStat.gd`.
 
 ### `FFCombat.gd`
-Established tactical board/runtime foundation: map state, actors, zombies, vision/fog, facing, sound propagation, doors/glass/hazards, objectives, rescue escort state, persistence, and rendering integration. Current player combat rules are specialized by `FFCombatThreeStat.gd`.
+Established tactical board/runtime foundation: map state, actors, zombies, vision/fog, facing, sound propagation, doors/glass/hazards, physical loot-container state, objectives, rescue escort state, persistence, and rendering integration. Current player combat rules are specialized by `FFCombatThreeStat.gd`.
 
 ### `FFTacticalBalance.gd`
-Pure tactical tuning. Current formulas use Combat and Agility only. It owns infected counts/damage, search timing/noise, Shove resistance/stagger, and zombie hit chance. Search/explore rewards are no longer improved by a Scavenging stat.
+Pure tactical tuning. Current formulas use Combat and Agility only. It owns infected counts/HP/damage, container search/loot tuning, Shove resistance/stagger, and zombie hit chance. Search/explore rewards are no longer improved by a Scavenging stat.
 
 ### `FFTacticalTime.gd`
 Low-level tactical timeline utilities for load, fatigue, condition, stance, weapon timing, and infected pace. `FFThreeStatRules.gd` applies the current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.
@@ -71,7 +71,7 @@ Low-level tactical timeline utilities for load, fatigue, condition, stance, weap
 Encounter objective/catalog ownership and objective/place pairing. Tactical scene time snapshots the real settlement clock at encounter creation.
 
 ### `FFTacticalEnvironments.gd`
-Authored physical places, geometry, props, entries, and reachable exits. Current families include alley, gas station, house, apartment, store, warehouse yard, and drainage wash.
+Authored physical places, geometry, props, searchable container anchors, entries, and deliberately separated extraction exits. Current families include alley, gas station, house, apartment, store, warehouse yard, and drainage wash.
 
 ### `FFTacticalTiles.gd`
 Atlas-region lookup and tactical environment/item rendering.

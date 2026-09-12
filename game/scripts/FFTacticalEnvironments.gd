@@ -209,6 +209,15 @@ static func validate_layout(spec: Dictionary) -> bool:
     for exit_cell in exits:
         if not _inside(exit_cell) or blocked.has(exit_cell):
             return false
+        if _layout_path_distance(spec, spawn, exit_cell) < 8:
+            return false
+    for entry_value in spec.get("loot_containers", []):
+        var loot_entry: Array = entry_value
+        if loot_entry.size() < 2:
+            return false
+        var loot_pos: Vector2i = loot_entry[0]
+        if not _inside(loot_pos) or (not spec.get("obstacles", []).has(loot_pos) and not _spec_has_prop_at(spec, loot_pos)):
+            return false
     for entry_value in spec.get("lights", []):
         var entry: Array = entry_value
         if entry.size() < 2 or not _inside(entry[0]):
@@ -230,6 +239,37 @@ static func validate_layout(spec: Dictionary) -> bool:
             return false
     return true
 
+static func _layout_path_distance(spec: Dictionary, start: Vector2i, goal: Vector2i) -> int:
+    var distances := {start: 0}
+    var queue: Array = [start]
+    while not queue.is_empty():
+        var p: Vector2i = queue.pop_front()
+        if p == goal:
+            return int(distances[p])
+        for d in [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]:
+            var n: Vector2i = p + d
+            if not _inside(n) or spec.get("walls", []).has(n) or spec.get("obstacles", []).has(n) or distances.has(n):
+                continue
+            distances[n] = int(distances[p]) + 1
+            queue.append(n)
+    return -1
+
+static func minimum_exit_distance(spec: Dictionary) -> int:
+    var spawn: Vector2i = spec.get("player_spawn", Vector2i(-1, -1))
+    var best := 999
+    for exit_cell in spec.get("exit_cells", []):
+        var distance := _layout_path_distance(spec, spawn, exit_cell)
+        if distance >= 0:
+            best = mini(best, distance)
+    return -1 if best == 999 else best
+
+static func _spec_has_prop_at(spec: Dictionary, p: Vector2i) -> bool:
+    for entry_value in spec.get("props", []):
+        var entry: Array = entry_value
+        if entry.size() >= 2 and entry[0] == p:
+            return true
+    return false
+
 static func _inside(p: Vector2i) -> bool:
     return p.x >= 1 and p.y >= 1 and p.x < BOARD_W - 1 and p.y < BOARD_H - 1
 
@@ -245,6 +285,7 @@ static func _spec(default_ground_kind: String, player_spawn: Vector2i, ally_spaw
         "barrels": [],
         "props": [],
         "lights": [],
+        "loot_containers": [],
         "player_spawn": player_spawn,
         "ally_spawn": ally_spawn,
         "exit_cells": exits,
@@ -287,10 +328,11 @@ static func _prop(spec: Dictionary, p: Vector2i, prop_kind: String) -> void:
 static func _light(spec: Dictionary, p: Vector2i, light_kind: String, requires_power := true) -> void:
     spec["lights"].append([p, light_kind, requires_power])
 
+static func _loot(spec: Dictionary, p: Vector2i, container_kind: String) -> void:
+    spec["loot_containers"].append([p, container_kind])
+
 static func _back_alley(variant: int) -> Dictionary:
-    var exits: Array = [Vector2i(9, 16)]
-    if variant == 1:
-        exits.append(Vector2i(10, 1))
+    var exits: Array = [Vector2i(10, 1)]
     var spec := _spec("asphalt", Vector2i(9, 14), Vector2i(8, 14), exits)
     _ground(spec, 5, 1, 10, 16, "asphalt")
     _ground(spec, 5, 1, 1, 16, "sidewalk")
@@ -304,6 +346,9 @@ static func _back_alley(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(13, 11), "dumpster")
     _obstacle(spec, Vector2i(14, 11), "dumpster")
     _obstacle(spec, Vector2i(12, 4), "trash")
+    _loot(spec, Vector2i(5, 5), "dumpster")
+    _loot(spec, Vector2i(13, 11), "dumpster")
+    _loot(spec, Vector2i(12, 4), "trash")
     _prop(spec, Vector2i(14, 3), "neon_sign")
     _light(spec, Vector2i(14, 3), "neon_pink")
     _light(spec, Vector2i(9, 7), "security")
@@ -311,9 +356,7 @@ static func _back_alley(variant: int) -> Dictionary:
     return spec
 
 static func _gas_station(variant: int) -> Dictionary:
-    var exits: Array = [Vector2i(2, 16), Vector2i(17, 16)]
-    if variant == 1:
-        exits.append(Vector2i(1, 11))
+    var exits: Array = [Vector2i(17, 16)]
     var spec := _spec("asphalt", Vector2i(4, 14), Vector2i(5, 14), exits)
     _ground(spec, 1, 12, 18, 5, "road")
     _ground(spec, 11, 2, 8, 9, "tile")
@@ -337,6 +380,9 @@ static func _gas_station(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(16, 7), "store_shelf")
     _obstacle(spec, Vector2i(3, 3), "gas_sign")
     _obstacle(spec, Vector2i(10, 10), "ice_box")
+    _loot(spec, Vector2i(3, 9), "car")
+    _loot(spec, Vector2i(16, 4), "shelf")
+    _loot(spec, Vector2i(10, 10), "ice_box")
     _light(spec, Vector2i(6, 4), "canopy")
     _light(spec, Vector2i(9, 4), "canopy")
     _light(spec, Vector2i(14, 6), "fluorescent")
@@ -345,9 +391,7 @@ static func _gas_station(variant: int) -> Dictionary:
     return spec
 
 static func _house(variant: int) -> Dictionary:
-    var exits: Array = [Vector2i(10, 15)]
-    if variant == 1:
-        exits.append(Vector2i(15, 1))
+    var exits: Array = [Vector2i(15, 1)]
     var spec := _spec("grass", Vector2i(10, 12), Vector2i(11, 12), exits)
     _ground(spec, 5, 2, 13, 13, "wood")
     _ground(spec, 6, 3, 6, 5, "carpet")
@@ -358,8 +402,7 @@ static func _house(variant: int) -> Dictionary:
     _wall_y(spec, 5, 2, 14)
     _wall_y(spec, 17, 2, 14)
     _door(spec, Vector2i(10, 14), false)
-    if variant == 1:
-        _door(spec, Vector2i(15, 2), false)
+    _door(spec, Vector2i(15, 2), false)
     _wall_x(spec, 8, 6, 16)
     _door(spec, Vector2i(9, 8), false)
     _door(spec, Vector2i(14, 8), false)
@@ -376,14 +419,15 @@ static func _house(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(14, 4), "kitchen")
     _obstacle(spec, Vector2i(15, 4), "kitchen")
     _obstacle(spec, Vector2i(16, 6), "fridge")
+    _loot(spec, Vector2i(16, 6), "fridge")
+    _loot(spec, Vector2i(14, 4), "cabinet")
+    _loot(spec, Vector2i(14, 11), "cabinet")
     _light(spec, Vector2i(8, 6), "warm")
     _light(spec, Vector2i(15, 6), "fluorescent")
     return spec
 
 static func _apartment(variant: int) -> Dictionary:
-    var exits: Array = [Vector2i(9, 15)]
-    if variant == 1:
-        exits.append(Vector2i(17, 8))
+    var exits: Array = [Vector2i(17, 8)]
     var spec := _spec("sidewalk", Vector2i(9, 13), Vector2i(10, 13), exits)
     _ground(spec, 3, 2, 15, 13, "carpet")
     _ground(spec, 8, 2, 3, 13, "concrete")
@@ -393,8 +437,7 @@ static func _apartment(variant: int) -> Dictionary:
     _wall_y(spec, 3, 2, 14)
     _wall_y(spec, 17, 2, 14)
     _door(spec, Vector2i(9, 14), false)
-    if variant == 1:
-        _door(spec, Vector2i(17, 8), false)
+    _door(spec, Vector2i(17, 8), false)
     _wall_y(spec, 7, 3, 13)
     _wall_y(spec, 11, 3, 13)
     for y in [5, 9, 12]:
@@ -409,6 +452,11 @@ static func _apartment(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(14, 4), "table")
     _obstacle(spec, Vector2i(14, 12), "bed")
     _obstacle(spec, Vector2i(16, 6), "washer")
+    _obstacle(spec, Vector2i(5, 6), "crate")
+    _obstacle(spec, Vector2i(15, 11), "crate")
+    _loot(spec, Vector2i(16, 6), "washer")
+    _loot(spec, Vector2i(5, 6), "crate")
+    _loot(spec, Vector2i(15, 11), "crate")
     _prop(spec, Vector2i(9, 3), "apt_sign")
     _light(spec, Vector2i(9, 4), "fluorescent")
     _light(spec, Vector2i(9, 11), "fluorescent")
@@ -417,9 +465,7 @@ static func _apartment(variant: int) -> Dictionary:
     return spec
 
 static func _corner_store(variant: int) -> Dictionary:
-    var exits: Array = [Vector2i(10, 15)]
-    if variant == 1:
-        exits.append(Vector2i(18, 7))
+    var exits: Array = [Vector2i(18, 7)]
     var spec := _spec("sidewalk", Vector2i(10, 12), Vector2i(9, 12), exits)
     _ground(spec, 4, 3, 15, 11, "tile")
     _indoor(spec, 4, 3, 15, 11)
@@ -428,8 +474,7 @@ static func _corner_store(variant: int) -> Dictionary:
     _wall_y(spec, 4, 3, 13)
     _wall_y(spec, 18, 3, 13)
     _door(spec, Vector2i(10, 13), false)
-    if variant == 1:
-        _door(spec, Vector2i(18, 7), false)
+    _door(spec, Vector2i(18, 7), false)
     for x in [6, 7, 13, 14, 15]:
         _window(spec, Vector2i(x, 13))
     for y in range(5, 11):
@@ -440,6 +485,9 @@ static func _corner_store(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(6, 5), "counter")
     _obstacle(spec, Vector2i(6, 6), "counter")
     _obstacle(spec, Vector2i(17, 11), "vending")
+    _loot(spec, Vector2i(8, 5), "shelf")
+    _loot(spec, Vector2i(12, 6), "shelf")
+    _loot(spec, Vector2i(17, 11), "vending")
     _prop(spec, Vector2i(10, 4), "shop_sign")
     _light(spec, Vector2i(10, 4), "neon_cyan")
     _light(spec, Vector2i(10, 6), "fluorescent")
@@ -448,9 +496,7 @@ static func _corner_store(variant: int) -> Dictionary:
     return spec
 
 static func _warehouse_yard(variant: int) -> Dictionary:
-    var exits: Array = [Vector2i(2, 16), Vector2i(17, 16)]
-    if variant == 1:
-        exits.append(Vector2i(1, 8))
+    var exits: Array = [Vector2i(17, 16)]
     var spec := _spec("concrete", Vector2i(4, 14), Vector2i(5, 14), exits)
     _ground(spec, 10, 2, 9, 9, "concrete")
     _indoor(spec, 10, 2, 9, 9)
@@ -467,6 +513,9 @@ static func _warehouse_yard(variant: int) -> Dictionary:
     _obstacle(spec, Vector2i(4, 10), "forklift")
     _obstacle(spec, Vector2i(16, 8), "machine")
     _obstacle(spec, Vector2i(16, 9), "machine")
+    _loot(spec, Vector2i(13, 5), "crate")
+    _loot(spec, Vector2i(14, 12), "crate")
+    _loot(spec, Vector2i(15, 12), "crate")
     spec["barrels"].append(Vector2i(12, 8))
     spec["barrels"].append(Vector2i(17, 13))
     _prop(spec, Vector2i(12, 3), "warehouse_sign")
@@ -475,9 +524,7 @@ static func _warehouse_yard(variant: int) -> Dictionary:
     return spec
 
 static func _drainage_wash(variant: int) -> Dictionary:
-    var exits: Array = [Vector2i(9, 16)]
-    if variant == 1:
-        exits.append(Vector2i(10, 1))
+    var exits: Array = [Vector2i(10, 1)]
     var spec := _spec("dirt", Vector2i(9, 14), Vector2i(10, 14), exits)
     _ground(spec, 5, 1, 10, 16, "wash_concrete")
     _ground(spec, 7, 1, 6, 16, "dirt")
@@ -487,5 +534,9 @@ static func _drainage_wash(variant: int) -> Dictionary:
         _obstacle(spec, p, "scrub")
     _obstacle(spec, Vector2i(8, 8), "shopping_cart")
     _obstacle(spec, Vector2i(11, 6), "culvert_debris")
+    _obstacle(spec, Vector2i(10, 11), "crate")
+    _loot(spec, Vector2i(8, 8), "cart")
+    _loot(spec, Vector2i(11, 6), "debris")
+    _loot(spec, Vector2i(10, 11), "crate")
     _prop(spec, Vector2i(10, 3), "wash_sign")
     return spec

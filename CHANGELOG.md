@@ -1,3 +1,12 @@
+## Beta Candidate — Tactical Map Planning, Physical Loot & Rescue Reliability — 2026-09-11
+
+- Reworked authored extraction so tactical maps no longer place the escape beside the entry; every layout now guarantees a reachable exit at least eight route steps from spawn.
+- Added real searchable map containers (dumpsters, shelves, fridges, cabinets, crates, vehicles, washers, carts and debris). Containers roll zone-appropriate supplies, persist through tactical save/resume, and only pay out after a successful escape. Explore objectives now use these physical containers instead of abstract floor search spots.
+- Rebalanced infected by objective and zone, added mass-aware HP bands, kept exits/search containers clear of initial spawns, and gave Rescue/Explore more setup space.
+- Fixed Rescue civilians being targetable before the player could reach them. They are now protected until first contact, then become vulnerable escorts with slightly improved HP/pacing.
+- Improved tactical planning/readability: Rescue SOS stays visible with route distance, the active HUD shows objective/exit distance, and discovered containers are visibly marked as LOOT/OPEN.
+- Save schema remains 7; tactical container/runtime fields are additive.
+
 ## Beta Candidate — Forward Control & Guard Removal — 2026-09-11
 
 - Removed Guard from the active tactical combat model and from infected hit/damage handling.

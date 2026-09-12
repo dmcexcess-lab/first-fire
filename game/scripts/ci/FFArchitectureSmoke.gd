@@ -32,6 +32,8 @@ func _init() -> void:
     if not _check(TacticalBalance.zombie_hit_chance(sprinting) < TacticalBalance.zombie_hit_chance(actor), "sprint evasion"): return
     if not _check(TacticalBalance.shove_chance(actor, "LIGHT", 1) > TacticalBalance.shove_chance(actor, "HEAVY", 1), "mass resists shove"): return
     if not _check(TacticalBalance.search_cost(actor) > 0 and TacticalBalance.search_noise(actor) > 0, "search remains bounded"): return
+    if not _check(TacticalBalance.zombie_count("Camp Perimeter", "rescue") < TacticalBalance.zombie_count("Camp Perimeter", "ambush"), "objective zombie balance"): return
+    if not _check(TacticalBalance.zombie_hp_range("HEAVY").x > TacticalBalance.zombie_hp_range("LIGHT").x, "mass-aware infected HP"): return
 
     # UI/autoload scripts intentionally refer to the global Game singleton, which
     # does not exist when this file is run directly with --script. Import/startup
@@ -55,6 +57,9 @@ func _init() -> void:
     if not _check(combat_source.contains("func shove()") and combat_source.contains("super.shove()"), "shove remains active"): return
     if not _check(combat_source.contains("func toggle_sprint()") and combat_source.contains("func stealth_attack"), "sprint and stealth actions"): return
     if not _check(combat_source.contains("vision_range_for_light") and combat_source.contains("vision_cone_min_dot"), "active sight uses light-sensitive cone geometry"): return
+    var base_combat_source := FileAccess.get_file_as_string("res://scripts/FFCombat.gd")
+    if not _check(base_combat_source.contains("rescue_contacted and not rescuee.is_empty()") and base_combat_source.contains("func search_loot_container"), "protected rescue opening and physical container search"): return
+    if not _check(combat_source.contains("nearest_exit_distance") and combat_source.contains("LOOT %d/%d"), "route-oriented tactical HUD"): return
 
     if not _check(ExpeditionRules.zone_cap("Camp Perimeter") == 3, "perimeter cap"): return
     if not _check(ExpeditionRules.should_force_tactical(2), "tactical drought protection"): return
@@ -69,7 +74,10 @@ func _init() -> void:
     if not _check(TacticalLighting.vision_cone_min_dot(0.85) < TacticalLighting.vision_cone_min_dot(0.08), "bright light widens vision cone"): return
     for environment_id in TacticalEnvironments.all_ids():
         for variant in range(TacticalEnvironments.variant_count(str(environment_id))):
-            if not _check(TacticalEnvironments.validate_layout(TacticalEnvironments.build_layout(str(environment_id), variant)), "reachable exits: %s v%d" % [environment_id, variant]): return
+            var layout: Dictionary = TacticalEnvironments.build_layout(str(environment_id), variant)
+            if not _check(TacticalEnvironments.validate_layout(layout), "reachable exits: %s v%d" % [environment_id, variant]): return
+            if not _check(TacticalEnvironments.minimum_exit_distance(layout) >= 8, "planned extraction distance: %s v%d" % [environment_id, variant]): return
+            if not _check(layout.get("loot_containers", []).size() >= 3, "physical loot containers: %s v%d" % [environment_id, variant]): return
 
     var base_needs := CampLifeRules.default_needs()
     if not _check(base_needs.has("hunger") and base_needs.has("safety") and base_needs.has("hygiene"), "camp needs"): return

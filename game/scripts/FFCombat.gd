@@ -63,11 +63,14 @@ var objective_done := false
 var explore_cells: Array = []
 var explore_searched := {}
 var explore_gear_cell := Vector2i(-1, -1)
+var loot_containers := {}
+var looted_containers := {}
+var container_contents := {}
 var game_over := false
 var msg := ""
 var submsg := ""
 var location_name := "Field Encounter"
-var stats := {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "noise": 0, "damage": 0}
+var stats := {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "containers": 0, "noise": 0, "damage": 0}
 var active_touch_ids := {}
 var last_guard_action := ""
 var last_guard_ms := -10000
@@ -118,7 +121,7 @@ func start_encounter(data: Dictionary):
     rng.seed = int(context.get("seed", 1))
     initialized = true
     game_over = false
-    stats = {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "noise": 0, "damage": 0}
+    stats = {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "containers": 0, "noise": 0, "damage": 0}
     sound_marks.clear()
     memory.clear()
     last_seen.clear()
@@ -148,15 +151,15 @@ func start_encounter(data: Dictionary):
     objective_done = bool(runtime.get("objective_done", context.get("kind", "ambush") == "ambush"))
     if context.get("kind", "ambush") == "rescue":
         var rescue_name := str(rescuee.get("name", "the survivor"))
-        msg = "Reach %s, then get both of you out." % rescue_name
-        submsg = "They cannot fight. Once contacted, they will stay close and can be hurt."
+        msg = "Reach %s at the marked SOS, then escort them out." % rescue_name
+        submsg = "They are protected until contact. After contact they can be hurt."
     elif context.get("kind", "ambush") == "explore":
         var field_gear := str(context.get("field_gear", "Field Loot"))
-        msg = "Search the marked spots for %s." % field_gear
-        submsg = "Each search takes time and makes noise. Leave whenever survival matters more."
+        msg = "Open the marked containers and find %s." % field_gear
+        submsg = "Containers hold real supplies; loot only comes home if you escape."
     else:
-        msg = "You got jumped. Break contact and escape."
-        submsg = "You do not need to kill anything."
+        msg = "You got jumped. Reach the marked exit."
+        submsg = "Extraction is across the map. Pick a route; killing everything is optional."
     recalc_visibility()
     refresh_intents()
     visible = true
@@ -267,7 +270,7 @@ func weapon_profile(name: String) -> Dictionary:
             return {"name": "Bare Hands", "dmin": 2, "dmax": 4, "time": 108, "noise": 5, "push": 0, "stealth": 0, "accuracy": -0.08, "reach": 1, "gun": false, "ammo": 0}
 func build_map(new_environment_id: String, variant: int):
     environment_id = new_environment_id
-    walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); indoor_cells.clear(); opaque_obstacles.clear(); exit_cells.clear(); light_sources.clear(); light_levels.clear(); light_tints.clear()
+    walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); indoor_cells.clear(); opaque_obstacles.clear(); exit_cells.clear(); light_sources.clear(); light_levels.clear(); light_tints.clear(); loot_containers.clear(); looted_containers.clear(); container_contents.clear()
     for x in range(W):
         walls[Vector2i(x, 0)] = true
         walls[Vector2i(x, H - 1)] = true
@@ -306,6 +309,14 @@ func build_map(new_environment_id: String, variant: int):
         if TacticalEnvironments.prop_blocks_sight(prop_kind): opaque_obstacles[prop_pos] = true
     for p in obstacles.keys():
         if not props.has(p): opaque_obstacles[p] = true
+    for entry_value in spec.get("loot_containers", []):
+        var loot_entry: Array = entry_value
+        if loot_entry.size() < 2:
+            continue
+        var loot_pos: Vector2i = loot_entry[0]
+        var container_kind := str(loot_entry[1])
+        loot_containers[loot_pos] = container_kind
+        container_contents[loot_pos] = TacticalBalance.roll_container_loot(str(context.get("zone", "Nearby Streets")), container_kind, rng)
     for entry_value in spec.get("lights", []):
         var light_entry: Array = entry_value
         var light_pos: Vector2i = light_entry[0]
@@ -351,62 +362,66 @@ func setup_explore_sites() -> void:
     explore_gear_cell = Vector2i(-1, -1)
     if str(context.get("kind", "ambush")) != "explore":
         return
-    var wanted := TacticalBalance.explore_site_count(str(context.get("zone", "Nearby Streets")))
-    explore_cells = choose_explore_cells(wanted)
+    var wanted := mini(TacticalBalance.explore_site_count(str(context.get("zone", "Nearby Streets"))), loot_containers.size())
+    explore_cells = choose_explore_containers(wanted)
     if explore_cells.is_empty():
-        explore_cells = [objective_cell]
+        explore_cells = loot_containers.keys().slice(0, wanted)
+    if explore_cells.is_empty():
+        return
     explore_gear_cell = explore_cells[rng.randi_range(0, explore_cells.size() - 1)]
     objective_cell = explore_gear_cell
 
-func choose_explore_cells(wanted: int) -> Array:
-    var distances := {player_spawn: 0}
-    var queue: Array = [player_spawn]
+func _reachable_distances(start: Vector2i) -> Dictionary:
+    var distances := {start: 0}
+    var queue: Array = [start]
     while not queue.is_empty():
         var p: Vector2i = queue.pop_front()
-        var base_distance := int(distances[p])
         for d in DIRS:
             var n: Vector2i = p + Vector2i(d)
             if not inside(n) or walls.has(n) or obstacles.has(n) or distances.has(n):
                 continue
-            distances[n] = base_distance + 1
+            distances[n] = int(distances[p]) + 1
             queue.append(n)
+    return distances
+
+func _container_approach_distance(cell: Vector2i, distances: Dictionary) -> int:
+    var best := 999
+    for d in DIRS:
+        var adjacent := cell + Vector2i(d)
+        if distances.has(adjacent):
+            best = mini(best, int(distances[adjacent]) + 1)
+    return best
+
+func choose_explore_containers(wanted: int) -> Array:
+    var distances := _reachable_distances(player_spawn)
     var preferred: Array = []
     var fallback: Array = []
-    for key in distances.keys():
-        var p: Vector2i = key
-        if int(distances[p]) < 4 or p == player_spawn or p == ally_spawn or exit_cells.has(p):
+    for key in loot_containers.keys():
+        var cell: Vector2i = key
+        var distance := _container_approach_distance(cell, distances)
+        if distance == 999:
             continue
-        if walls.has(p) or obstacles.has(p) or glass.has(p) or doors.has(p) or barrels.has(p):
-            continue
-        fallback.append(p)
-        var near_fixture := false
-        for d in DIRS:
-            var adjacent := p + Vector2i(d)
-            if props.has(adjacent) or obstacles.has(adjacent) or barrels.has(adjacent):
-                near_fixture = true
-                break
-        if near_fixture:
-            preferred.append(p)
+        fallback.append(cell)
+        if distance >= 5:
+            preferred.append(cell)
+    var source: Array = preferred if preferred.size() >= wanted else fallback
     var result: Array = []
-    for pass_pool in [preferred, fallback]:
-        var pool: Array = pass_pool.duplicate()
-        while not pool.is_empty() and result.size() < wanted:
-            var eligible: Array = []
-            for p in pool:
-                var spaced := true
-                for chosen in result:
-                    if manhattan(p, chosen) < 4:
-                        spaced = false
-                        break
-                if spaced:
-                    eligible.append(p)
-            if eligible.is_empty():
-                break
-            var choice: Vector2i = eligible[rng.randi_range(0, eligible.size() - 1)]
-            result.append(choice)
-            pool.erase(choice)
-        if result.size() >= wanted:
-            break
+    var pool: Array = source.duplicate()
+    while not pool.is_empty() and result.size() < wanted:
+        var eligible: Array = []
+        for cell in pool:
+            var spaced := true
+            for chosen in result:
+                if manhattan(cell, chosen) < 4:
+                    spaced = false
+                    break
+            if spaced:
+                eligible.append(cell)
+        if eligible.is_empty():
+            eligible = pool
+        var choice: Vector2i = eligible[rng.randi_range(0, eligible.size() - 1)]
+        result.append(choice)
+        pool.erase(choice)
     return result
 
 func spawn_zombies():
@@ -418,27 +433,44 @@ func spawn_zombies():
     for y in range(1, H - 1):
         for x in range(1, W - 1):
             var p := Vector2i(x, y)
-            if blocked(p) or p == player.get("pos", player_spawn) or p == ally.get("pos", Vector2i(-1,-1)) or rescuee_at(p) or explore_cells.has(p):
+            if blocked(p) or p == player.get("pos", player_spawn) or p == ally.get("pos", Vector2i(-1,-1)) or rescuee_at(p) or explore_cells.has(p) or exit_cells.has(p):
+                continue
+            var near_exit := false
+            for exit_cell in exit_cells:
+                if manhattan(p, exit_cell) <= 2:
+                    near_exit = true
+                    break
+            if near_exit:
                 continue
             var d := manhattan(player_spawn, p)
-            if context.get("kind", "") == "ambush":
-                if d >= 4 and d <= 11: candidates.append(p)
+            if kind == "ambush":
+                if d >= 5 and d <= 12: candidates.append(p)
+            elif kind == "rescue":
+                if d >= 7 and manhattan(rescue_cell, p) >= 5: candidates.append(p)
             elif d >= 7:
-                candidates.append(p)
+                var near_search := false
+                for search_cell in explore_cells:
+                    if manhattan(p, search_cell) <= 2:
+                        near_search = true
+                        break
+                if not near_search:
+                    candidates.append(p)
     for i in range(count):
         if candidates.is_empty(): break
         var pick := rng.randi_range(0, candidates.size() - 1)
         var p: Vector2i = candidates[pick]
         candidates.remove_at(pick)
-        var state := "INVESTIGATE" if context.get("kind", "") == "ambush" and i < 2 else "IDLE"
+        var state := "INVESTIGATE" if kind == "ambush" and i < 2 else "IDLE"
         var look: Dictionary = TacticalVisuals.zombie_appearance(rng, zone)
         var timing: Dictionary = TacticalTime.zombie_profile(rng, look)
+        var mass := str(timing.get("mass", "MED"))
+        var hp_range := TacticalBalance.zombie_hp_range(mass)
         zombies.append({
             "id": i, "pos": p, "facing": DIRS[rng.randi_range(0,3)],
-            "hp": rng.randi_range(8, 13), "state": state,
+            "hp": rng.randi_range(hp_range.x, hp_range.y), "state": state,
             "target": player_spawn if state == "INVESTIGATE" else Vector2i(-1,-1),
             "heard": player_spawn if state == "INVESTIGATE" else Vector2i(-1,-1),
-            "pace": int(timing.get("pace", 125)), "attack_cost": int(timing.get("attack_cost", 135)), "mass": str(timing.get("mass", "MED")),
+            "pace": int(timing.get("pace", 125)), "attack_cost": int(timing.get("attack_cost", 135)), "mass": mass,
             "next": rng.randi_range(45, int(timing.get("pace", 125))), "dead": false,
             "look": look
         })
@@ -456,6 +488,22 @@ func restore_runtime():
     player["crouched"] = bool(runtime.get("crouched", false))
     player["guarding"] = bool(runtime.get("guarding", false))
     player_light_on = bool(runtime.get("player_light_on", true))
+    looted_containers.clear()
+    if runtime.has("container_state"):
+        loot_containers.clear()
+        container_contents.clear()
+        for entry_value in runtime.get("container_state", []):
+            if not (entry_value is Dictionary):
+                continue
+            var entry: Dictionary = entry_value
+            var p := Vector2i(int(entry.get("x", -1)), int(entry.get("y", -1)))
+            if not inside(p):
+                continue
+            loot_containers[p] = str(entry.get("kind", "container"))
+            var raw_loot = entry.get("loot", {})
+            container_contents[p] = raw_loot.duplicate(true) if raw_loot is Dictionary else {}
+            if bool(entry.get("opened", false)):
+                looted_containers[p] = true
     if str(context.get("kind", "")) == "explore":
         if runtime.has("explore_cells"):
             explore_cells.clear()
@@ -541,6 +589,13 @@ func persist_runtime():
     var saved_explore_searched := []
     for p in explore_searched.keys():
         saved_explore_searched.append([p.x, p.y])
+    var saved_containers := []
+    for p in loot_containers.keys():
+        saved_containers.append({
+            "x": p.x, "y": p.y, "kind": str(loot_containers[p]),
+            "opened": looted_containers.has(p),
+            "loot": container_contents.get(p, {}).duplicate(true)
+        })
     runtime = {
         "lead_hp": int(player.get("hp", 0)),
         "ally_hp": int(ally.get("hp", 0)) if not ally.is_empty() else -1,
@@ -558,6 +613,7 @@ func persist_runtime():
         "explore_cells": saved_explore_cells,
         "explore_searched": saved_explore_searched,
         "explore_gear_cell": [explore_gear_cell.x, explore_gear_cell.y],
+        "container_state": saved_containers,
         "tick": tick,
         "zombies": zsave,
         "open_doors": open_doors,
@@ -677,6 +733,8 @@ func rotate_player(step: int):
 
 func step_forward():
     var cell: Vector2i = player.pos + player.facing
+    if loot_containers.has(cell):
+        search_loot_container(cell); return
     if rescuee_at(cell):
         contact_rescuee(); return
     if zombie_at(cell) != -1:
@@ -766,6 +824,9 @@ func interact():
     var p: Vector2i = player.pos + player.facing
     if str(context.get("kind", "")) == "rescue" and rescuee_at(p):
         contact_rescuee()
+        return
+    if loot_containers.has(p):
+        search_loot_container(p)
         return
     if str(context.get("kind", "")) == "explore":
         if explore_cells.has(player.pos) and not explore_searched.has(player.pos):
@@ -1019,24 +1080,61 @@ func rescuee_act() -> void:
     rescuee["next"] = tick + TacticalTime.movement_cost(rescuee, false) + TacticalBalance.RESCUE_PACE_PENALTY
 
 func search_explore_cell(cell: Vector2i) -> void:
-    if str(context.get("kind", "")) != "explore" or not explore_cells.has(cell) or explore_searched.has(cell):
+    if str(context.get("kind", "")) != "explore" or not explore_cells.has(cell):
         return
-    if cell != player.pos and manhattan(player.pos, cell) > 1:
-        msg = "Get closer to search there."
+    search_loot_container(cell)
+
+func search_loot_container(cell: Vector2i) -> void:
+    if not loot_containers.has(cell):
+        msg = "Nothing to search there."
         queue_redraw()
         return
-    player["guarding"] = false
-    explore_searched[cell] = true
-    stats["searches"] = int(stats.get("searches", 0)) + 1
-    var field_gear := str(context.get("field_gear", "field gear"))
-    if cell == explore_gear_cell:
-        objective_done = true
-        msg = "Found %s. You can leave now or keep searching." % field_gear
+    if manhattan(player.pos, cell) > 1:
+        msg = "Get next to the container first."
+        queue_redraw()
+        return
+    if looted_containers.has(cell):
+        msg = "Already searched."
+        queue_redraw()
+        return
+    looted_containers[cell] = true
+    stats["containers"] = int(stats.get("containers", 0)) + 1
+    var container_kind := str(loot_containers[cell])
+    var contents: Dictionary = container_contents.get(cell, {})
+    var loot_text := _format_loot(contents)
+    var is_explore_site := str(context.get("kind", "")) == "explore" and explore_cells.has(cell)
+    if is_explore_site:
+        explore_searched[cell] = true
+        stats["searches"] = int(stats.get("searches", 0)) + 1
+        if cell == explore_gear_cell:
+            objective_done = true
+            var field_gear := str(context.get("field_gear", "field gear"))
+            msg = "%s: %s. Found %s — extract when ready." % [TacticalBalance.container_label(container_kind).capitalize(), loot_text, field_gear]
+        else:
+            var remaining := explore_cells.size() - explore_searched.size()
+            msg = "%s: %s. %d marked container%s left." % [TacticalBalance.container_label(container_kind).capitalize(), loot_text, remaining, "" if remaining == 1 else "s"]
     else:
-        var remaining := explore_cells.size() - explore_searched.size()
-        msg = "Useful supplies. %d search spot%s left." % [remaining, "" if remaining == 1 else "s"]
-    emit_noise(cell, TacticalBalance.search_noise(player), "rummaging", true)
-    commit_action(TacticalBalance.search_cost(player))
+        msg = "%s: %s." % [TacticalBalance.container_label(container_kind).capitalize(), loot_text]
+    emit_noise(cell, TacticalBalance.container_search_noise(container_kind), "rummaging", true)
+    commit_action(TacticalBalance.container_search_cost(player))
+
+func _format_loot(loot: Dictionary) -> String:
+    if loot.is_empty():
+        return "nothing useful"
+    var bits: Array = []
+    for key in loot.keys():
+        bits.append("+%d %s" % [int(loot[key]), str(key)])
+    bits.sort()
+    return ", ".join(bits)
+
+func collected_container_loot() -> Dictionary:
+    var total: Dictionary = {}
+    for cell in looted_containers.keys():
+        var loot: Dictionary = container_contents.get(cell, {})
+        for key in loot.keys():
+            total[key] = int(total.get(key, 0)) + int(loot[key])
+    return total
+
 func kill_zombie(i: int, stealth: bool):
     if zombies[i].dead: return
     zombies[i].dead = true
@@ -1162,7 +1260,7 @@ func choose_zombie_target(z) -> Dictionary:
     var candidates := []
     if zombie_sees_actor(z, player): candidates.append(player)
     if not ally.is_empty() and not ally.dead and zombie_sees_actor(z, ally): candidates.append(ally)
-    if not rescuee.is_empty() and not rescuee.dead and zombie_sees_actor(z, rescuee): candidates.append(rescuee)
+    if rescue_contacted and not rescuee.is_empty() and not rescuee.dead and zombie_sees_actor(z, rescuee): candidates.append(rescuee)
     if candidates.is_empty(): return {}
     var best: Dictionary = candidates[0]
     for a in candidates:
@@ -1433,6 +1531,29 @@ func attack_penalty(actor: Dictionary) -> float:
     elif actor.get("condition", "Healthy") == "Critical": penalty += 0.16
     return penalty
 
+func tactical_path_distance(start: Vector2i, goal: Vector2i) -> int:
+    if start == goal:
+        return 0
+    var distances := {start: 0}
+    var queue: Array = [start]
+    while not queue.is_empty():
+        var p: Vector2i = queue.pop_front()
+        for d in DIRS:
+            var n: Vector2i = p + Vector2i(d)
+            if not inside(n) or walls.has(n) or obstacles.has(n) or distances.has(n):
+                continue
+            distances[n] = int(distances[p]) + 1
+            if n == goal:
+                return int(distances[n])
+            queue.append(n)
+    return manhattan(start, goal)
+
+func nearest_exit_distance(start: Vector2i) -> int:
+    var best := 999
+    for exit_cell in exit_cells:
+        best = mini(best, tactical_path_distance(start, exit_cell))
+    return -1 if best == 999 else best
+
 func finish_encounter(outcome: String):
     if game_over: return
     game_over = true
@@ -1451,7 +1572,8 @@ func finish_encounter(outcome: String):
         "companion_hp": int(ally.get("hp",-1)) if not ally.is_empty() else -1,
         "companion_max_hp": int(ally.get("max_hp",-1)) if not ally.is_empty() else -1,
         "kills": int(stats.kills), "shots": int(stats.shots), "melee": int(stats.get("melee", 0)), "shoves": int(stats.get("shoves", 0)), "damage": int(stats.damage),
-        "searches_completed": explore_searched.size(), "search_sites_total": explore_cells.size()
+        "searches_completed": explore_searched.size(), "search_sites_total": explore_cells.size(),
+        "containers_opened": looted_containers.size(), "container_loot": collected_container_loot()
     }
     encounter_finished.emit(result)
 
@@ -1473,7 +1595,7 @@ func ally_at(p: Vector2i) -> bool:
     return not ally.is_empty() and not ally.dead and ally.pos == p
 
 func rescuee_at(p: Vector2i) -> bool:
-    return not rescuee.is_empty() and rescuee.pos == p
+    return not rescuee.is_empty() and not bool(rescuee.get("dead", false)) and rescuee.pos == p
 
 func manhattan(a: Vector2i, b: Vector2i) -> int:
     return abs(a.x-b.x)+abs(a.y-b.y)
@@ -1509,6 +1631,7 @@ func _draw():
     draw_lighting()
     draw_light_source_glows()
     draw_fog()
+    draw_objective_markers()
     draw_escape_markers()
     draw_sounds()
     draw_character_fx()
@@ -1537,34 +1660,37 @@ func draw_map():
                 TacticalTiles.draw_prop(self, r, str(props[p]))
             elif obstacles.has(p):
                 TacticalTiles.draw_prop(self, r, "crate")
-    var kind := str(context.get("kind","ambush"))
-    if kind == "explore":
+    draw_loot_container_markers()
+    if str(context.get("kind","ambush")) == "explore":
         draw_explore_sites()
-    elif kind == "rescue" and not rescuee.is_empty() and not rescuee.dead and not rescue_contacted:
-        draw_circle(cell_center(rescuee.pos), 9, Color(.95,.75,.20), false, 3)
-        draw_string(font, cell_center(rescuee.pos)+Vector2(-10,-12), "SOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(.95,.8,.35))
+
+func draw_loot_container_markers() -> void:
+    for cell in loot_containers.keys():
+        if not (visible_cells.has(cell) or memory.has(cell)):
+            continue
+        var opened := looted_containers.has(cell)
+        var color := Color(.28,.88,.48,.90) if opened else Color(.95,.75,.20,.92)
+        draw_rect(Rect2(cell.x*TILE+3, cell.y*TILE+3, TILE-6, TILE-6), color, false, 2)
+        draw_string(font, cell_center(cell)+Vector2(-15, 3), "OPEN" if opened else "LOOT", HORIZONTAL_ALIGNMENT_CENTER, 30, 7, color)
 
 func draw_explore_sites() -> void:
     for cell in explore_cells:
-        var center := cell_center(cell)
-        var searched := explore_searched.has(cell)
-        var known := visible_cells.has(cell) or memory.has(cell)
-        var alpha := 0.96 if known else 0.38
-        var color := Color(0.28, 0.88, 0.48, alpha) if searched else Color(0.95, 0.75, 0.20, alpha)
-        draw_rect(Rect2(cell.x * TILE + 4, cell.y * TILE + 4, TILE - 8, TILE - 8), color, false, 2)
-        if searched and cell == explore_gear_cell:
-            var field_gear := str(context.get("field_gear", ""))
-            var visual: Dictionary = TacticalVisuals.field_gear_visual(field_gear)
-            var atlas_index := int(visual.get("atlas", -1))
-            if atlas_index >= 0:
-                TacticalTiles.draw_region(self, atlas_index, Rect2(center - Vector2(9, 9), Vector2(18, 18)))
-            else:
-                draw_circle(center, 8.0, Color(.08, .10, .09, .92))
-                draw_string(font, center + Vector2(-6, 3), str(visual.get("badge", "?")), HORIZONTAL_ALIGNMENT_CENTER, 12, 9, Color(.98, .92, .70))
-            draw_string(font, center + Vector2(-48, -14), field_gear, HORIZONTAL_ALIGNMENT_CENTER, 96, 7, Color(.98, .86, .40))
-        else:
-            var label := "DONE" if searched else "?"
-            draw_string(font, center + Vector2(-14, 3), label, HORIZONTAL_ALIGNMENT_CENTER, 28, 8, color)
+        if not (visible_cells.has(cell) or memory.has(cell)):
+            continue
+        var opened := explore_searched.has(cell)
+        var color := Color(.30,.95,.55,.96) if opened else Color(1.0,.82,.24,.98)
+        draw_rect(Rect2(cell.x*TILE+1, cell.y*TILE+1, TILE-2, TILE-2), color, false, 3)
+
+func draw_objective_markers() -> void:
+    if str(context.get("kind", "")) != "rescue" or rescuee.is_empty() or rescue_contacted:
+        return
+    var center := cell_center(rescuee.pos)
+    var dead := bool(rescuee.get("dead", false))
+    var color := Color(.9,.25,.18,.96) if dead else Color(.98,.78,.20,.96)
+    draw_circle(center, 11, color, false, 3)
+    var distance := tactical_path_distance(player.pos, rescuee.pos)
+    var label := "LOST" if dead else "SOS %d" % distance
+    draw_string(font, center + Vector2(-22,-14), label, HORIZONTAL_ALIGNMENT_CENTER, 44, 8, color)
 
 func draw_escape_markers():
     for p in exit_cells:

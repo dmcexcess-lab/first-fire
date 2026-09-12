@@ -131,6 +131,7 @@ func dispatch_point(pos: Vector2):
     if manhattan(player.pos, cell) == 1:
         player.facing = delta
         if zombie_at(cell) != -1: melee(cell); return
+        if loot_containers.has(cell): search_loot_container(cell); return
         if doors.has(cell) or glass.has(cell): interact(); return
         try_move(delta); return
     if visible_cells.has(cell):
@@ -270,17 +271,22 @@ func draw_hud():
     draw_string(font, Vector2(10,69), weapon_line, HORIZONTAL_ALIGNMENT_LEFT, 370, 10, Color(.82,.84,.82))
     var stats_line := "COM %d  AGI %d  LEAD %d" % [int(player.skills.get("Combat",0)), int(player.skills.get("Agility",0)), int(player.skills.get("Leadership",0))]
     draw_string(font, Vector2(10,89), stats_line, HORIZONTAL_ALIGNMENT_LEFT, 370, 9, Color(.72,.78,.74))
-    var objective_text := "ESCAPE"
+    var exit_steps := nearest_exit_distance(player.pos)
+    var exit_text := "EXIT %d" % exit_steps if exit_steps >= 0 else "EXIT ?"
+    var objective_text := "ESCAPE • %s" % exit_text
     match str(context.get("kind","ambush")):
         "rescue":
             var rescue_name := str(rescuee.get("name", "SURVIVOR")).to_upper()
-            if not rescuee.is_empty() and rescuee.dead: objective_text = "RESCUE FAILED | ESCAPE"
-            elif rescue_contacted: objective_text = "ESCORT %s TO EXIT" % rescue_name
-            else: objective_text = "REACH %s" % rescue_name
+            if not rescuee.is_empty() and rescuee.dead:
+                objective_text = "RESCUE FAILED • %s" % exit_text
+            elif rescue_contacted:
+                objective_text = "ESCORT %s • %s" % [rescue_name, exit_text]
+            else:
+                var rescue_steps := tactical_path_distance(player.pos, rescuee.pos)
+                objective_text = "REACH %s %d • THEN EXIT" % [rescue_name, rescue_steps]
         "explore":
-            var field_gear := str(context.get("field_gear", "LOOT"))
-            objective_text = ("FOUND %s" % field_gear) if objective_done else ("SEARCH %d/%d | FIND %s" % [explore_searched.size(), explore_cells.size(), field_gear])
-    objective_text += "  |  Exits %d" % exit_cells.size()
+            var field_gear := str(context.get("field_gear", "LOOT")).to_upper()
+            objective_text = "LOOT %d/%d • %s • %s" % [explore_searched.size(), explore_cells.size(), field_gear, exit_text]
     draw_string(font,Vector2(10,112),"Objective: %s"%objective_text,HORIZONTAL_ALIGNMENT_LEFT,370,11,Color(.96,.80,.34))
     draw_string(font,Vector2(10,133),msg,HORIZONTAL_ALIGNMENT_LEFT,370,10,Color(.93,.94,.90))
     if any_zombie_sees_player(): draw_string(font,Vector2(0,MAP_TOP+20),"!! SPOTTED !!",HORIZONTAL_ALIGNMENT_CENTER,SCREEN_W,18,Color(1,.22,.16))

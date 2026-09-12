@@ -1020,6 +1020,23 @@ func _grant_tactical_explore_reward(exp, lead, searches_completed: int):
     for key in found.keys():
         bits.append("+%d %s" % [found[key], key])
     return ", ".join(bits)
+func _grant_tactical_container_loot(value) -> String:
+    if not (value is Dictionary):
+        return ""
+    var found: Dictionary = value
+    var bits: Array = []
+    for key in found.keys():
+        var resource_name := str(key)
+        if not D.RESOURCE_ORDER.has(resource_name):
+            continue
+        var amount := clampi(int(found[key]), 0, 12)
+        if amount <= 0:
+            continue
+        resources[resource_name] = int(resources.get(resource_name, 0)) + amount
+        bits.append("+%d %s" % [amount, resource_name])
+    bits.sort()
+    return ", ".join(bits)
+
 func resolve_combat(result):
     if current_combat.is_empty():
         return
@@ -1064,16 +1081,18 @@ func resolve_combat(result):
     var event = _event_base("tactical_result", "Tactical Encounter", "", [], event_context)
     var kind = str(encounter.get("kind", "ambush"))
     var place = str(encounter.get("location_name", "the area"))
+    var container_reward := _grant_tactical_container_loot(result.get("container_loot", {}))
+    var loot_note := " Container loot: %s." % container_reward if container_reward != "" else ""
+    if container_reward != "":
+        _add_history("Day %d — Recovered from field containers at %s: %s." % [day, place, container_reward])
     if kind == "rescue" and bool(result.get("rescued", false)):
         var rescue_candidate: Dictionary = _prepare_rescue_candidate(encounter.get("rescue_candidate", {}), int(result.get("rescue_survivor_hp", 1)), int(result.get("rescue_survivor_max_hp", TacticalBalance.RESCUE_SURVIVOR_HP)))
         var rescue_name := str(rescue_candidate.get("name", "The survivor"))
-        _queue_recruit_offer(event, "%s Makes It Out" % rescue_name, "You get %s out of %s alive. Away from the infected and with a little room to breathe, they finally decide whether they trust First Fire enough to come back with you." % [rescue_name, place], "tactical_rescue", "", rescue_candidate)
+        _queue_recruit_offer(event, "%s Makes It Out" % rescue_name, "You get %s out of %s alive. Away from the infected and with a little room to breathe, they finally decide whether they trust First Fire enough to come back with you.%s" % [rescue_name, place, loot_note], "tactical_rescue", "", rescue_candidate)
     elif kind == "explore":
         var searches := int(result.get("searches_completed", 0))
         var total_sites := maxi(searches, int(result.get("search_sites_total", searches)))
-        var reward: String = str(_grant_tactical_explore_reward(exp, lead, searches))
-        if lead != null and searches > 0:
-            add_skill_xp(lead, "Scavenging", mini(10, searches * 2))
+        var reward: String = container_reward
         var recovered_gear := str(result.get("field_gear", "")) if bool(result.get("objective_done", false)) else ""
         if recovered_gear != "" and D.GEAR.has(recovered_gear):
             inventory_gear.append(recovered_gear)
@@ -1087,13 +1106,13 @@ func resolve_combat(result):
     elif kind == "rescue" and not bool(result.get("objective_done", false)):
         var rescue_name := str(encounter.get("rescue_candidate", {}).get("name", "the survivor"))
         if not bool(result.get("rescue_survivor_alive", true)):
-            _queue_field_result(event, "Rescue Failed", "%s did not survive the encounter at %s. You still make it back out, but there is nobody left to bring home." % [rescue_name, place], "The attempted rescue at %s failed, but the expedition survivor escaped." % place)
+            _queue_field_result(event, "Rescue Failed", "%s did not survive the encounter at %s. You still make it back out, but there is nobody left to bring home.%s" % [rescue_name, place, loot_note], "The attempted rescue at %s failed, but the expedition survivor escaped." % place)
         elif bool(result.get("rescue_contacted", false)):
-            _queue_field_result(event, "Separated at %s" % place, "You reached %s, but extracted before both of you could reach the exit. The expedition continues, but the rescue opportunity is lost." % rescue_name, "The party reached a stranded survivor at %s but could not extract them." % place)
+            _queue_field_result(event, "Separated at %s" % place, "You reached %s, but extracted before both of you could reach the exit. The expedition continues, but the rescue opportunity is lost.%s" % [rescue_name, loot_note], "The party reached a stranded survivor at %s but could not extract them." % place)
         else:
-            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the rescue. The expedition can continue, but the opportunity here is gone.", "The party withdrew from %s before completing the tactical objective." % place)
+            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the rescue. The expedition can continue, but the opportunity here is gone.%s" % loot_note, "The party withdrew from %s before completing the tactical objective." % place)
     else:
-        _queue_field_result(event, "Broke Contact", "The ambush never became a stand-up fight. You made space, found an exit, and got away from %s." % place, "The party escaped a tactical ambush at %s." % place)
+        _queue_field_result(event, "Broke Contact", "The ambush never became a stand-up fight. You made space, found an exit, and got away from %s.%s" % [place, loot_note], "The party escaped a tactical ambush at %s." % place)
     save_game()
     state_changed.emit()
 
