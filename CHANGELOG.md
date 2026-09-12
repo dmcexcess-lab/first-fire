@@ -1,3 +1,13 @@
+## Beta Candidate — Authoritative Sleep, Zombie Virus & Slower Camp Time — 2026-09-12
+
+- Sleep is now an authoritative survivor state instead of a passive label. Tired survivors enter a timed **Sleeping** task, move to a real sleeping slot in the living camp, lie down visually, and cannot be assigned to work, expeditions, or equipment changes until they wake.
+- Active treatment, crafting, building, garden work, chores, pet care, expeditions, quarantine, and severe illness likewise keep survivors unavailable; the active Game layer now owns the assignment check instead of relying on UI convention.
+- Added a separate persistent **zombie-virus** axis without conflating it with physical wounds. Only successful direct infected attacks create field exposure risk; repeated infected hits increase that risk, while generic damage does not.
+- Virus progression is **Exposed → Infected → Feverish** if untreated. Exposed cases can use 1 Clean Water + 1 Sterile Dressing for early decontamination; established infection uses 1 Medicine; Feverish emergency care requires a built Infirmary + 2 Medicine. Untreated Feverish infection can become terminal at the next daily transition.
+- Added **Quarantine** as a real alternative: the survivor becomes unavailable but cannot spread established/severe infection through close camp contact. Unquarantined infected survivors can expose campmates.
+- Settlement simulation now runs at half the previous real-time speed. The 120-second simulation day therefore takes about **4 real active minutes** instead of 2; needs, work/recovery, expeditions, fire/maintenance, camp events, and daily virus progression all use the slower simulation clock.
+- Save schema remains 7. Virus state is additive/normalized through the active runtime; the existing three-stat save compatibility boundary remains intact.
+
 
 ## Beta Candidate — Combat Movement & Pet Bond Tuning — 2026-09-12
 
@@ -341,7 +351,7 @@ This file tracks player-facing changes to the playable Alpha builds, plus major 
 
 ### Source / Architecture
 - Canonical Godot source now lives directly under `game/`.
-- Removed the active ZIP/patch/Base64 reconstruction chain from the repository tree; Git history retains the old packaging if historical inspection is ever needed.
+- Removed the active ZIP/patch/Base64 reconstruction chain from the repository tree; Git history retains the old packaging if historical inspection is ever necessary.
 - Extracted expedition/logistics rules into `FFExpeditionRules.gd`.
 - Extracted tactical scenario selection/catalog ownership into `FFTacticalScenarios.gd`.
 - Extracted camp-life tuning into `FFCampLifeRules.gd`.
