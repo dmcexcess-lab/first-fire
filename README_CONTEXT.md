@@ -83,6 +83,8 @@ The SEND OUT selector uses touch-safe PREV/NEXT controls rather than popup `Opti
 
 The persistent 2D tactical-style living camp is final camp presentation. `FFCampView.gd` is presentation-only.
 
+The living camp now uses a layered authored presentation rather than a flat grid of isolated symbols: connected dirt paths organize the settlement around the First Fire, sleeping/work/service areas have distinct visual pads, the perimeter reads as a fenced camp with a gate, built structures have stronger purpose-specific silhouettes and shadows, and the fire has visible stonework, flames, smoke, sparks, resource-reflective wood stacking, and stronger clock-driven dusk/night glow. These graphics remain a direct reflection of authoritative `Game` state and do not create separate camp simulation or pathfinding.
+
 `FFCampLifeRules.gd` owns six persistent needs—Hunger, Thirst, Sleep, Fun, Safety, Hygiene—plus moodlets, fire maintenance, autonomous downtime, recovery, treatment modifiers, and camp cadence.
 
 Treatment is physical-wound aware:
