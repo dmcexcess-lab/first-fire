@@ -99,7 +99,7 @@ First Fire does **not** become 1.0 because a calendar date or feature count says
 
 1. **No known release-blocking bugs.** Normal play, save/load, browser lifecycle, tactical encounters, camp simulation, crafting/building, and long-run play must survive Beta testing without known blockers.
 2. **All systems and timers are balanced.** Economy, resource use, construction, crafting, recovery, expedition cadence, camp events, politics, recruitment, and progression must feel coherent across early, middle, and mature settlement play.
-3. **Final game speed is decided.** The current two-real-minute game day is test tuning, not automatically the shipping answer. Beta determines the final simulation speed and timer scale.
+3. **Final game speed is decided.** The current four-real-minute game day is test tuning, not automatically the shipping answer. Beta determines the final simulation speed and timer scale.
 4. **Combat and tactical systems are balanced and reliable.** Action timing, movement, vision, lighting, sound, stealth, melee, firearms, infected behavior, hazards, objectives, loot, exits, and encounter frequency must all work consistently and produce the intended survival/extraction feel.
 5. **Ads work under the existing non-exploitative policy.** Advertising/ad-free purchase behavior must function without influencing gameplay systems or progression.
 6. **Android APK release build is complete and tested.** The Android package is the release target for 1.0; packaging/device testing is part of the release gate, not an afterthought.
