@@ -40,6 +40,7 @@ func _init() -> void:
     # CI compiles them in their real project context; smoke verifies their contracts
     # as source so this pure rules test stays independent of autoload boot order.
     var game_source := FileAccess.get_file_as_string("res://scripts/GameThreeStat.gd")
+    var base_game_source := FileAccess.get_file_as_string("res://scripts/Game.gd")
     var combat_source := FileAccess.get_file_as_string("res://scripts/FFCombatThreeStat.gd")
     var main_source := FileAccess.get_file_as_string("res://scripts/MainThreeStat.gd")
     var inspector_source := FileAccess.get_file_as_string("res://scripts/FFInspectorThreeStat.gd")
@@ -83,7 +84,7 @@ func _init() -> void:
     if not _check(base_needs.has("hunger") and base_needs.has("safety") and base_needs.has("hygiene"), "camp needs"): return
     if not _check(CampLifeRules.default_pet_needs().has("affection") and CampLifeRules.pet_can_forage({"hunger":80,"thirst":80,"affection":80,"cleanliness":50}), "pet care rules"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,false,false,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
-    if not _check(game_source.contains("var pets := []") and game_source.contains("func start_camp_chore") and game_source.contains("func perform_camp_task_tap") and game_source.contains("rescue_is_pet"), "active camp work and pet rescue state"): return
+    if not _check(base_game_source.contains("var pets := []") and base_game_source.contains("func start_camp_chore") and base_game_source.contains("func perform_camp_task_tap") and base_game_source.contains("rescue_is_pet"), "active camp work and pet rescue state"): return
     if not _check(CampSocial.candidate_standing({"id":1,"condition":"Healthy","skills":{"Leadership":5},"reputation":0,"relationships":{}}, []) == 30, "leadership drives politics"): return
     if not _check(D.BUILD_ORDER.size() == 15 and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory"), "final building tree"): return
     if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary"): return
