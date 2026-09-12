@@ -70,6 +70,7 @@ jobs:
           test ! -e .github/workflows/temp-field-loot-fix.yml
           test ! -e .github/scripts/temp_tactical_depth_balance_patch.py
           test ! -e .github/workflows/temp-tactical-depth-balance.yml
+          test ! -e .github/workflows/temp-live-playtest.yml
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
@@ -104,8 +105,12 @@ jobs:
           grep -q 'const TacticalTime = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalSound = preload' game/scripts/FFCombat.gd
           grep -q 'const TacticalBalance = preload' game/scripts/FFCombat.gd
-          grep -q 'func guard()' game/scripts/FFCombat.gd
+          grep -q 'func step_forward()' game/scripts/FFCombat.gd
           grep -q 'func shove()' game/scripts/FFCombat.gd
+          grep -Fq 'var btn_forward_primary := Rect2(148, 654, 98, 42)' game/scripts/FFCombatThreeStat.gd
+          grep -Fq 'draw_button(btn_forward_primary,"FORWARD"' game/scripts/FFCombatThreeStat.gd
+          if grep -q 'KEY_G: guard()' game/scripts/FFCombatThreeStat.gd; then exit 1; fi
+          if grep -Fq 'draw_button(btn_guard,"GUARD"' game/scripts/FFCombatThreeStat.gd; then exit 1; fi
           grep -q 'func search_explore_cell' game/scripts/FFCombat.gd
           grep -q 'const Environments = preload' game/scripts/FFTacticalScenarios.gd
           grep -q 'var current_combat := {}' game/scripts/Game.gd
