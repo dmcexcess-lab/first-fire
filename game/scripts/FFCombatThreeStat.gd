@@ -34,6 +34,47 @@ func persist_runtime():
         runtime["sprinting"] = bool(player.get("sprinting", false))
         Game.update_combat_runtime(runtime)
 
+func view_range() -> int:
+    # The active three-stat model has no perception/survival skill. Portable
+    # light and fatigue set the hard ceiling; actual cell light shapes the cone.
+    var r := 5
+    if player_light_on:
+        r += LightingThree.item_view_bonus(str(player.get("secondary", "")))
+    if float(player.get("fatigue", 0.0)) >= 80.0:
+        r -= 1
+    return clampi(r, 4, 8)
+
+func recalc_visibility():
+    recalc_lighting()
+    visible_cells.clear()
+    var max_range := view_range()
+    for y in range(H):
+        for x in range(W):
+            var cell := Vector2i(x, y)
+            var distance := manhattan(player.pos, cell)
+            if cell == player.pos or distance <= 1:
+                visible_cells[cell] = true
+                memory[cell] = true
+                continue
+            if not line_clear(player.pos, cell):
+                continue
+            var light := float(light_levels.get(cell, 0.0))
+            var lit_range := LightingThree.vision_range_for_light(light, max_range)
+            var cone_dot := LightingThree.vision_cone_min_dot(light)
+            if distance > lit_range or not in_cone(player.pos, player.facing, cell, lit_range, cone_dot):
+                continue
+            if LightingThree.visible_at_distance(light, distance, max_range):
+                visible_cells[cell] = true
+                memory[cell] = true
+    for i in range(zombies.size()):
+        if zombies[i].dead:
+            last_seen.erase(i)
+            continue
+        if visible_cells.has(zombies[i].pos):
+            last_seen[i] = zombies[i].pos
+        elif last_seen.has(i) and visible_cells.has(last_seen[i]):
+            last_seen.erase(i)
+
 func _input(e):
     if not visible or not initialized: return
     if e is InputEventScreenTouch:
