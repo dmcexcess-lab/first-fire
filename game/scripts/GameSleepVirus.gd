@@ -253,7 +253,7 @@ func _complete_task(survivor):
         state_changed.emit()
 
 func _process_camp_chatter(delta):
-    var speakers := available_survivors()
+    var speakers: Array = available_survivors()
     if speakers.size() < 2 or not current_event.is_empty() or not current_combat.is_empty():
         camp_chatter_accum = 0.0
         return
