@@ -10,62 +10,76 @@ The Godot project is ordinary source under `game/`. There is no active ZIP/patch
 
 UI may request actions and render state; it should not become authoritative simulation.
 
-## Active three-stat layer
+## Active runtime layers
 
-First Fire now has exactly three survivor progression stats:
+First Fire has exactly three survivor progression stats:
 
 - **Combat** — melee/firearm handling, attack reliability, and combat output.
 - **Agility** — movement pace, stealth, sprinting, avoidance, and physical escape capability.
 - **Leadership** — camp influence, social checks, political standing, and voting strength.
 
-The former Scavenging, Survival, Medical, Technical, and Social stats are no longer player-facing survivor stats. Crafting, treatment, searching, and other noncombat work should use tools, resources, traits, infrastructure, state, and authored rules instead of recreating hidden substitute skill trees.
+The former Scavenging, Survival, Medical, Technical, and Social stats are no longer player-facing survivor stats. Crafting, treatment, searching, and other noncombat work use tools, resources, traits, infrastructure, state, and authored rules instead of hidden substitute skill trees.
 
 `FFThreeStatRules.gd` owns the canonical stat catalog, weapon-hand classes, class combat profiles, and Agility movement/stealth/sprint math. Active tactical movement preserves a strong crouch > walk > sprint action-cost separation across the full Agility range.
 
-`GameThreeStat.gd` is the active `Game` autoload. It extends the proven `Game.gd` orchestration foundation while overriding survivor generation, progression, expedition checks, treatment, abstract danger, loot skill hooks, politics, injury protection, and save compatibility for the three-stat model. Existing saves whose survivor state is not the three-stat model are invalidated cleanly through the `combat-agility-leadership-v1` model marker. The underlying save schema remains 7.
+`GameThreeStat.gd` remains the three-stat compatibility/specialization layer over `Game.gd`. It owns survivor generation, progression, three-stat expedition checks, treatment specialization, abstract danger, loot hooks, politics specialization, and the `combat-agility-leadership-v1` compatibility marker.
 
-`MainThreeStat.gd` is the active main-scene script. It extends `Main.gd` and mounts the three-stat inspector and tactical runtime without duplicating the mature navigation/event/camp UI.
+`GameSleepVirus.gd` is the **active Game autoload**. It extends `GameThreeStat.gd` with authoritative sleep availability, half-speed settlement simulation, a separate zombie-virus survivor axis, quarantine/treatment, camp spread, and tactical infected-contact integration. Save schema remains 7.
 
-`FFInspectorThreeStat.gd` is the active detailed survivor/item presentation. It exposes only Combat / Agility / Leadership, shows weapon hand/class information, and does not present clothing protection as armor.
+`MainThreeStat.gd` remains the three-stat UI specialization over `Main.gd`. `MainSleepVirus.gd` is the **active main-scene script** and routes the living camp, inspector, and tactical runtime to their sleep/virus-aware wrappers.
 
-`FFCombatThreeStat.gd` is the active tactical runtime specialization. It extends the established `FFCombat.gd` board/environment/objective runtime and owns the current combat action layer:
+`FFCombatThreeStat.gd` remains the active combat-model specialization over `FFCombat.gd`; `FFCombatVirus.gd` is the final active tactical wrapper and adds only direct infected-contact counting/persistence/result data for virus exposure.
 
-- **1H Melee**
-- **2H Melee**
-- **1H Gun**
-- **2H Gun**
-- **Stealth** — Agility-driven, quieter and slower movement with positional stealth-attack opportunity
-- **Sprint** — Agility-driven, faster/louder movement with increased grab avoidance
-- **Forward** — dedicated touch movement action occupying the former Guard slot
-- **Shove** — spacing/stagger action with mass-based resistance/stagger
+`FFInspectorThreeStat.gd` remains the three-stat survivor/item presentation foundation; `FFInspectorVirus.gd` is the active inspector wrapper and adds zombie-virus status, treatment, quarantine, and medical-item explanations.
 
-There is **no armor mitigation** in the active combat or abstract-injury paths. Clothing may remain as carried/equipped gear for identity, weight, crafting, or future non-armor utility, but it must not cancel or reduce incoming physical damage.
+`FFCampView.gd` remains presentation-only living-camp foundation; `FFCampViewSleepVirus.gd` is the active renderer wrapper and maps authoritative Sleeping/Recovering/Quarantined/Sick state to beds, treatment space, and isolation visuals.
 
 ## Core owners
 
 ### `FFData.gd`
-Shared declarative catalogs. Item names, recipes, zones, buildings, backgrounds, and gear data live here. Legacy `protect`, old background skill-bonus fields, or other stale catalog metadata are not authoritative when contradicted by the active three-stat rules; remove them when a focused cleanup safely owns that data.
+Shared declarative catalogs. Item names, recipes, zones, buildings, backgrounds, and gear data live here. Legacy `protect`, old background skill-bonus fields, or other stale catalog metadata are not authoritative when contradicted by active rules; remove them when a focused cleanup safely owns that data.
 
 ### `Game.gd`
-Persistent state/orchestration foundation: camp ticks, survivor work assignment, camp-maintenance and pet state, expedition sequencing, event/tactical transitions, and schema-7 state transport shape. The active runtime is `GameThreeStat.gd`, which specializes this foundation for the current stat/combat model.
+Persistent state/orchestration foundation: camp ticks, survivor work assignment, camp-maintenance and pet state, expedition sequencing, event/tactical transitions, and schema-7 state transport shape.
+
+### `GameThreeStat.gd`
+Three-stat specialization and compatibility boundary. It keeps the base orchestration usable while ensuring the live survivor model contains only Combat, Agility, and Leadership.
+
+### `GameSleepVirus.gd`
+Active settlement orchestration layer. Owns the current real-time-to-simulation scale, authoritative Sleeping status/tasks, centralized assignment availability, zombie-virus state progression, quarantine, timed virus treatment, camp spread, and handoff of tactical infected-contact results into persistent survivor state.
 
 ### `Main.gd`
-Top-level UI/input foundation. The active main scene uses `MainThreeStat.gd`, which keeps the mature UI while routing survivor inspection and tactical play to the current three-stat implementations. CAMP presents the touch-first work board and pet-care interactions; authoritative progress/resources remain in `Game.gd`.
+Top-level UI/input foundation: navigation, overlays, Camp/Craft/Build/Survivors shells, work board, expedition modal, and shared interaction flow.
+
+### `MainThreeStat.gd`
+Three-stat UI specialization, including the three-stat worker picker and routing foundations.
+
+### `MainSleepVirus.gd`
+Active main-scene wrapper. Replaces the base camp renderer with the sleep/virus renderer, mounts the virus-aware inspector and combat wrapper, and presents Sleeping/virus/busy state in the camp work/status UI.
 
 ### `FFCampView.gd`
-Living 2D camp presentation. It reads authoritative state and maps it to visual stations/cosmetic survivor motion only. It must not own work timing, resources, survivor rules, or pathfinding gameplay.
+Living 2D camp presentation foundation. Reads authoritative state and maps it to visual stations/cosmetic survivor motion only. It must not own work timing, resources, survivor rules, or pathfinding gameplay.
+
+### `FFCampViewSleepVirus.gd`
+Active camp-presentation wrapper. Owns deterministic visual sleep-slot selection and presentation for Sleeping, treatment, chores, pet care, quarantine, and severe illness. It does not decide when those states begin/end.
 
 ### `FFSurvivorPanel.gd`
-Concise Survivors-tab dashboard: CAMP/OUT/BUSY/LOST summary, outside-camp cards, recent returns, and roster. Detailed three-stat presentation belongs to `FFInspectorThreeStat.gd`.
+Concise Survivors-tab dashboard: CAMP/OUT/BUSY/LOST summary, outside-camp cards, recent returns, and roster. Detailed current presentation belongs to the active inspector wrapper.
 
 ### `FFCombat.gd`
-Established tactical board/runtime foundation: map state, actors, zombies, vision/fog, facing, sound propagation, doors/glass/hazards, physical loot-container state, objectives, survivor/pet rescue escort state, persistence, and rendering integration. Current player combat rules are specialized by `FFCombatThreeStat.gd`.
+Established tactical board/runtime foundation: map state, actors, infected, vision/fog, facing, sound propagation, doors/glass/hazards, physical loot-container state, objectives, survivor/pet rescue escort state, persistence, and rendering integration.
+
+### `FFCombatThreeStat.gd`
+Current combat rules: Combat/Agility attack and movement behavior, Stealth, Sprint, Forward, Shove, weapon-class handling, and no armor mitigation.
+
+### `FFCombatVirus.gd`
+Thin active tactical wrapper. Counts successful direct infected attacks against the controlled survivor and persists/returns that count. It must not treat generic physical damage as virus exposure.
 
 ### `FFTacticalBalance.gd`
-Pure tactical tuning. Current formulas use Combat and Agility only. It owns infected counts/HP/damage, container search/loot tuning, Shove resistance/stagger, and zombie hit chance. Search/explore rewards are no longer improved by a Scavenging stat.
+Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected counts/HP/damage, container search/loot tuning, Shove resistance/stagger, and infected hit chance.
 
 ### `FFTacticalTime.gd`
-Low-level tactical timeline utilities for load, fatigue, condition, stance, weapon timing, and infected pace. `FFThreeStatRules.gd` applies the current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.
+Low-level tactical timeline utilities for load, fatigue, condition, stance, weapon timing, and infected pace. `FFThreeStatRules.gd` applies current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.
 
 ### `FFTacticalScenarios.gd`
 Encounter objective/catalog ownership and objective/place pairing. Tactical scene time snapshots the real settlement clock at encounter creation.
@@ -86,32 +100,47 @@ Surface-aware labels, bounded fuzzy source estimates, and ambient sound profiles
 Persistent survivor appearances, infected visual families, rescued-pet rendering, weapons, corpses, impact effects, and tactical character rendering. Presentation only.
 
 ### `FFExpeditionRules.gd`
-Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and haul-count distributions. Agility is the active survivor stat passed into travel timing by `GameThreeStat.gd`.
+Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and haul-count distributions. Agility is the active survivor stat passed into travel timing.
 
 ### `FFCampLifeRules.gd`
-Pure camp-life tuning for survivor idle needs/moodlets, pet affection/retention/daily-reward rules, fire and camp-maintenance decay, recovery/treatment modifiers, defense-building effects, and camp cadence. Pets never consume food or water; PLAY/LOVE restore affection, neglected pets can leave, and retained pets contribute exactly one random material or Raw Food each day. Eating/drinking, sleeping, and fun remain systemic idle behavior; productive chores, maintenance, crafting/building, pet care, and expeditions are assigned by the player through `Game.gd`.
+Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, pet affection/retention/daily reward, fire/maintenance decay, recovery/treatment modifiers, defense-building effects, and camp cadence. It may choose `rest`; `GameSleepVirus.gd` promotes that choice into the authoritative Sleeping status/task. Productive chores, maintenance, crafting/building, pet care, and expeditions are player-assigned.
+
+### `FFVirusRules.gd`
+Pure zombie-virus rules. Owns stage names/normalization, contact-to-exposure probability, daily progression, camp-spread probability, and treatment plans/costs. It does not mutate Game state or render UI.
+
+Current virus stages are **Clear → Exposed → Infected → Feverish**. Exposed can be decontaminated with Clean Water + Sterile Dressing; Infected uses Medicine; Feverish emergency treatment requires Infirmary + 2 Medicine. Quarantine prevents close-contact camp spread. Terminal consequence is applied by Game orchestration after an untreated Feverish daily transition.
 
 ### `FFCampSocial.gd`
-Relationships, chatter, political standing, and leadership support. **Leadership** is the active progression stat for candidate standing and social/political checks.
+Relationships, chatter, political standing, and leadership support. **Leadership** is the active progression stat for candidate standing and social/political checks. Active orchestration passes only assignable/available survivors into ordinary chatter selection.
 
 ### `FFFieldEventsLegacy.gd`
 Temporary remaining outside-world text-event catalog. Outside-world content should continue moving toward tactical/physical play; camp social/political narrative remains valid.
 
 ### `FFSaveCodec.gd`
-Persistence transport only: JSON/file read-write, compatibility check, invalidation. Current save schema remains 7; `GameThreeStat.gd` adds a stat-model compatibility marker so pre-reset six-skill saves are invalidated rather than migrated.
+Persistence transport only: JSON/file read-write, compatibility check, invalidation. Current save schema remains 7. The three-stat layer adds the stat-model compatibility marker; virus state is additive and normalized by the active runtime.
 
 ### `scripts/ci/FFArchitectureSmoke.gd`
-Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts are compiled by import/startup gates in their real project context rather than preloaded by the standalone smoke runner.
+Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts are compiled by import/startup gates in their real project context; smoke asserts the active wrapper chain plus durable rules such as sleep selection, half-speed simulation, infected-contact tracking, and virus treatment requirements.
+
+## Availability boundary
+
+A survivor is assignable only when the active Game layer says so. `GameSleepVirus.survivor_can_assign()` is the canonical current check for worker/equipment availability: living, `Available`, no active task, not quarantined, and not severely ill.
+
+Sleeping, treatment/recovery, crafting, building, garden work, chores, pet care, expeditions, quarantine, and severe virus illness therefore cannot be simultaneously treated as free labor. UI should consume the Game availability API/status rather than inventing exceptions.
 
 ## Tactical pause boundary
 
-Tactical encounters pause settlement simulation. Tactical action ticks and settlement time are different scales. Tactical thinking must not consume camp resources, advance building/recovery, or trigger unrelated camp events.
+Tactical encounters pause settlement simulation. Tactical action ticks and settlement time are different scales. Tactical thinking must not consume camp resources, advance building/recovery/virus progression, or trigger unrelated camp events.
 
 Detailed survivor/item inspection also pauses settlement simulation while open and restores the prior pause state on close.
 
+## Settlement time scale
+
+`Game.gd` retains the base `DAY_SECONDS := 120.0` simulation-day length. The active `GameSleepVirus.gd` applies `SIM_TIME_SCALE := 0.5` to settlement simulation delta, so a full in-game day now takes about four real active minutes. Needs, fire/maintenance decay, survivor tasks/recovery, expeditions, camp events, chatter timing, and daily transitions use the scaled simulation delta. UI refresh/autosave remain real-time concerns.
+
 ## Frozen scope
 
-The living 2D camp is final presentation. Pets and active camp duties are approved gameplay. Vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI remain cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
+The living 2D camp is final presentation. Pets, active camp duties, authoritative sleep, and zombie-virus consequence/treatment depth are approved gameplay. Vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI remain cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
 
 ## Save boundary
 
@@ -119,12 +148,14 @@ Current schema: **7**.
 
 Current survivor-model marker: **`combat-agility-leadership-v1`**.
 
-A schema-7 save carrying the previous six-skill survivor shape is deliberately invalidated and restarted instead of migrated. The filename `user://first_fire_alpha01.json` remains intentionally unchanged.
+Current additive virus marker: **`zombie-virus-v1`**.
+
+A schema-7 save carrying the previous six-skill survivor shape is deliberately invalidated and restarted instead of migrated. Virus fields are additive/normalized and do not require a schema reset. The filename `user://first_fire_alpha01.json` remains intentionally unchanged.
 
 ## Permanent CI gate
 
-Pages CI validates canonical source, installs Godot 4.7.1/templates, imports/parses, runs architecture smoke, boots the real project headlessly, exports Web, rejects script/parse/load errors, uploads the Pages artifact, and deploys only after the gates pass.
+Pages CI validates canonical source and the active wrapper files, installs Godot 4.7.1/templates, imports/parses, runs architecture smoke, boots the real project headlessly, exports Web, rejects script/parse/load errors, uploads the Pages artifact, and deploys only after the gates pass.
 
 ## Refactor rule
 
-The source razor was a one-time exception. Future cleanup remains local and feature-driven. The current three-stat subclasses are a deliberate small-blast-radius specialization of mature foundations; fold them into base owners only when a focused change makes that safer than maintaining the seam.
+The source razor was a one-time exception. Future cleanup remains local and feature-driven. The current wrapper stack is a deliberate small-blast-radius specialization of mature foundations; fold wrappers into base owners only when a focused change makes that safer than maintaining the seam.
