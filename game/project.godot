@@ -7,7 +7,7 @@ config/name="First Fire"
 run/main_scene="res://main.tscn"
 
 [autoload]
-Game="*res://scripts/GameThreeStat.gd"
+Game="*res://scripts/GameSleepVirus.gd"
 
 [display]
 window/size/viewport_width=390
