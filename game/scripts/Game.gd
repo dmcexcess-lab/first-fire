@@ -585,16 +585,9 @@ func start_camp_chore(sid:int,chore:String)->bool:
 func start_pet_care(sid:int,pet_id:int,action:String)->bool:
     var s:Variant=get_survivor(sid); var pet:Variant=get_pet(pet_id)
     if s==null or s["status"]!="Available" or pet==null: return false
-    if action=="feed":
-        if int(resources.get("Raw Food",0))>0: resources["Raw Food"]=int(resources.get("Raw Food",0))-1
-        elif int(resources.get("Cooked Food",0))>0: resources["Cooked Food"]=int(resources.get("Cooked Food",0))-1
-        else: toast_requested.emit("Pet feeding needs 1 Raw or Cooked Food."); return false
-    elif action=="water":
-        if int(resources.get("Clean Water",0))<=0: toast_requested.emit("Pet watering needs 1 Clean Water."); return false
-        resources["Clean Water"]=int(resources.get("Clean Water",0))-1
-    elif action not in ["play","groom"]: return false
+    if action not in ["play","love"]: return false
     _clear_camp_activity(s); s["status"]="Pet Care"
-    s["task"]={"kind":"pet_care","pet_id":pet_id,"action":action,"label":"%s %s" % [action.capitalize(),pet["name"]],"progress":0,"goal":3 if action in ["feed","water"] else 4}
+    s["task"]={"kind":"pet_care","pet_id":pet_id,"action":action,"label":"%s %s" % [action.capitalize(),pet["name"]],"progress":0,"goal":4 if action=="play" else 3}
     save_game(); state_changed.emit(); return true
 
 func perform_camp_task_tap(sid:int)->bool:
@@ -1586,11 +1579,18 @@ func _daily_tick():
     if buildings.get("Garden Plot", false) and garden_tended_day == day:
         resources["Raw Food"] = int(resources.get("Raw Food", 0)) + 2
 
+    var pets_to_leave:Array=[]
     for pet in pets:
-        if CampLifeRules.pet_can_forage(pet.get("needs",{})) and rng.randf()<0.35:
-            var pet_find:=CampLifeRules.pet_forage_resource(str(pet.get("species","Dog")),rng)
-            resources[pet_find]=int(resources.get(pet_find,0))+1
-            _add_history("Day %d — %s brought back 1 %s." % [day,pet.get("name","Pet"),pet_find])
+        if CampLifeRules.pet_should_leave(pet.get("needs",{})):
+            pets_to_leave.append(pet)
+            continue
+        var pet_find:=CampLifeRules.pet_forage_resource(str(pet.get("species","Dog")),rng)
+        resources[pet_find]=int(resources.get(pet_find,0))+1
+        _add_history("Day %d — %s brought back 1 %s." % [day,pet.get("name","Pet"),pet_find])
+    for pet in pets_to_leave:
+        pets.erase(pet)
+        _add_history("Day %d — %s left First Fire after going too long without affection." % [day,pet.get("name","Pet")])
+        toast_requested.emit("%s left camp — they needed more attention." % pet.get("name","Pet"))
 
     for s in survivors:
         if s["condition"] == "Critical" and s["status"] != "Recovering" and rng.randf() < CampLifeRules.critical_decline_chance(bool(buildings.get("Infirmary", false))):

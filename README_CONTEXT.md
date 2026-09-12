@@ -52,8 +52,8 @@ The active combat layer is intentionally compact:
 - **2H Melee** — slower/heavier melee profile; the improvised spear retains extended straight-line reach.
 - **1H Gun** — pistol class.
 - **2H Gun** — shotgun class, including spread behavior.
-- **Stealth** — Agility-driven quieter movement with positional stealth-attack opportunity; slower than normal movement.
-- **Sprint** — Agility-driven faster movement, louder noise, and improved grab avoidance.
+- **Stealth** — Agility-driven quieter crouched movement with positional stealth-attack opportunity; its tactical action cost is deliberately and materially slower than walking.
+- **Sprint** — Agility-driven movement with a deliberately and materially lower action cost than walking, louder noise, and improved grab avoidance.
 - **Forward** — dedicated touch movement action, now placed in the former Guard control slot for faster thumb access.
 - **Shove** — spacing/stagger action; heavier infected resist it more.
 
@@ -85,7 +85,7 @@ The persistent 2D tactical-style living camp is final camp presentation. `FFCamp
 
 The living camp now uses a layered authored presentation rather than a flat grid of isolated symbols: connected dirt paths organize the settlement around the First Fire, sleeping/work/service areas have distinct visual pads, the perimeter reads as a fenced camp with a gate, built structures have stronger purpose-specific silhouettes and shadows, and the fire has visible stonework, flames, smoke, sparks, resource-reflective wood stacking, and stronger clock-driven dusk/night glow. These graphics remain a direct reflection of authoritative `Game` state and do not create separate camp simulation or pathfinding.
 
-`FFCampLifeRules.gd` owns six survivor needs plus pet needs, fire/maintenance tuning, autonomous idle recovery/downtime, and camp cadence. Productive work is player-directed: fire tending, cleaning, perimeter repair, crafting, building, garden work, pet care, and expeditions require assignment. Camp chores and pet care use short touch-first WORK interactions rather than completing as hidden autonomous behavior.
+`FFCampLifeRules.gd` owns six survivor needs plus pet affection/retention/reward rules, fire/maintenance tuning, autonomous idle recovery/downtime, and camp cadence. Pets do not consume camp food or water: their Bond/Affection falls without attention, PLAY/LOVE assignments restore it, neglected pets can leave camp, and each pet that stays brings back exactly one random material or Raw Food per in-game day. Productive work is player-directed: fire tending, cleaning, perimeter repair, crafting, building, garden work, pet care, and expeditions require assignment. Camp chores and pet care use short touch-first WORK interactions rather than completing as hidden autonomous behavior.
 
 Treatment is physical-wound aware:
 - **Hurt:** 1 Sterile Dressing; minor recovery capped to 30s.

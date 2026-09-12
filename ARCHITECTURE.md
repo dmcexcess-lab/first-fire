@@ -20,7 +20,7 @@ First Fire now has exactly three survivor progression stats:
 
 The former Scavenging, Survival, Medical, Technical, and Social stats are no longer player-facing survivor stats. Crafting, treatment, searching, and other noncombat work should use tools, resources, traits, infrastructure, state, and authored rules instead of recreating hidden substitute skill trees.
 
-`FFThreeStatRules.gd` owns the canonical stat catalog, weapon-hand classes, class combat profiles, and Agility movement/stealth/sprint math.
+`FFThreeStatRules.gd` owns the canonical stat catalog, weapon-hand classes, class combat profiles, and Agility movement/stealth/sprint math. Active tactical movement preserves a strong crouch > walk > sprint action-cost separation across the full Agility range.
 
 `GameThreeStat.gd` is the active `Game` autoload. It extends the proven `Game.gd` orchestration foundation while overriding survivor generation, progression, expedition checks, treatment, abstract danger, loot skill hooks, politics, injury protection, and save compatibility for the three-stat model. Existing saves whose survivor state is not the three-stat model are invalidated cleanly through the `combat-agility-leadership-v1` model marker. The underlying save schema remains 7.
 
@@ -89,7 +89,7 @@ Persistent survivor appearances, infected visual families, rescued-pet rendering
 Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and haul-count distributions. Agility is the active survivor stat passed into travel timing by `GameThreeStat.gd`.
 
 ### `FFCampLifeRules.gd`
-Pure camp-life tuning for survivor idle needs/moodlets, pet needs/care effects, fire and camp-maintenance decay, recovery/treatment modifiers, defense-building effects, and camp cadence. Eating/drinking, sleeping, and fun remain systemic idle behavior; productive chores, maintenance, crafting/building, pet care, and expeditions are assigned by the player through `Game.gd`.
+Pure camp-life tuning for survivor idle needs/moodlets, pet affection/retention/daily-reward rules, fire and camp-maintenance decay, recovery/treatment modifiers, defense-building effects, and camp cadence. Pets never consume food or water; PLAY/LOVE restore affection, neglected pets can leave, and retained pets contribute exactly one random material or Raw Food each day. Eating/drinking, sleeping, and fun remain systemic idle behavior; productive chores, maintenance, crafting/building, pet care, and expeditions are assigned by the player through `Game.gd`.
 
 ### `FFCampSocial.gd`
 Relationships, chatter, political standing, and leadership support. **Leadership** is the active progression stat for candidate standing and social/political checks.

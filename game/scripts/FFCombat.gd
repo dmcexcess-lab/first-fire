@@ -748,6 +748,9 @@ func step_forward():
     if glass.has(cell): interact(); return
     try_move(player.facing)
 
+func movement_action_cost(backwards: bool = false) -> int:
+    return TacticalTime.movement_cost(player, backwards)
+
 func step_backward():
     var keep: Vector2i = player.facing
     var dest: Vector2i = player.pos - keep
@@ -765,7 +768,7 @@ func step_backward():
     var breathing := TacticalTime.breath_noise(player)
     if breathing > 0: emit_noise(dest, breathing, "breathing", true)
     check_objective_and_exit()
-    commit_action(TacticalTime.movement_cost(player, true))
+    commit_action(movement_action_cost(true))
 
 func toggle_crouch():
     player["guarding"] = false
@@ -790,7 +793,7 @@ func try_move(dir: Vector2i):
     var breathing := TacticalTime.breath_noise(player)
     if breathing > 0: emit_noise(dest, breathing, "breathing", true)
     check_objective_and_exit()
-    commit_action(TacticalTime.movement_cost(player, false))
+    commit_action(movement_action_cost(false))
 
 func rescuee_ready_to_extract() -> bool:
     if rescuee.is_empty() or bool(rescuee.get("dead", false)) or not rescue_contacted:

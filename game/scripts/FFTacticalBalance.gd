@@ -162,14 +162,14 @@ static func shove_stagger_ticks(mass: String, pinned: bool) -> int:
 static func zombie_hit_chance(actor: Dictionary) -> float:
     var agility := int(actor.get("skills", {}).get("Agility", 0))
     var fatigue := float(actor.get("fatigue", 0.0))
-    var chance := 0.66 - float(agility) * 0.018
+    var chance := 0.70 - float(agility) * 0.018
     if fatigue >= 80.0: chance += 0.08
     elif fatigue >= 60.0: chance += 0.04
     if bool(actor.get("sprinting", false)):
         chance -= minf(0.22, 0.05 + float(agility) * 0.017)
-    return clampf(chance, 0.18, 0.82)
+    return clampf(chance, 0.20, 0.84)
 
 static func zombie_damage_range(mass: String) -> Vector2i:
     if mass == "LIGHT": return Vector2i(1, 4)
-    if mass == "HEAVY": return Vector2i(3, 6)
-    return Vector2i(2, 5)
+    if mass == "HEAVY": return Vector2i(3, 7)
+    return Vector2i(2, 6)

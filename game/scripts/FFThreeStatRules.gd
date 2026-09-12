@@ -68,15 +68,16 @@ static func gun_damage(profile: Dictionary, combat: int, rng: RandomNumberGenera
     return maxi(1, damage)
 
 static func normal_move_cost(agility: int, base_cost: int) -> int:
-    return maxi(38, int(round(float(base_cost) * (1.0 - minf(0.25, float(agility) * 0.025)))))
+    var reduction:=minf(0.20,float(agility)*0.02)
+    return maxi(52,int(round(float(base_cost)*(1.0-reduction))))
 
 static func sprint_move_cost(agility: int, base_cost: int) -> int:
-    var reduction := 0.35 + minf(0.25, float(agility) * 0.025)
-    return maxi(24, int(round(float(base_cost) * (1.0 - reduction))))
+    var reduction:=0.38+minf(0.20,float(agility)*0.02)
+    return maxi(28,int(round(float(base_cost)*(1.0-reduction))))
 
 static func stealth_move_cost(agility: int, base_cost: int) -> int:
-    var surcharge := maxf(0.05, 0.30 - float(agility) * 0.025)
-    return maxi(45, int(round(float(base_cost) * (1.0 + surcharge))))
+    var surcharge:=maxf(0.30,0.45-float(agility)*0.015)
+    return maxi(78,int(round(float(base_cost)*(1.0+surcharge))))
 
 static func stealth_noise(agility: int) -> int:
     return maxi(2, 8 - int(floor(float(agility) * 0.65)))

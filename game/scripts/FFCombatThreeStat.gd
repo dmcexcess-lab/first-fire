@@ -161,6 +161,17 @@ func rotate_player(step: int):
     player["sprinting"] = false
     super.rotate_player(step)
 
+func movement_action_cost(backwards: bool = false) -> int:
+    var timing_actor:Dictionary=player.duplicate(false)
+    timing_actor["crouched"]=false
+    var base_cost:int=TimeThree.movement_cost(timing_actor,backwards)
+    var agility:=int(player.get("skills",{}).get("Agility",0))
+    if bool(player.get("sprinting",false)) and not backwards:
+        return ThreeStatRules.sprint_move_cost(agility,base_cost)
+    if bool(player.get("crouched",false)):
+        return ThreeStatRules.stealth_move_cost(agility,base_cost)
+    return ThreeStatRules.normal_move_cost(agility,base_cost)
+
 func step_backward():
     player["sprinting"] = false
     super.step_backward()
@@ -181,9 +192,7 @@ func try_move(dir: Vector2i):
         var breathing := TimeThree.breath_noise(player)
         if breathing > 0: emit_noise(dest, breathing, "breathing", true)
     check_objective_and_exit()
-    var base_cost: int = TimeThree.movement_cost(player, false)
-    var cost: int = ThreeStatRules.sprint_move_cost(agility, base_cost) if sprinting else (ThreeStatRules.stealth_move_cost(agility, base_cost) if player.crouched else ThreeStatRules.normal_move_cost(agility, base_cost))
-    commit_action(cost)
+    commit_action(movement_action_cost(false))
 
 func stealth_attack(z) -> bool:
     if not bool(player.crouched) or z.state == "CHASE": return false

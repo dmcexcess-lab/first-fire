@@ -23,13 +23,19 @@ func _init() -> void:
     if not _check(str(ThreeStatRules.weapon_class("Baseball Bat").get("label", "")) == "2H MELEE", "2H melee class"): return
     if not _check(str(ThreeStatRules.weapon_class("Pistol").get("label", "")) == "1H GUN", "1H gun class"): return
     if not _check(str(ThreeStatRules.weapon_class("Shotgun").get("label", "")) == "2H GUN", "2H gun class"): return
-    if not _check(ThreeStatRules.sprint_move_cost(6, 100) < ThreeStatRules.normal_move_cost(6, 100), "sprint is faster"): return
+    for agility in [0, 5, 10]:
+        var walk_cost:=ThreeStatRules.normal_move_cost(agility,100)
+        var sprint_cost:=ThreeStatRules.sprint_move_cost(agility,100)
+        var crouch_cost:=ThreeStatRules.stealth_move_cost(agility,100)
+        if not _check(sprint_cost<=int(floor(float(walk_cost)*0.72)), "sprint materially faster at agility %d" % agility): return
+        if not _check(crouch_cost>=int(ceil(float(walk_cost)*1.25)), "crouch materially slower at agility %d" % agility): return
     if not _check(ThreeStatRules.stealth_noise(7) < ThreeStatRules.stealth_noise(1), "agility improves stealth"): return
     if not _check(ThreeStatRules.sprint_move_cost(7, 100) < ThreeStatRules.sprint_move_cost(1, 100), "agility improves sprint"): return
 
     var actor := {"skills": {"Combat": 3, "Agility": 4, "Leadership": 1}, "fatigue": 0.0, "sprinting": false, "crouched": false}
     var sprinting := actor.duplicate(true); sprinting["sprinting"] = true
     if not _check(TacticalBalance.zombie_hit_chance(sprinting) < TacticalBalance.zombie_hit_chance(actor), "sprint evasion"): return
+    if not _check(TacticalBalance.zombie_hit_chance(actor) >= 0.70 and TacticalBalance.zombie_damage_range("HEAVY").y >= 7, "infected pressure tuning"): return
     if not _check(TacticalBalance.shove_chance(actor, "LIGHT", 1) > TacticalBalance.shove_chance(actor, "HEAVY", 1), "mass resists shove"): return
     if not _check(TacticalBalance.search_cost(actor) > 0 and TacticalBalance.search_noise(actor) > 0, "search remains bounded"): return
     if not _check(TacticalBalance.zombie_count("Camp Perimeter", "rescue") < TacticalBalance.zombie_count("Camp Perimeter", "ambush"), "objective zombie balance"): return
@@ -82,7 +88,11 @@ func _init() -> void:
 
     var base_needs := CampLifeRules.default_needs()
     if not _check(base_needs.has("hunger") and base_needs.has("safety") and base_needs.has("hygiene"), "camp needs"): return
-    if not _check(CampLifeRules.default_pet_needs().has("affection") and CampLifeRules.pet_can_forage({"hunger":80,"thirst":80,"affection":80,"cleanliness":50}), "pet care rules"): return
+    var pet_rng:=RandomNumberGenerator.new(); pet_rng.seed=7
+    var pet_find:=CampLifeRules.pet_forage_resource("Dog",pet_rng)
+    if not _check(CampLifeRules.default_pet_needs().size()==1 and CampLifeRules.default_pet_needs().has("affection"), "affection-only pet needs"): return
+    if not _check(CampLifeRules.pet_should_leave({"affection":10}) and not CampLifeRules.pet_should_leave({"affection":60}), "neglected pets leave"): return
+    if not _check(pet_find in ["Wood","Scrap Metal","Hardware","Cloth","Plastic","Raw Food"], "daily pet material reward"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,false,false,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
     if not _check(base_game_source.contains("var pets := []") and base_game_source.contains("func start_camp_chore") and base_game_source.contains("func perform_camp_task_tap") and base_game_source.contains("rescue_is_pet"), "active camp work and pet rescue state"): return
     if not _check(CampSocial.candidate_standing({"id":1,"condition":"Healthy","skills":{"Leadership":5},"reputation":0,"relationships":{}}, []) == 30, "leadership drives politics"): return

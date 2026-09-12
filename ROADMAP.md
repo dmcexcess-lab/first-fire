@@ -31,7 +31,7 @@ Finish tuning the systems that already exist:
 - autonomous relationship/politics-based chatter in the living camp;
 - survivor moodlets driven by hunger, thirst, sleep, fun, safety, and hygiene; eating/drinking/sleep/fun remain autonomous idle behavior while productive labor is player-assigned;
 - an active camp work loop covering fire tending, cleaning, perimeter maintenance, building, crafting, gardening, pet care and expeditions; short camp chores use touch-first WORK interactions;
-- rescued dogs/cats as persistent Tamagotchi-style camp pets with hunger/thirst/bond/cleanliness care and small cared-for forage returns;
+- rescued dogs/cats as persistent Tamagotchi-style camp pets whose affection is maintained through PLAY/LOVE assignments; pets consume no camp food/water, can leave if neglected, and each retained pet contributes exactly one random material or Raw Food per day;
 - relationship drift from meaningful positive/negative interactions;
 - shortages and repeated expedition duty feeding camp opinion;
 - coordinator → formal election progression;

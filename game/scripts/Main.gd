@@ -798,9 +798,10 @@ func _draw_camp_work_board()->void:
         var panel=PanelContainer.new(); var v=VBoxContainer.new(); panel.add_child(v)
         v.add_child(_make_label("%s — %s — %s" % [pet.get("name","Pet"),pet.get("species","Animal"),Game.pet_mood_label(pet)],16))
         var n:Dictionary=Game.CampLifeRules.normalize_pet_needs(pet.get("needs",{}))
-        v.add_child(_make_label("Food %.0f  Water %.0f  Bond %.0f  Clean %.0f" % [n["hunger"],n["thirst"],n["affection"],n["cleanliness"]],12))
+        v.add_child(_make_label("Bond %.0f  •  Play with and love them or they may leave camp." % n["affection"],12))
+        v.add_child(_make_label("Pets consume no food or water and each bring back 1 material or Raw Food per day.",11))
         var buttons=GridContainer.new(); buttons.columns=2
-        for action in ["feed","water","play","groom"]:
+        for action in ["play","love"]:
             var b=Button.new(); b.text=action.to_upper(); b.custom_minimum_size=Vector2(0,42); b.disabled=selected_worker_id<0; b.pressed.connect(Game.start_pet_care.bind(selected_worker_id,int(pet["id"]),action)); buttons.add_child(b)
         v.add_child(buttons); content_box.add_child(panel)
 

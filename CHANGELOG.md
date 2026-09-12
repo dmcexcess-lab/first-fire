@@ -1,9 +1,18 @@
 
+## Beta Candidate — Combat Movement & Pet Bond Tuning — 2026-09-12
+
+- Increased tactical danger modestly: infected hit chance is slightly higher and medium/heavy infected can roll one additional point of maximum damage.
+- Made active movement pacing explicit and regression-tested: crouch is materially slower than walking and sprint materially faster than walking across the full Agility range, including crouched backpedaling through the shared movement-cost seam.
+- Simplified pets to Bond/Affection only. Pets no longer consume Raw/Cooked Food or Clean Water; PLAY and LOVE are the only pet-care assignments.
+- Neglected pets can leave First Fire when affection falls too low. Every pet that remains contributes exactly one random material or Raw Food per in-game day.
+- Save schema remains 7; existing pet state is normalized down to its existing affection value.
+
+
 ## Camp work and rescued pets
 
 - Added tactical dog/cat rescue candidates using the existing physical rescue/escort/extraction loop; forced survivor-recruit catch-up rescues remain human.
-- Added persistent camp pets with Food, Water, Bond and Cleanliness needs plus small cared-for daily forage returns.
-- Added touch-first pet care assignments (feed/water/play/groom) and manual camp chores (stoke fire, clean camp, repair perimeter). Assigned chores require repeated WORK taps, making camp maintenance an active minigame rather than hidden automation.
+- Added persistent camp pets; current tuning uses Bond/Affection as the pet retention meter, with no pet food/water consumption and one daily material-or-Raw-Food contribution per retained pet.
+- Added touch-first pet care assignments (PLAY/LOVE in current tuning) and manual camp chores (stoke fire, clean camp, repair perimeter). Assigned chores require repeated WORK taps, making camp maintenance an active minigame rather than hidden automation.
 - Survivor eating/drinking, sleeping and fun remain passive/idle. Productive fire maintenance and washing were removed from autonomous downtime.
 - Added persistent camp-maintenance condition that affects camp safety and requires upkeep.
 
