@@ -45,7 +45,7 @@ var chatter_until_ms := 0
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     clip_contents = true
-    custom_minimum_size = Vector2(0, 250)
+    custom_minimum_size = Vector2(0, 270)
     set_process(true)
     if not Game.camp_chatter_requested.is_connected(_on_camp_chatter):
         Game.camp_chatter_requested.connect(_on_camp_chatter)
@@ -89,7 +89,7 @@ func _process(delta: float) -> void:
     elif not chatter_entry.is_empty():
         moved = true
     redraw_accum += delta
-    if moved or redraw_accum >= 0.20:
+    if moved or redraw_accum >= 0.16:
         redraw_accum = 0.0
         queue_redraw()
 
@@ -153,23 +153,22 @@ func _draw() -> void:
     var tile: float = minf(size.x / float(GRID_W), size.y / float(GRID_H))
     var map_size := Vector2(tile * float(GRID_W), tile * float(GRID_H))
     var origin := (size - map_size) * 0.5
-    draw_rect(Rect2(Vector2.ZERO, size), Color("07100d"))
-    for y in range(GRID_H):
-        for x in range(GRID_W):
-            var kind := "grass"
-            if (y == 4 and x >= 2 and x <= 15) or (x == 7 and y >= 1 and y <= 9) or (y == 8 and x >= 7 and x <= 15):
-                kind = "dirt"
-            Tiles.draw_ground(self, _cell_rect(Vector2i(x, y), origin, tile), kind)
+    draw_rect(Rect2(Vector2.ZERO, size), Color("050b09"))
+    _draw_ground_layer(origin, tile)
+    _draw_camp_zones(origin, tile)
+    _draw_perimeter(origin, tile)
     _draw_camp_details(origin, tile)
+    _draw_structure_shadows(origin, tile)
     _draw_structures(origin, tile)
     _draw_construction(origin, tile)
     _draw_night(origin, tile)
+    _draw_ambient_life(origin, tile)
     _draw_survivors(origin, tile)
     _draw_chatter(origin, tile)
-    draw_rect(Rect2(origin, map_size), Color(0.30, 0.42, 0.35, 0.55), false, 1.0)
+    draw_rect(Rect2(origin, map_size), Color(0.38, 0.49, 0.40, 0.55), false, 1.0)
     var font: Font = get_theme_default_font()
     var title_size: int = maxi(9, int(tile * 0.38))
-    draw_string(font, origin + Vector2(7.0, float(title_size) + 4.0), "FIRST FIRE CAMP  •  %s  •  %s" % [Game.formatted_time(), _day_phase()], HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.92, 0.94, 0.88, 0.92))
+    draw_string(font, origin + Vector2(7.0, float(title_size) + 4.0), "FIRST FIRE CAMP  •  %s  •  %s" % [Game.formatted_time(), _day_phase()], HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.94, 0.94, 0.86, 0.95))
 
 func _cell_rect(cell: Vector2i, origin: Vector2, tile: float) -> Rect2:
     return Rect2(origin + Vector2(float(cell.x) * tile, float(cell.y) * tile), Vector2(tile, tile))
@@ -180,129 +179,234 @@ func _cell_center(cell: Vector2i, origin: Vector2, tile: float) -> Vector2:
 func _grid_center(pos: Vector2, origin: Vector2, tile: float) -> Vector2:
     return origin + Vector2((pos.x + 0.5) * tile, (pos.y + 0.5) * tile)
 
-func _draw_camp_details(origin: Vector2, tile: float) -> void:
-    # Expanded perimeter and small lived-in props. These are presentation only.
+func _path_cell(cell: Vector2i) -> bool:
+    if cell.y == 4 and cell.x >= 2 and cell.x <= 15:
+        return true
+    if cell.x == 7 and cell.y >= 1 and cell.y <= 9:
+        return true
+    if cell.y == 8 and cell.x >= 3 and cell.x <= 15:
+        return true
+    if cell.x == 3 and cell.y >= 4 and cell.y <= 8:
+        return true
+    if cell.x == 12 and cell.y >= 4 and cell.y <= 8:
+        return true
+    if cell.y == 2 and cell.x >= 7 and cell.x <= 14:
+        return true
+    return false
+
+func _cell_variation(cell: Vector2i, salt: int) -> float:
+    var value: int = posmod(cell.x * 73 + cell.y * 151 + salt * 37, 997)
+    return float(value) / 996.0
+
+func _draw_ground_layer(origin: Vector2, tile: float) -> void:
+    for y in range(GRID_H):
+        for x in range(GRID_W):
+            var cell := Vector2i(x, y)
+            var kind := "dirt" if _path_cell(cell) else "grass"
+            var rect := _cell_rect(cell, origin, tile)
+            Tiles.draw_ground(self, rect, kind)
+            if kind == "grass":
+                var variation := _cell_variation(cell, 1)
+                if variation > 0.62:
+                    var center := rect.get_center()
+                    var offset := Vector2((variation - 0.75) * tile * 0.70, (_cell_variation(cell, 3) - 0.5) * tile * 0.50)
+                    var tuft := center + offset
+                    draw_line(tuft + Vector2(-tile * 0.05, tile * 0.08), tuft, Color(0.28, 0.43, 0.25, 0.62), maxf(1.0, tile * 0.025))
+                    draw_line(tuft + Vector2(tile * 0.05, tile * 0.08), tuft, Color(0.34, 0.49, 0.29, 0.56), maxf(1.0, tile * 0.025))
+            elif _cell_variation(cell, 5) > 0.80:
+                var pebble := rect.get_center() + Vector2((_cell_variation(cell, 8) - 0.5) * tile * 0.55, (_cell_variation(cell, 9) - 0.5) * tile * 0.35)
+                draw_circle(pebble, maxf(1.0, tile * 0.035), Color(0.33, 0.30, 0.25, 0.60))
+
+func _draw_camp_zones(origin: Vector2, tile: float) -> void:
+    var fire_center := _cell_center(FIRE_CELL, origin, tile)
+    draw_circle(fire_center, tile * 1.28, Color(0.20, 0.14, 0.08, 0.25))
+    draw_circle(fire_center, tile * 1.12, Color(0.48, 0.34, 0.16, 0.22), false, maxf(1.0, tile * 0.035))
+
+    var sleep_zone := Rect2(_cell_rect(Vector2i(2, 5), origin, tile).position, Vector2(tile * 4.2, tile * 4.1)).grow(-tile * 0.08)
+    draw_rect(sleep_zone, Color(0.16, 0.20, 0.17, 0.22))
+    draw_rect(sleep_zone, Color(0.42, 0.48, 0.36, 0.22), false, maxf(1.0, tile * 0.025))
+
+    var work_zone := Rect2(_cell_rect(Vector2i(9, 1), origin, tile).position, Vector2(tile * 6.4, tile * 2.8)).grow(-tile * 0.08)
+    draw_rect(work_zone, Color(0.20, 0.18, 0.14, 0.22))
+    draw_rect(work_zone, Color(0.53, 0.45, 0.30, 0.20), false, maxf(1.0, tile * 0.025))
+
+    var service_zone := Rect2(_cell_rect(Vector2i(9, 5), origin, tile).position, Vector2(tile * 6.5, tile * 3.8)).grow(-tile * 0.08)
+    draw_rect(service_zone, Color(0.14, 0.18, 0.18, 0.18))
+    draw_rect(service_zone, Color(0.39, 0.52, 0.50, 0.16), false, maxf(1.0, tile * 0.025))
+
+func _draw_perimeter(origin: Vector2, tile: float) -> void:
+    var fence := Color("5c5446")
+    var wire := Color(0.46, 0.46, 0.39, 0.55)
     for x in range(1, GRID_W - 1):
+        if x in [7, 8]:
+            continue
         if x % 2 == 0:
             var top := _cell_center(Vector2i(x, 0), origin, tile)
             var bottom := _cell_center(Vector2i(x, GRID_H - 1), origin, tile)
-            draw_line(top + Vector2(0, -tile * 0.26), top + Vector2(0, tile * 0.26), Color("50483c"), maxf(1.0, tile * 0.05))
-            draw_line(bottom + Vector2(0, -tile * 0.26), bottom + Vector2(0, tile * 0.26), Color("50483c"), maxf(1.0, tile * 0.05))
+            draw_line(top + Vector2(0, -tile * 0.34), top + Vector2(0, tile * 0.34), fence, maxf(1.0, tile * 0.055))
+            draw_line(bottom + Vector2(0, -tile * 0.34), bottom + Vector2(0, tile * 0.34), fence, maxf(1.0, tile * 0.055))
     for y in range(1, GRID_H - 1):
         if y % 2 == 0:
             var left := _cell_center(Vector2i(0, y), origin, tile)
             var right := _cell_center(Vector2i(GRID_W - 1, y), origin, tile)
-            draw_line(left + Vector2(-tile * 0.26, 0), left + Vector2(tile * 0.26, 0), Color("50483c"), maxf(1.0, tile * 0.05))
-            draw_line(right + Vector2(-tile * 0.26, 0), right + Vector2(tile * 0.26, 0), Color("50483c"), maxf(1.0, tile * 0.05))
+            draw_line(left + Vector2(-tile * 0.34, 0), left + Vector2(tile * 0.34, 0), fence, maxf(1.0, tile * 0.055))
+            draw_line(right + Vector2(-tile * 0.34, 0), right + Vector2(tile * 0.34, 0), fence, maxf(1.0, tile * 0.055))
+    draw_line(_cell_center(Vector2i(1, 0), origin, tile), _cell_center(Vector2i(16, 0), origin, tile), wire, maxf(1.0, tile * 0.025))
+    draw_line(_cell_center(Vector2i(1, 10), origin, tile), _cell_center(Vector2i(6, 10), origin, tile), wire, maxf(1.0, tile * 0.025))
+    draw_line(_cell_center(Vector2i(9, 10), origin, tile), _cell_center(Vector2i(16, 10), origin, tile), wire, maxf(1.0, tile * 0.025))
+    var gate_left := _cell_center(Vector2i(6, 10), origin, tile)
+    var gate_right := _cell_center(Vector2i(9, 10), origin, tile)
+    draw_line(gate_left, gate_left + Vector2(tile * 0.62, -tile * 0.18), Color("857b62"), maxf(1.0, tile * 0.05))
+    draw_line(gate_right, gate_right + Vector2(-tile * 0.62, -tile * 0.18), Color("857b62"), maxf(1.0, tile * 0.05))
 
-    # Seating logs around the fire make Watching Fire visually legible.
+func _draw_camp_details(origin: Vector2, tile: float) -> void:
     var fire := _cell_center(FIRE_CELL, origin, tile)
-    draw_line(fire + Vector2(-tile * 0.72, tile * 0.58), fire + Vector2(-tile * 0.22, tile * 0.58), Color("705038"), maxf(2.0, tile * 0.12))
-    draw_line(fire + Vector2(tile * 0.22, tile * 0.58), fire + Vector2(tile * 0.72, tile * 0.58), Color("705038"), maxf(2.0, tile * 0.12))
+    draw_line(fire + Vector2(-tile * 0.82, tile * 0.66), fire + Vector2(-tile * 0.28, tile * 0.66), Color("705038"), maxf(2.0, tile * 0.13))
+    draw_line(fire + Vector2(tile * 0.28, tile * 0.66), fire + Vector2(tile * 0.82, tile * 0.66), Color("705038"), maxf(2.0, tile * 0.13))
+    draw_line(fire + Vector2(-tile * 0.66, -tile * 0.66), fire + Vector2(-tile * 0.20, -tile * 0.66), Color("604633"), maxf(2.0, tile * 0.10))
 
-    # A visible wood stack reflects actual Wood stock without inventing a second inventory.
     if int(Game.resources.get("Wood", 0)) > 0:
         var wood_center := _cell_center(Vector2i(9, 3), origin, tile)
-        var shown: int = mini(4, maxi(1, int(Game.resources.get("Wood", 0))))
+        var shown: int = mini(6, maxi(1, int(Game.resources.get("Wood", 0))))
         for i in range(shown):
-            var offset := Vector2(float(i % 2) * tile * 0.18 - tile * 0.09, float(i / 2) * tile * 0.15 - tile * 0.08)
-            draw_line(wood_center + offset + Vector2(-tile * 0.17, 0), wood_center + offset + Vector2(tile * 0.17, 0), Color("765034"), maxf(2.0, tile * 0.09))
+            var row: int = i / 3
+            var col: int = i % 3
+            var offset := Vector2((float(col) - 1.0) * tile * 0.18, (float(row) - 0.5) * tile * 0.17)
+            draw_line(wood_center + offset + Vector2(-tile * 0.14, 0), wood_center + offset + Vector2(tile * 0.14, 0), Color("765034"), maxf(2.0, tile * 0.085))
+            draw_circle(wood_center + offset + Vector2(tile * 0.14, 0), maxf(1.0, tile * 0.035), Color("a17b4f"))
 
-    # The wash point is visible whenever camp has a real water-support structure.
     if bool(Game.buildings.get("Water Tank", false)) or bool(Game.buildings.get("Rain Catcher", false)):
         var wash_cell := building_cell("Water Tank") + Vector2i(1, 0) if bool(Game.buildings.get("Water Tank", false)) else building_cell("Rain Catcher") + Vector2i(1, 0)
         var basin := _cell_rect(wash_cell, origin, tile).grow(-tile * 0.24)
+        draw_circle(basin.get_center() + Vector2(0, tile * 0.04), tile * 0.25, Color(0.08, 0.10, 0.10, 0.45))
         draw_circle(basin.get_center(), tile * 0.22, Color("435a61"))
         draw_circle(basin.get_center(), tile * 0.15, Color(0.38, 0.68, 0.78, 0.78))
         draw_arc(basin.get_center(), tile * 0.22, 0.0, TAU, 20, Color("9cb6b5"), maxf(1.0, tile * 0.04))
 
-    # Extra edge clutter gives the expanded footprint depth without adding gameplay state.
     Tiles.draw_prop(self, _cell_rect(Vector2i(16, 8), origin, tile).grow(-tile * 0.15), "crate")
     Tiles.draw_prop(self, _cell_rect(Vector2i(4, 9), origin, tile).grow(-tile * 0.18), "barrel")
+    Tiles.draw_prop(self, _cell_rect(Vector2i(16, 3), origin, tile).grow(-tile * 0.20), "pallet")
+    if bool(Game.buildings.get("Storage Crate", false)):
+        Tiles.draw_prop(self, _cell_rect(Vector2i(10, 6), origin, tile).grow(-tile * 0.22), "crate")
+    if bool(Game.buildings.get("Communal Table", false)):
+        var table_center := _cell_center(building_cell("Communal Table"), origin, tile)
+        for offset in [Vector2(-0.46, 0.0), Vector2(0.46, 0.0), Vector2(0.0, 0.46)]:
+            draw_circle(table_center + offset * tile, tile * 0.10, Color("5b4834"))
+
+func _draw_structure_shadows(origin: Vector2, tile: float) -> void:
+    for building_name in BUILDING_CELLS.keys():
+        if not bool(Game.buildings.get(building_name, false)):
+            continue
+        var cell: Vector2i = BUILDING_CELLS[building_name]
+        var center := _cell_center(cell, origin, tile)
+        if building_name == "Cabin":
+            draw_rect(Rect2(_cell_rect(Vector2i(11, 4), origin, tile).position + Vector2(tile * 0.14, tile * 0.18), Vector2(tile * 3.0, tile * 3.0)), Color(0.01, 0.02, 0.015, 0.30))
+        else:
+            draw_circle(center + Vector2(tile * 0.08, tile * 0.14), tile * 0.43, Color(0.01, 0.02, 0.015, 0.28))
 
 func _draw_structures(origin: Vector2, tile: float) -> void:
     _draw_fire(origin, tile)
-    Tiles.draw_prop(self, _cell_rect(SLEEP_CELL, origin, tile).grow(-tile * 0.08), "bed")
+    _draw_bedroll(origin, tile)
 
     if bool(Game.buildings.get("Rain Catcher", false)):
-        Tiles.draw_barrel(self, _cell_rect(building_cell("Rain Catcher"), origin, tile).grow(-tile * 0.06))
+        _draw_rain_catcher(origin, tile)
     if bool(Game.buildings.get("Makeshift Shelter", false)):
-        var r := _cell_rect(building_cell("Makeshift Shelter"), origin, tile).grow(-tile * 0.05)
-        draw_colored_polygon(PackedVector2Array([
-            r.position + Vector2(r.size.x * 0.08, r.size.y * 0.92),
-            r.position + Vector2(r.size.x * 0.50, r.size.y * 0.10),
-            r.position + Vector2(r.size.x * 0.92, r.size.y * 0.92),
-        ]), Color("536f5a"))
-        draw_polyline(PackedVector2Array([
-            r.position + Vector2(r.size.x * 0.08, r.size.y * 0.92),
-            r.position + Vector2(r.size.x * 0.50, r.size.y * 0.10),
-            r.position + Vector2(r.size.x * 0.92, r.size.y * 0.92),
-        ]), Color("9ca887"), 1.2)
+        _draw_tent(origin, tile)
     if bool(Game.buildings.get("Storage Crate", false)):
-        Tiles.draw_prop(self, _cell_rect(building_cell("Storage Crate"), origin, tile).grow(-tile * 0.05), "crate")
+        _draw_storage(origin, tile)
     if bool(Game.buildings.get("Workbench", false)):
-        Tiles.draw_prop(self, _cell_rect(building_cell("Workbench"), origin, tile).grow(-tile * 0.04), "counter")
+        _draw_workbench(origin, tile)
     if bool(Game.buildings.get("Sewing Table", false)):
-        Tiles.draw_prop(self, _cell_rect(building_cell("Sewing Table"), origin, tile).grow(-tile * 0.04), "table")
-        var sc := _cell_center(building_cell("Sewing Table"), origin, tile)
-        draw_circle(sc, tile * 0.10, Color("d7c7e7"))
+        _draw_sewing_table(origin, tile)
     if bool(Game.buildings.get("Garden Plot", false)):
-        var garden := building_cell("Garden Plot")
-        var garden_rect := _cell_rect(garden, origin, tile).grow(-tile * 0.06)
-        draw_rect(garden_rect, Color("563d28"))
-        for i in range(3):
-            var px := garden_rect.position.x + garden_rect.size.x * (0.24 + float(i) * 0.25)
-            draw_line(Vector2(px, garden_rect.position.y + 3.0), Vector2(px, garden_rect.end.y - 3.0), Color("70a15f"), 1.8)
+        _draw_garden(origin, tile)
     if bool(Game.buildings.get("Noise Line", false)):
         _draw_noise_line(origin, tile)
     if bool(Game.buildings.get("Cabin", false)):
         _draw_cabin(origin, tile)
     if bool(Game.buildings.get("Water Tank", false)):
-        var tank_rect := _cell_rect(building_cell("Water Tank"), origin, tile).grow(-tile * 0.03)
-        Tiles.draw_barrel(self, tank_rect)
-        draw_circle(tank_rect.get_center(), tile * 0.38, Color(0.42, 0.70, 0.86, 0.65), false, 1.5)
+        _draw_water_tank(origin, tile)
     if bool(Game.buildings.get("Communal Table", false)):
-        Tiles.draw_prop(self, _cell_rect(building_cell("Communal Table"), origin, tile).grow(-tile * 0.04), "table")
+        _draw_communal_table(origin, tile)
     if bool(Game.buildings.get("Infirmary", false)):
-        var infirmary_rect := _cell_rect(building_cell("Infirmary"), origin, tile).grow(-tile * 0.04)
-        Tiles.draw_prop(self, infirmary_rect, "bed")
-        var ic := infirmary_rect.get_center()
-        draw_line(ic + Vector2(-tile * 0.11, 0), ic + Vector2(tile * 0.11, 0), Color("d7e7df"), 2.0)
-        draw_line(ic + Vector2(0, -tile * 0.11), ic + Vector2(0, tile * 0.11), Color("d7e7df"), 2.0)
+        _draw_infirmary(origin, tile)
     if bool(Game.buildings.get("Watch Post", false)):
-        var wc := _cell_center(building_cell("Watch Post"), origin, tile)
-        draw_rect(Rect2(wc - Vector2(tile * 0.30, tile * 0.30), Vector2(tile * 0.60, tile * 0.60)), Color("4b5146"))
-        draw_line(wc + Vector2(0, tile * 0.28), wc + Vector2(-tile * 0.20, tile * 0.48), Color("897e65"), 2.0)
-        draw_line(wc + Vector2(0, tile * 0.28), wc + Vector2(tile * 0.20, tile * 0.48), Color("897e65"), 2.0)
+        _draw_watch_post(origin, tile)
     if bool(Game.buildings.get("Bunkhouse", false)):
-        var br := _cell_rect(building_cell("Bunkhouse"), origin, tile).grow(-tile * 0.03)
-        draw_rect(br, Color("5a594d"))
-        draw_polyline(PackedVector2Array([br.position + Vector2(0, br.size.y * 0.35), br.position + Vector2(br.size.x * 0.5, 0), br.position + Vector2(br.size.x, br.size.y * 0.35)]), Color("a69c7b"), 2.0)
+        _draw_bunkhouse(origin, tile)
     if bool(Game.buildings.get("Armory", false)):
-        var ar := _cell_rect(building_cell("Armory"), origin, tile).grow(-tile * 0.04)
-        Tiles.draw_prop(self, ar, "crate")
-        draw_rect(ar, Color(0.62, 0.24, 0.18, 0.85), false, 2.0)
+        _draw_armory(origin, tile)
     if bool(Game.buildings.get("Dormitory", false)):
-        var dr := _cell_rect(building_cell("Dormitory"), origin, tile).grow(-tile * 0.02)
-        draw_rect(dr, Color("4d5a55"))
-        Tiles.draw_window(self, Rect2(dr.position + Vector2(dr.size.x * 0.18, dr.size.y * 0.18), dr.size * 0.34))
-        Tiles.draw_window(self, Rect2(dr.position + Vector2(dr.size.x * 0.55, dr.size.y * 0.18), dr.size * 0.28))
+        _draw_dormitory(origin, tile)
 
-func _draw_fire(origin: Vector2, tile: float) -> void:
-    var center := _cell_center(FIRE_CELL, origin, tile)
-    draw_circle(center, tile * 0.28, Color("33261f"))
-    draw_line(center + Vector2(-tile * 0.18, tile * 0.12), center + Vector2(tile * 0.18, -tile * 0.12), Color("6d4b2f"), maxf(1.0, tile * 0.07))
-    draw_line(center + Vector2(-tile * 0.18, -tile * 0.12), center + Vector2(tile * 0.18, tile * 0.12), Color("6d4b2f"), maxf(1.0, tile * 0.07))
-    var fire_scale := clampf(float(Game.fire_level) / 100.0, 0.10, 1.0)
-    draw_circle(center + Vector2(0, -tile * 0.03), tile * (0.07 + 0.12 * fire_scale), Color(1.0, 0.34, 0.10, 0.40 + 0.50 * fire_scale))
-    draw_circle(center + Vector2(0, -tile * 0.08), tile * (0.04 + 0.07 * fire_scale), Color(1.0, 0.82, 0.28, 0.48 + 0.48 * fire_scale))
+func _draw_bedroll(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(SLEEP_CELL, origin, tile).grow(-tile * 0.11)
+    Tiles.draw_prop(self, r, "bed")
+    draw_rect(Rect2(r.position + Vector2(tile * 0.10, tile * 0.60), Vector2(r.size.x * 0.70, tile * 0.10)), Color(0.25, 0.31, 0.28, 0.65))
+
+func _draw_rain_catcher(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Rain Catcher"), origin, tile).grow(-tile * 0.08)
+    Tiles.draw_barrel(self, Rect2(r.position + Vector2(r.size.x * 0.18, r.size.y * 0.42), r.size * 0.55))
+    draw_line(r.position + Vector2(r.size.x * 0.12, r.size.y * 0.22), r.position + Vector2(r.size.x * 0.88, r.size.y * 0.10), Color("78939a"), maxf(1.0, tile * 0.05))
+    draw_line(r.position + Vector2(r.size.x * 0.18, r.size.y * 0.18), r.position + Vector2(r.size.x * 0.18, r.size.y * 0.62), Color("6a6253"), maxf(1.0, tile * 0.04))
+    draw_line(r.position + Vector2(r.size.x * 0.82, r.size.y * 0.12), r.position + Vector2(r.size.x * 0.82, r.size.y * 0.62), Color("6a6253"), maxf(1.0, tile * 0.04))
+
+func _draw_tent(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Makeshift Shelter"), origin, tile).grow(-tile * 0.03)
+    draw_colored_polygon(PackedVector2Array([
+        r.position + Vector2(r.size.x * 0.04, r.size.y * 0.92),
+        r.position + Vector2(r.size.x * 0.50, r.size.y * 0.08),
+        r.position + Vector2(r.size.x * 0.96, r.size.y * 0.92),
+    ]), Color("526b58"))
+    draw_colored_polygon(PackedVector2Array([
+        r.position + Vector2(r.size.x * 0.50, r.size.y * 0.08),
+        r.position + Vector2(r.size.x * 0.96, r.size.y * 0.92),
+        r.position + Vector2(r.size.x * 0.66, r.size.y * 0.92),
+    ]), Color("3c5043"))
+    draw_line(r.position + Vector2(r.size.x * 0.50, r.size.y * 0.10), r.position + Vector2(r.size.x * 0.50, r.size.y * 0.92), Color("c1b690"), maxf(1.0, tile * 0.035))
+    draw_line(r.position + Vector2(r.size.x * 0.04, r.size.y * 0.92), r.position + Vector2(r.size.x * 0.96, r.size.y * 0.92), Color("95876b"), maxf(1.0, tile * 0.04))
+
+func _draw_storage(origin: Vector2, tile: float) -> void:
+    var cell := building_cell("Storage Crate")
+    Tiles.draw_prop(self, _cell_rect(cell, origin, tile).grow(-tile * 0.06), "crate")
+    Tiles.draw_prop(self, Rect2(_cell_rect(cell, origin, tile).position + Vector2(tile * 0.48, tile * 0.44), Vector2(tile * 0.42, tile * 0.42)), "crate")
+
+func _draw_workbench(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Workbench"), origin, tile).grow(-tile * 0.05)
+    Tiles.draw_prop(self, r, "counter")
+    var top_y := r.position.y + r.size.y * 0.30
+    draw_line(Vector2(r.position.x + r.size.x * 0.20, top_y), Vector2(r.position.x + r.size.x * 0.80, top_y), Color("bf9a62"), maxf(1.0, tile * 0.05))
+    draw_line(r.position + Vector2(r.size.x * 0.64, r.size.y * 0.20), r.position + Vector2(r.size.x * 0.78, r.size.y * 0.42), Color("9fa7a1"), maxf(1.0, tile * 0.04))
+    draw_circle(r.position + Vector2(r.size.x * 0.36, r.size.y * 0.28), tile * 0.055, Color("7d8888"))
+
+func _draw_sewing_table(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Sewing Table"), origin, tile).grow(-tile * 0.05)
+    Tiles.draw_prop(self, r, "table")
+    var machine := Rect2(r.position + Vector2(r.size.x * 0.48, r.size.y * 0.22), Vector2(r.size.x * 0.30, r.size.y * 0.28))
+    draw_rect(machine, Color("a6aaa1"))
+    draw_circle(r.position + Vector2(r.size.x * 0.28, r.size.y * 0.32), tile * 0.10, Color("c4a3c7"))
+    draw_line(r.position + Vector2(r.size.x * 0.24, r.size.y * 0.33), r.position + Vector2(r.size.x * 0.62, r.size.y * 0.35), Color("dfd3df"), maxf(1.0, tile * 0.025))
+
+func _draw_garden(origin: Vector2, tile: float) -> void:
+    var garden_rect := _cell_rect(building_cell("Garden Plot"), origin, tile).grow(-tile * 0.04)
+    draw_rect(garden_rect, Color("49331f"))
+    for row in range(3):
+        var py := garden_rect.position.y + garden_rect.size.y * (0.24 + float(row) * 0.25)
+        draw_line(Vector2(garden_rect.position.x + tile * 0.06, py), Vector2(garden_rect.end.x - tile * 0.06, py), Color("6a4a2b"), maxf(1.0, tile * 0.04))
+        for col in range(3):
+            var px := garden_rect.position.x + garden_rect.size.x * (0.22 + float(col) * 0.28)
+            draw_line(Vector2(px, py + tile * 0.05), Vector2(px, py - tile * 0.07), Color("668f52"), maxf(1.0, tile * 0.035))
+            draw_circle(Vector2(px - tile * 0.04, py - tile * 0.06), tile * 0.035, Color("79a660"))
+            draw_circle(Vector2(px + tile * 0.04, py - tile * 0.06), tile * 0.035, Color("79a660"))
 
 func _draw_noise_line(origin: Vector2, tile: float) -> void:
     var color := Color("8e826d")
     for x in range(4, 12):
         var p := _cell_center(Vector2i(x, 1), origin, tile)
-        draw_line(p + Vector2(-tile * 0.45, 0), p + Vector2(tile * 0.45, 0), color, 1.0)
-        draw_line(p + Vector2(0, -tile * 0.24), p + Vector2(0, tile * 0.24), Color("594f42"), 1.4)
+        draw_line(p + Vector2(-tile * 0.45, 0), p + Vector2(tile * 0.45, 0), color, maxf(1.0, tile * 0.03))
+        draw_line(p + Vector2(0, -tile * 0.24), p + Vector2(0, tile * 0.24), Color("594f42"), maxf(1.0, tile * 0.045))
+        if x % 2 == 0:
+            draw_circle(p + Vector2(tile * 0.18, tile * 0.05), tile * 0.055, Color("9c8d6f"))
 
 func _draw_cabin(origin: Vector2, tile: float) -> void:
     for y in range(4, 7):
@@ -316,6 +420,93 @@ func _draw_cabin(origin: Vector2, tile: float) -> void:
     Tiles.draw_wall(self, _cell_rect(Vector2i(13, 6), origin, tile), "house")
     Tiles.draw_door(self, _cell_rect(Vector2i(12, 6), origin, tile), true)
     Tiles.draw_window(self, _cell_rect(Vector2i(12, 4), origin, tile))
+    var roof_y := _cell_rect(Vector2i(11, 4), origin, tile).position.y + tile * 0.10
+    draw_line(Vector2(_cell_rect(Vector2i(11, 4), origin, tile).position.x, roof_y), Vector2(_cell_rect(Vector2i(14, 4), origin, tile).position.x, roof_y), Color("6b4937"), maxf(2.0, tile * 0.08))
+
+func _draw_water_tank(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Water Tank"), origin, tile).grow(-tile * 0.05)
+    Tiles.draw_barrel(self, Rect2(r.position + Vector2(r.size.x * 0.18, 0), r.size * 0.68))
+    draw_line(r.position + Vector2(r.size.x * 0.25, r.size.y * 0.66), r.position + Vector2(r.size.x * 0.16, r.size.y), Color("726c5c"), maxf(1.0, tile * 0.05))
+    draw_line(r.position + Vector2(r.size.x * 0.70, r.size.y * 0.66), r.position + Vector2(r.size.x * 0.80, r.size.y), Color("726c5c"), maxf(1.0, tile * 0.05))
+    draw_circle(r.position + Vector2(r.size.x * 0.53, r.size.y * 0.34), tile * 0.27, Color(0.42, 0.70, 0.86, 0.42), false, maxf(1.0, tile * 0.035))
+
+func _draw_communal_table(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Communal Table"), origin, tile).grow(-tile * 0.05)
+    Tiles.draw_prop(self, r, "table")
+    draw_line(r.position + Vector2(r.size.x * 0.18, r.size.y * 0.30), r.position + Vector2(r.size.x * 0.82, r.size.y * 0.30), Color("9c7149"), maxf(1.0, tile * 0.045))
+
+func _draw_infirmary(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Infirmary"), origin, tile).grow(-tile * 0.04)
+    draw_rect(r, Color(0.25, 0.34, 0.33, 0.88))
+    Tiles.draw_prop(self, Rect2(r.position + Vector2(r.size.x * 0.06, r.size.y * 0.22), r.size * 0.78), "bed")
+    var c := r.position + Vector2(r.size.x * 0.76, r.size.y * 0.25)
+    draw_rect(Rect2(c - Vector2(tile * 0.13, tile * 0.05), Vector2(tile * 0.26, tile * 0.10)), Color("d6e6df"))
+    draw_rect(Rect2(c - Vector2(tile * 0.05, tile * 0.13), Vector2(tile * 0.10, tile * 0.26)), Color("d6e6df"))
+    draw_line(r.position + Vector2(0, r.size.y * 0.08), r.position + Vector2(r.size.x, r.size.y * 0.08), Color("9fc1ba"), maxf(1.0, tile * 0.04))
+
+func _draw_watch_post(origin: Vector2, tile: float) -> void:
+    var c := _cell_center(building_cell("Watch Post"), origin, tile)
+    var platform := Rect2(c - Vector2(tile * 0.34, tile * 0.30), Vector2(tile * 0.68, tile * 0.30))
+    draw_rect(platform, Color("4d5147"))
+    draw_rect(platform, Color("a59674"), false, maxf(1.0, tile * 0.04))
+    draw_line(c + Vector2(-tile * 0.26, 0), c + Vector2(-tile * 0.38, tile * 0.48), Color("897e65"), maxf(1.0, tile * 0.06))
+    draw_line(c + Vector2(tile * 0.26, 0), c + Vector2(tile * 0.38, tile * 0.48), Color("897e65"), maxf(1.0, tile * 0.06))
+    draw_line(c + Vector2(0, -tile * 0.30), c + Vector2(0, -tile * 0.48), Color("9f9478"), maxf(1.0, tile * 0.04))
+
+func _draw_bunkhouse(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Bunkhouse"), origin, tile).grow(-tile * 0.03)
+    draw_rect(r, Color("56594f"))
+    draw_colored_polygon(PackedVector2Array([
+        r.position + Vector2(-tile * 0.05, r.size.y * 0.28),
+        r.position + Vector2(r.size.x * 0.50, -tile * 0.08),
+        r.position + Vector2(r.size.x + tile * 0.05, r.size.y * 0.28),
+    ]), Color("70644f"))
+    draw_rect(Rect2(r.position + Vector2(r.size.x * 0.18, r.size.y * 0.52), Vector2(r.size.x * 0.20, r.size.y * 0.32)), Color("2c342f"))
+    draw_rect(Rect2(r.position + Vector2(r.size.x * 0.58, r.size.y * 0.52), Vector2(r.size.x * 0.20, r.size.y * 0.32)), Color("2c342f"))
+
+func _draw_armory(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Armory"), origin, tile).grow(-tile * 0.04)
+    draw_rect(r, Color("3c423d"))
+    Tiles.draw_prop(self, Rect2(r.position + Vector2(r.size.x * 0.12, r.size.y * 0.30), r.size * 0.58), "crate")
+    draw_rect(r, Color(0.62, 0.24, 0.18, 0.85), false, maxf(1.0, tile * 0.055))
+    draw_line(r.position + Vector2(r.size.x * 0.64, r.size.y * 0.20), r.position + Vector2(r.size.x * 0.78, r.size.y * 0.76), Color("a5aaa2"), maxf(1.0, tile * 0.035))
+    draw_line(r.position + Vector2(r.size.x * 0.74, r.size.y * 0.20), r.position + Vector2(r.size.x * 0.88, r.size.y * 0.76), Color("a5aaa2"), maxf(1.0, tile * 0.035))
+
+func _draw_dormitory(origin: Vector2, tile: float) -> void:
+    var r := _cell_rect(building_cell("Dormitory"), origin, tile).grow(-tile * 0.02)
+    draw_rect(r, Color("4d5a55"))
+    draw_colored_polygon(PackedVector2Array([
+        r.position + Vector2(-tile * 0.04, r.size.y * 0.26),
+        r.position + Vector2(r.size.x * 0.50, -tile * 0.08),
+        r.position + Vector2(r.size.x + tile * 0.04, r.size.y * 0.26),
+    ]), Color("667064"))
+    Tiles.draw_window(self, Rect2(r.position + Vector2(r.size.x * 0.12, r.size.y * 0.36), r.size * 0.30))
+    Tiles.draw_window(self, Rect2(r.position + Vector2(r.size.x * 0.58, r.size.y * 0.36), r.size * 0.26))
+
+func _draw_fire(origin: Vector2, tile: float) -> void:
+    var center := _cell_center(FIRE_CELL, origin, tile)
+    var fire_scale := clampf(float(Game.fire_level) / 100.0, 0.08, 1.0)
+    for i in range(10):
+        var angle := TAU * float(i) / 10.0
+        var stone := center + Vector2(cos(angle), sin(angle)) * tile * 0.31
+        draw_circle(stone, tile * 0.075, Color("6b6357"))
+        draw_circle(stone, tile * 0.055, Color("8b8172"))
+    draw_line(center + Vector2(-tile * 0.21, tile * 0.13), center + Vector2(tile * 0.21, -tile * 0.13), Color("704b2d"), maxf(2.0, tile * 0.085))
+    draw_line(center + Vector2(-tile * 0.21, -tile * 0.13), center + Vector2(tile * 0.21, tile * 0.13), Color("704b2d"), maxf(2.0, tile * 0.085))
+    var flicker := 0.90 + 0.10 * sin(float(Time.get_ticks_msec()) * 0.014)
+    var flame_h := tile * (0.22 + 0.30 * fire_scale) * flicker
+    draw_colored_polygon(PackedVector2Array([
+        center + Vector2(-tile * 0.18 * fire_scale, tile * 0.14),
+        center + Vector2(0, -flame_h),
+        center + Vector2(tile * 0.18 * fire_scale, tile * 0.14),
+    ]), Color(1.0, 0.28, 0.07, 0.72 + 0.24 * fire_scale))
+    draw_colored_polygon(PackedVector2Array([
+        center + Vector2(-tile * 0.09 * fire_scale, tile * 0.10),
+        center + Vector2(tile * 0.02, -flame_h * 0.62),
+        center + Vector2(tile * 0.09 * fire_scale, tile * 0.10),
+    ]), Color(1.0, 0.78, 0.20, 0.86))
+    draw_circle(center + Vector2(-tile * 0.12, tile * 0.10), tile * 0.035, Color("ffb42e"))
+    draw_circle(center + Vector2(tile * 0.13, tile * 0.08), tile * 0.028, Color("e86a26"))
 
 func _draw_construction(origin: Vector2, tile: float) -> void:
     for survivor_value in Game.survivors:
@@ -328,11 +519,14 @@ func _draw_construction(origin: Vector2, tile: float) -> void:
             continue
         var cell := building_cell(building)
         var r := _cell_rect(cell, origin, tile).grow(-tile * 0.08)
-        draw_rect(r, Color(0.84, 0.72, 0.42, 0.24))
-        draw_rect(r, Color(0.90, 0.78, 0.48, 0.82), false, 1.5)
+        draw_rect(r, Color(0.84, 0.72, 0.42, 0.20))
+        draw_rect(r, Color(0.90, 0.78, 0.48, 0.88), false, maxf(1.0, tile * 0.045))
+        draw_line(r.position, r.end, Color(0.90, 0.78, 0.48, 0.56), maxf(1.0, tile * 0.03))
+        draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), Color(0.90, 0.78, 0.48, 0.56), maxf(1.0, tile * 0.03))
         var duration: float = maxf(0.01, float(task.get("duration", 1.0)))
         var remaining: float = clampf(float(task.get("remaining", duration)), 0.0, duration)
         var progress: float = 1.0 - remaining / duration
+        draw_rect(Rect2(r.position + Vector2(0, r.size.y - 3.0), Vector2(r.size.x, 3.0)), Color(0.05, 0.06, 0.05, 0.80))
         draw_rect(Rect2(r.position + Vector2(0, r.size.y - 3.0), Vector2(r.size.x * progress, 3.0)), Color("d6bd63"))
 
 func _camp_hour() -> float:
@@ -349,40 +543,58 @@ func _day_phase() -> String:
 func _night_alpha() -> float:
     var hour := _camp_hour()
     if hour >= 20.0 or hour < 5.0:
-        return 0.64
+        return 0.66
     if hour >= 18.0:
-        return lerpf(0.0, 0.64, (hour - 18.0) / 2.0)
+        return lerpf(0.0, 0.66, (hour - 18.0) / 2.0)
     if hour < 7.0:
-        return lerpf(0.64, 0.0, (hour - 5.0) / 2.0)
+        return lerpf(0.66, 0.0, (hour - 5.0) / 2.0)
     return 0.0
 
 func _draw_night(origin: Vector2, tile: float) -> void:
     var hour := _camp_hour()
     var map_rect := Rect2(origin, Vector2(tile * float(GRID_W), tile * float(GRID_H)))
     if hour >= 17.0 and hour < 20.0:
-        var dusk_alpha := 0.10 * clampf((hour - 17.0) / 3.0, 0.0, 1.0)
-        draw_rect(map_rect, Color(0.34, 0.12, 0.05, dusk_alpha))
+        var dusk_alpha := 0.16 * clampf((hour - 17.0) / 3.0, 0.0, 1.0)
+        draw_rect(map_rect, Color(0.42, 0.15, 0.05, dusk_alpha))
     elif hour >= 5.0 and hour < 7.0:
-        var dawn_alpha := 0.08 * clampf((7.0 - hour) / 2.0, 0.0, 1.0)
-        draw_rect(map_rect, Color(0.10, 0.18, 0.30, dawn_alpha))
+        var dawn_alpha := 0.12 * clampf((7.0 - hour) / 2.0, 0.0, 1.0)
+        draw_rect(map_rect, Color(0.10, 0.18, 0.34, dawn_alpha))
     var alpha := _night_alpha()
     if alpha <= 0.001:
         return
-    draw_rect(map_rect, Color(0.015, 0.035, 0.085, alpha))
+    draw_rect(map_rect, Color(0.010, 0.025, 0.070, alpha))
     var fire_center := _cell_center(FIRE_CELL, origin, tile)
     var fire_strength := clampf(float(Game.fire_level) / 100.0, 0.0, 1.0)
-    draw_circle(fire_center, tile * (0.8 + 1.45 * fire_strength), Color(1.0, 0.36, 0.10, 0.055 * fire_strength))
-    draw_circle(fire_center, tile * (0.6 + 0.95 * fire_strength), Color(1.0, 0.48, 0.12, 0.085 * fire_strength))
-    draw_circle(fire_center, tile * (0.4 + 0.50 * fire_strength), Color(1.0, 0.68, 0.20, 0.14 * fire_strength))
+    var flicker := 0.92 + 0.08 * sin(float(Time.get_ticks_msec()) * 0.012)
+    draw_circle(fire_center, tile * (1.1 + 1.75 * fire_strength) * flicker, Color(1.0, 0.30, 0.08, 0.050 * fire_strength))
+    draw_circle(fire_center, tile * (0.75 + 1.20 * fire_strength) * flicker, Color(1.0, 0.46, 0.10, 0.090 * fire_strength))
+    draw_circle(fire_center, tile * (0.45 + 0.65 * fire_strength), Color(1.0, 0.70, 0.22, 0.17 * fire_strength))
     if bool(Game.buildings.get("Cabin", false)):
-        var cabin_center := _cell_center(Vector2i(12, 5), origin, tile)
-        draw_circle(cabin_center, tile * 1.7, Color(1.0, 0.72, 0.34, 0.075))
+        var window_rect := _cell_rect(Vector2i(12, 4), origin, tile).grow(-tile * 0.24)
+        draw_rect(window_rect, Color(1.0, 0.69, 0.30, 0.34))
+        draw_circle(window_rect.get_center(), tile * 1.80, Color(1.0, 0.66, 0.28, 0.07))
     if bool(Game.buildings.get("Infirmary", false)):
         var infirmary_center := _cell_center(building_cell("Infirmary"), origin, tile)
-        draw_circle(infirmary_center, tile * 1.20, Color(0.58, 0.82, 0.90, 0.065))
+        draw_circle(infirmary_center, tile * 1.25, Color(0.58, 0.82, 0.90, 0.07))
     if bool(Game.buildings.get("Watch Post", false)):
         var watch_center := _cell_center(building_cell("Watch Post"), origin, tile)
-        draw_circle(watch_center, tile * 0.80, Color(0.78, 0.86, 0.72, 0.055))
+        draw_circle(watch_center, tile * 0.92, Color(0.78, 0.86, 0.72, 0.065))
+
+func _draw_ambient_life(origin: Vector2, tile: float) -> void:
+    var fire_strength := clampf(float(Game.fire_level) / 100.0, 0.0, 1.0)
+    if fire_strength <= 0.03:
+        return
+    var center := _cell_center(FIRE_CELL, origin, tile)
+    var t := float(Time.get_ticks_msec()) * 0.001
+    for i in range(3):
+        var phase := fmod(t * (0.34 + float(i) * 0.06) + float(i) * 0.31, 1.0)
+        var smoke_pos := center + Vector2(sin(t * 1.4 + float(i)) * tile * 0.10, -tile * (0.45 + phase * 0.95))
+        var smoke_color := Color(0.54, 0.55, 0.50, (0.10 - phase * 0.07) * fire_strength)
+        draw_circle(smoke_pos, tile * (0.10 + phase * 0.12), smoke_color)
+    for i in range(2):
+        var spark_phase := fmod(t * (0.75 + float(i) * 0.12) + float(i) * 0.48, 1.0)
+        var spark := center + Vector2((float(i) * 2.0 - 1.0) * tile * (0.10 + spark_phase * 0.16), -tile * (0.20 + spark_phase * 0.62))
+        draw_circle(spark, maxf(1.0, tile * 0.026), Color(1.0, 0.55, 0.12, (1.0 - spark_phase) * 0.78 * fire_strength))
 
 func _draw_survivors(origin: Vector2, tile: float) -> void:
     var font: Font = get_theme_default_font()
@@ -395,6 +607,9 @@ func _draw_survivors(origin: Vector2, tile: float) -> void:
             continue
         var pos: Vector2 = actor_positions[sid]
         var center := _grid_center(pos, origin, tile)
+        draw_set_transform(center + Vector2(tile * 0.03, tile * 0.27), 0.0, Vector2(1.0, 0.34))
+        draw_circle(Vector2.ZERO, tile * 0.25, Color(0.01, 0.02, 0.015, 0.34))
+        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
         _draw_activity_graphic(survivor, center, tile)
         var equipment: Dictionary = survivor.get("equipment", {})
         var status := str(survivor.get("status", "Available"))
@@ -413,11 +628,11 @@ func _draw_survivors(origin: Vector2, tile: float) -> void:
         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
         var first_name := str(survivor.get("name", "Survivor")).get_slice(" ", 0)
         var font_size: int = maxi(8, int(tile * 0.34))
-        draw_string(font, center + Vector2(-tile * 0.52, -tile * 0.48), first_name, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, font_size, Color(0.96, 0.97, 0.92, 0.96))
+        draw_string(font, center + Vector2(-tile * 0.52, -tile * 0.50), first_name, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, font_size, Color(0.97, 0.97, 0.91, 0.98))
         _draw_need_pips(survivor, center, tile)
         var activity := _activity_short(survivor)
         if activity != "":
-            draw_string(font, center + Vector2(-tile * 0.52, tile * 0.70), activity, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, maxi(7, font_size - 2), Color(0.87, 0.78, 0.49, 0.95))
+            draw_string(font, center + Vector2(-tile * 0.52, tile * 0.70), activity, HORIZONTAL_ALIGNMENT_CENTER, tile * 1.04, maxi(7, font_size - 2), Color(0.91, 0.80, 0.48, 0.96))
 
 func _draw_activity_graphic(survivor: Dictionary, center: Vector2, tile: float) -> void:
     var activity: Dictionary = survivor.get("camp_activity", {})
