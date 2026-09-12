@@ -51,15 +51,23 @@ jobs:
             const y=b.y+(gy/844)*b.height;
             console.log('CLICK', gx, gy, '=>', x, y);
             await page.mouse.click(x,y);
-            await page.waitForTimeout(1800);
+            await page.waitForTimeout(1600);
           }
-          await shot('01_loaded');
-          await clickGame(195,354); // NEW GAME predicted center
-          await shot('02_after_new_game');
-          await clickGame(93,524); // tutorial SKIP predicted center
-          await shot('03_after_skip');
+          async function mouseGame(gx,gy){
+            const b=await canvas.boundingBox();
+            await page.mouse.move(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height);
+          }
+          await clickGame(195,354); // NEW GAME
+          await clickGame(93,524); // tutorial SKIP
           await clickGame(343,810); // SURVIVORS nav
-          await shot('04_survivors');
+          await shot('01_survivors_top');
+          await mouseGame(195,650);
+          await page.mouse.wheel(0,520);
+          await page.waitForTimeout(1600);
+          await shot('02_survivors_scrolled_520');
+          await page.mouse.wheel(0,520);
+          await page.waitForTimeout(1600);
+          await shot('03_survivors_scrolled_1040');
           fs.writeFileSync('qa/console.txt', consoleLines.join('\n'));
           await browser.close();
           EOF
