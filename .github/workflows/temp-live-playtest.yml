@@ -1,98 +1,121 @@
-name: Temporary live Chromium playtest
+name: Temporary tactical control patch
 
 on:
   push:
     branches: [main]
     paths:
       - .github/workflows/temp-live-playtest.yml
-  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  playtest:
+  patch:
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install Playwright Chromium
+      - uses: actions/checkout@v4
+      - name: Patch tactical controls
         shell: bash
         run: |
-          npm init -y >/dev/null 2>&1
-          npm install playwright@1.55.0 pngjs@7.0.0 >/dev/null
-          npx playwright install --with-deps chromium >/dev/null
+          python - <<'PY'
+          from pathlib import Path
 
-      - name: Drive live First Fire canvas at night
-        shell: bash
-        run: |
-          cat > playtest.mjs <<'EOF'
-          import { chromium } from 'playwright';
-          import { PNG } from 'pngjs';
-          import fs from 'fs';
-          fs.mkdirSync('qa', { recursive: true });
-          const browser = await chromium.launch({headless:true});
-          const page = await browser.newPage({ viewport: { width:390, height:844 }, deviceScaleFactor:1 });
-          const consoleLines=[];
-          page.on('console', m => consoleLines.push(`console:${m.type()}:${m.text()}`));
-          page.on('pageerror', e => consoleLines.push(`pageerror:${e.message}`));
-          await page.goto('https://dmcexcess-lab.github.io/first-fire/', {waitUntil:'load', timeout:120000});
-          await page.waitForTimeout(9000);
-          const canvas=page.locator('canvas').first();
-          if (!(await canvas.boundingBox())) throw new Error('Godot canvas not found');
-          async function shot(name){ await page.screenshot({path:`qa/${name}.png`,fullPage:true}); }
-          async function clickGame(gx,gy,wait=500){ const b=await canvas.boundingBox(); await page.mouse.click(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height); await page.waitForTimeout(wait); }
-          async function mouseGame(gx,gy){ const b=await canvas.boundingBox(); await page.mouse.move(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height); }
-          async function tacticalState(){
-            const png=PNG.sync.read(await canvas.screenshot());
-            const x=10, y=649, idx=(y*png.width+x)*4;
-            const rgb=[png.data[idx],png.data[idx+1],png.data[idx+2]];
-            console.log('TACTICAL_SAMPLE',rgb.join(','));
-            return rgb[0]>45 && rgb[1]>45 && rgb[2]>45;
-          }
-          async function dispatch(){
-            await clickGame(343,810,600);
-            await mouseGame(195,650); await page.mouse.wheel(0,540); await page.waitForTimeout(700);
-            await clickGame(280,749,600); await clickGame(195,465,600); await page.waitForTimeout(15000);
-          }
-          await clickGame(195,354,900); // NEW GAME
-          await clickGame(93,524,600); // SKIP
-          await shot('01_camp_morning');
-          // 60 real active seconds = 12 in-game hours, moving the 08:00 start to evening.
-          await page.waitForTimeout(60000);
-          await shot('02_camp_evening');
-          await dispatch();
-          await shot('03_after_dispatch_1');
-          let tactical=await tacticalState();
-          console.log('TACTICAL_AFTER_1',tactical);
-          if(!tactical){
-            await dispatch();
-            await shot('04_after_dispatch_2');
-            tactical=await tacticalState();
-            console.log('TACTICAL_AFTER_2',tactical);
-          }
-          if(!tactical) throw new Error('No tactical encounter reached after two evening perimeter runs');
-          await shot('05_night_tactical_light_on');
-          await clickGame(197,721,650); // LIGHT OFF
-          await shot('06_night_tactical_light_off');
-          await clickGame(76,809,500); // STEALTH
-          for(let i=0;i<28;i++) await clickGame(314,739,85); // advance time, listen for fuzzy sounds
-          await page.waitForTimeout(500);
-          await shot('07_night_sound_check');
-          await clickGame(197,721,650); // LIGHT ON
-          await shot('08_night_tactical_light_restored');
-          fs.writeFileSync('qa/console.txt',consoleLines.join('\n'));
-          await browser.close();
-          EOF
-          node playtest.mjs
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"missing expected text in {path}: {old[:120]!r}")
+              text = text.replace(old, new, 1)
+              p.write_text(text)
 
-      - name: Upload QA evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chromium-playtest
-          path: qa
-          retention-days: 1
+          combat = Path('game/scripts/FFCombatThreeStat.gd')
+          text = combat.read_text()
+          text = text.replace(
+              'var btn_sprint := Rect2(148, 788, 98, 42)\n',
+              'var btn_sprint := Rect2(148, 788, 98, 42)\nvar btn_forward_primary := Rect2(148, 654, 98, 42)\n',
+              1,
+          )
+          text = text.replace(
+              'func restore_runtime():\n    super.restore_runtime()\n    if not player.is_empty(): player["sprinting"] = bool(runtime.get("sprinting", false))\n\nfunc persist_runtime():\n    super.persist_runtime()\n    if not player.is_empty():\n        runtime["sprinting"] = bool(player.get("sprinting", false))\n        Game.update_combat_runtime(runtime)\n',
+              'func restore_runtime():\n    super.restore_runtime()\n    if not player.is_empty():\n        player["guarding"] = false\n        player["sprinting"] = bool(runtime.get("sprinting", false))\n    runtime.erase("guarding")\n\nfunc persist_runtime():\n    if not player.is_empty(): player["guarding"] = false\n    super.persist_runtime()\n    runtime.erase("guarding")\n    if not player.is_empty():\n        runtime["sprinting"] = bool(player.get("sprinting", false))\n        Game.update_combat_runtime(runtime)\n',
+              1,
+          )
+          text = text.replace('            KEY_G: guard()\n', '', 1)
+          text = text.replace('    if btn_forward.has_point(pos): step_forward(); return\n', '    if btn_forward_primary.has_point(pos): step_forward(); return\n', 1)
+          text = text.replace('    if btn_guard.has_point(pos): guard(); return\n', '', 1)
+          text = text.replace('    player["guarding"] = false\n    player["sprinting"] = false\n    player.crouched', '    player["sprinting"] = false\n    player.crouched', 1)
+          text = text.replace('    player["guarding"] = false\n    player.crouched = false\n', '    player.crouched = false\n', 1)
+          text = text.replace('    player["guarding"] = false\n    player.pos = dest\n', '    player.pos = dest\n', 1)
+          text = text.replace('    player["guarding"] = false; player["sprinting"] = false; player.facing = dominant(target - player.pos)\n', '    player["sprinting"] = false; player.facing = dominant(target - player.pos)\n', 1)
+          text = text.replace('    player["guarding"] = false; player["sprinting"] = false; player.facing = dominant(z.pos - player.pos)\n', '    player["sprinting"] = false; player.facing = dominant(z.pos - player.pos)\n', 1)
+          text = text.replace(
+              'func guard():\n    player["sprinting"] = false\n    super.guard()\n\nfunc shove():\n    player["sprinting"] = false\n    # Base shove explicitly clears guarding before resolution. Shoving always\n    # sacrifices the defensive state even when the shove misses.\n    super.shove()\n\nfunc zombie_attack(i: int, target_actor: Dictionary):\n    var guarded := bool(target_actor.get("guarding", false))\n    var hit: float = BalanceThree.zombie_hit_chance(target_actor)\n    if target_actor.controlled and guarded: target_actor["guarding"] = false\n    if rng.randf() <= hit:\n        var damage_range: Vector2i = BalanceThree.zombie_damage_range(str(zombies[i].get("mass", "MED")))\n        var dmg := rng.randi_range(damage_range.x, damage_range.y)\n        if guarded: dmg = maxi(1, dmg - 1)\n        # No armor layer: clothing never reduces or cancels physical damage.\n        target_actor.hp -= dmg\n        _flash_hit(target_actor.pos, int(target_actor.hp) <= 0)\n        if target_actor.controlled:\n            stats.damage += dmg\n            msg = "The infected breaks through your guard for %d." % dmg if guarded else "The infected hits you for %d." % dmg\n        else: msg = "%s gets hit." % target_actor.name\n        if target_actor.hp <= 0: target_actor.hp = 0; target_actor.dead = true\n    elif target_actor.controlled:\n        msg = "You deflect the grab." if guarded else ("You outrun the grab." if bool(target_actor.get("sprinting", false)) else "You avoid the grab.")\n    zombies[i].next = tick + TimeThree.zombie_attack_cost(zombies[i])\n',
+              'func shove():\n    player["sprinting"] = false\n    super.shove()\n\nfunc zombie_attack(i: int, target_actor: Dictionary):\n    var hit: float = BalanceThree.zombie_hit_chance(target_actor)\n    if rng.randf() <= hit:\n        var damage_range: Vector2i = BalanceThree.zombie_damage_range(str(zombies[i].get("mass", "MED")))\n        var dmg := rng.randi_range(damage_range.x, damage_range.y)\n        # No armor layer: clothing never reduces or cancels physical damage.\n        target_actor.hp -= dmg\n        _flash_hit(target_actor.pos, int(target_actor.hp) <= 0)\n        if target_actor.controlled:\n            stats.damage += dmg\n            msg = "The infected hits you for %d." % dmg\n        else: msg = "%s gets hit." % target_actor.name\n        if target_actor.hp <= 0: target_actor.hp = 0; target_actor.dead = true\n    elif target_actor.controlled:\n        msg = "You outrun the grab." if bool(target_actor.get("sprinting", false)) else "You avoid the grab."\n    zombies[i].next = tick + TimeThree.zombie_attack_cost(zombies[i])\n',
+              1,
+          )
+          text = text.replace(
+              '    draw_button(btn_turn_left,"TURN L",false,17); draw_button(btn_crouch,"STEALTH",bool(player.crouched),10); draw_button(btn_forward,"FORWARD",false,11)\n    draw_button(btn_turn_right,"TURN R",false,17); draw_button(btn_back,"BACK",false,11); draw_button(btn_guard,"GUARD",bool(player.get("guarding", false)),10)\n',
+              '    draw_button(btn_turn_left,"TURN L",false,17); draw_button(btn_crouch,"STEALTH",bool(player.crouched),10); draw_button(btn_forward_primary,"FORWARD",false,11)\n    draw_button(btn_turn_right,"TURN R",false,17); draw_button(btn_back,"BACK",false,11)\n',
+              1,
+          )
+          text = text.replace('    draw_string(font,Vector2(258,821),"T %d  STEP %d  K %d"%[tick,step_cost,int(stats.kills)],HORIZONTAL_ALIGNMENT_CENTER,124,8,Color(.62,.68,.64))\n', '    draw_string(font,Vector2(258,678),"T %d  STEP %d  K %d"%[tick,step_cost,int(stats.kills)],HORIZONTAL_ALIGNMENT_CENTER,124,8,Color(.62,.68,.64))\n', 1)
+          required = [
+              'var btn_forward_primary := Rect2(148, 654, 98, 42)',
+              'if btn_forward_primary.has_point(pos): step_forward()',
+              'draw_button(btn_forward_primary,"FORWARD"',
+          ]
+          for marker in required:
+              if marker not in text:
+                  raise SystemExit(f'missing combat marker: {marker}')
+          if 'KEY_G: guard()' in text or 'func guard():' in text or 'draw_button(btn_guard,"GUARD"' in text:
+              raise SystemExit('active Guard surface still present')
+          combat.write_text(text)
+
+          balance = Path('game/scripts/FFTacticalBalance.gd')
+          text = balance.read_text()
+          old = '''static func guard_bonus(actor: Dictionary) -> float:\n    var combat := int(actor.get("skills", {}).get("Combat", 0))\n    var agility := int(actor.get("skills", {}).get("Agility", 0))\n    return clampf(0.17 + float(combat) * 0.008 + float(agility) * 0.006, 0.17, 0.30)\n\n'''
+          if old not in text: raise SystemExit('guard bonus block missing')
+          text = text.replace(old, '', 1)
+          text = text.replace('    if bool(actor.get("guarding", false)):\n        chance -= guard_bonus(actor)\n', '', 1)
+          balance.write_text(text)
+
+          smoke = Path('game/scripts/ci/FFArchitectureSmoke.gd')
+          text = smoke.read_text()
+          text = text.replace('    var actor := {"skills": {"Combat": 3, "Agility": 4, "Leadership": 1}, "fatigue": 0.0, "guarding": false, "sprinting": false, "crouched": false}\n    var guarded := actor.duplicate(true); guarded["guarding"] = true\n    var sprinting := actor.duplicate(true); sprinting["sprinting"] = true\n    if not _check(TacticalBalance.zombie_hit_chance(guarded) < TacticalBalance.zombie_hit_chance(actor), "guard reduces grab chance"): return\n', '    var actor := {"skills": {"Combat": 3, "Agility": 4, "Leadership": 1}, "fatigue": 0.0, "sprinting": false, "crouched": false}\n    var sprinting := actor.duplicate(true); sprinting["sprinting"] = true\n', 1)
+          text = text.replace('    if not _check(combat_source.contains("super.shove()") and combat_source.contains("sacrifices the defensive state"), "shove drops guard"): return\n', '    if not _check(not combat_source.contains("func guard():") and not combat_source.contains("KEY_G: guard()"), "guard removed from active combat"): return\n    if not _check(combat_source.contains("btn_forward_primary") and combat_source.contains("draw_button(btn_forward_primary,\\"FORWARD\\""), "forward occupies former guard slot"): return\n    if not _check(combat_source.contains("func shove()") and combat_source.contains("super.shove()"), "shove remains active"): return\n', 1)
+          smoke.write_text(text)
+
+          context = Path('README_CONTEXT.md')
+          text = context.read_text()
+          text = text.replace('- **Guard** — spend time on defense to reduce the next infected grab threat.\n- **Shove** — spacing/stagger action; heavier infected resist it more, and attempting a shove always drops Guard before resolution.\n', '- **Forward** — dedicated touch movement action, now placed in the former Guard control slot for faster thumb access.\n- **Shove** — spacing/stagger action; heavier infected resist it more.\n', 1)
+          context.write_text(text)
+
+          architecture = Path('ARCHITECTURE.md')
+          text = architecture.read_text()
+          text = text.replace('- **Guard** — defensive stance reducing the next infected grab threat\n- **Shove** — spacing/stagger action that always sacrifices Guard before resolution\n', '- **Forward** — dedicated touch movement action occupying the former Guard slot\n- **Shove** — spacing/stagger action with mass-based resistance/stagger\n', 1)
+          text = text.replace('It owns infected counts/damage, search timing/noise, Guard, Shove resistance/stagger, and zombie hit chance.', 'It owns infected counts/damage, search timing/noise, Shove resistance/stagger, and zombie hit chance.', 1)
+          architecture.write_text(text)
+
+          pages = Path('.github/workflows/pages.yml')
+          text = pages.read_text()
+          text = text.replace("          grep -q 'func guard()' game/scripts/FFCombat.gd\n", "          grep -q 'func step_forward()' game/scripts/FFCombat.gd\n", 1)
+          anchor = "          grep -q 'func shove()' game/scripts/FFCombat.gd\n"
+          insert = anchor + "          grep -Fq 'var btn_forward_primary := Rect2(148, 654, 98, 42)' game/scripts/FFCombatThreeStat.gd\n          if grep -q 'KEY_G: guard()' game/scripts/FFCombatThreeStat.gd; then exit 1; fi\n          if grep -Fq 'draw_button(btn_guard,\"GUARD\"' game/scripts/FFCombatThreeStat.gd; then exit 1; fi\n          test ! -e .github/workflows/temp-live-playtest.yml\n"
+          if anchor not in text: raise SystemExit('pages combat anchor missing')
+          text = text.replace(anchor, insert, 1)
+          pages.write_text(text)
+
+          changelog = Path('CHANGELOG.md')
+          text = changelog.read_text()
+          entry = '''## Beta Candidate — Forward Control & Guard Removal — 2026-09-11\n\n- Removed Guard from the active tactical combat model and from infected hit/damage handling.\n- Moved the dedicated FORWARD touch action into Guard's former center-top control slot; the previous forward slot now carries the compact tactical tick/step/kill readout instead of overlapping BACK.\n- Shove remains the spacing/stagger action, with infected mass continuing to affect resistance and stagger.\n- Existing in-progress tactical runtime discards stale Guard state without changing save schema 7.\n\n'''
+          if not text.startswith('## Beta Candidate — Forward Control & Guard Removal'):
+              changelog.write_text(entry + text)
+          PY
+
+          git diff --check
+          git status --short
+          git config user.name "dmcexcess-lab"
+          git config user.email "dmcexcess@gmail.com"
+          git add game/scripts/FFCombatThreeStat.gd game/scripts/FFTacticalBalance.gd game/scripts/ci/FFArchitectureSmoke.gd README_CONTEXT.md ARCHITECTURE.md CHANGELOG.md .github/workflows/pages.yml
+          git commit -m "Remove tactical guard and center forward control"
+          git push origin HEAD:main
