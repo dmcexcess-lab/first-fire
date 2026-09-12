@@ -664,6 +664,8 @@ func _refresh_status():
     for s in Game.survivors:
         if ["Crafting", "Building", "Recovering", "Tending"].has(s["status"]) and not s["task"].is_empty():
             active.append("%s %s: %.0fs" % [s["name"], s["status"].to_lower(), float(s["task"].get("remaining", 0.0))])
+        elif ["Chore","Pet Care"].has(str(s["status"])) and not s["task"].is_empty():
+            active.append("%s %s %d/%d" % [s["name"],s["task"].get("label","work"),int(s["task"].get("progress",0)),int(s["task"].get("goal",1))])
     timer_label.text = (pause_text + ("  •  " + "  |  ".join(active) if not active.is_empty() else ""))
 
 func _refresh_content():
@@ -731,6 +733,8 @@ func _draw_camp():
     if not any_work:
         content_box.add_child(_make_label("No one remains.", 14))
 
+    _draw_camp_work_board()
+
     content_box.add_child(_separator())
     content_box.add_child(_heading("Leadership", 19))
     var leader: Variant = Game.get_survivor(Game.leader_id if Game.leader_id != -1 else Game.coordinator_id)
@@ -769,6 +773,36 @@ func _draw_camp():
     reset.custom_minimum_size = Vector2(0, 44)
     reset.pressed.connect(func(): reset_confirm.popup_centered())
     content_box.add_child(reset)
+
+func _draw_camp_work_board()->void:
+    content_box.add_child(_separator())
+    content_box.add_child(_heading("Camp Duties",19))
+    content_box.add_child(_make_label("Sleep, meals and downtime happen on their own. Productive camp work is yours to assign. Chores are hands-on: assign someone, then tap WORK to finish the job.",12))
+    content_box.add_child(_worker_picker())
+    for s in Game.survivors:
+        if ["Chore","Pet Care"].has(str(s.get("status",""))) and not s.get("task",{}).is_empty():
+            var task:Dictionary=s["task"]
+            var row=HBoxContainer.new(); row.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+            row.add_child(_make_label("%s — %s  %d/%d" % [s["name"],task.get("label","Work"),int(task.get("progress",0)),int(task.get("goal",1))],12))
+            var work=Button.new(); work.text="WORK"; work.custom_minimum_size=Vector2(92,44); work.pressed.connect(Game.perform_camp_task_tap.bind(int(s["id"]))); row.add_child(work); content_box.add_child(row)
+    var chores=GridContainer.new(); chores.columns=1; chores.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    for entry in [["STOKE FIRE","stoke_fire"],["CLEAN CAMP","clean_camp"],["REPAIR PERIMETER","repair_perimeter"]]:
+        var b=Button.new(); b.text=str(entry[0]); b.custom_minimum_size=Vector2(0,44); b.disabled=selected_worker_id<0; b.pressed.connect(Game.start_camp_chore.bind(selected_worker_id,str(entry[1]))); chores.add_child(b)
+    content_box.add_child(chores)
+    content_box.add_child(_make_label("Fire %.0f%%  •  Camp maintenance %.0f%%" % [Game.fire_level,Game.camp_maintenance],13))
+    content_box.add_child(_separator())
+    content_box.add_child(_heading("Pets",19))
+    if Game.pets.is_empty():
+        content_box.add_child(_make_label("No camp pets yet. Some tactical rescue calls may be a stranded dog or cat.",12)); return
+    for pet in Game.pets:
+        var panel=PanelContainer.new(); var v=VBoxContainer.new(); panel.add_child(v)
+        v.add_child(_make_label("%s — %s — %s" % [pet.get("name","Pet"),pet.get("species","Animal"),Game.pet_mood_label(pet)],16))
+        var n:Dictionary=Game.CampLifeRules.normalize_pet_needs(pet.get("needs",{}))
+        v.add_child(_make_label("Food %.0f  Water %.0f  Bond %.0f  Clean %.0f" % [n["hunger"],n["thirst"],n["affection"],n["cleanliness"]],12))
+        var buttons=GridContainer.new(); buttons.columns=2
+        for action in ["feed","water","play","groom"]:
+            var b=Button.new(); b.text=action.to_upper(); b.custom_minimum_size=Vector2(0,42); b.disabled=selected_worker_id<0; b.pressed.connect(Game.start_pet_care.bind(selected_worker_id,int(pet["id"]),action)); buttons.add_child(b)
+        v.add_child(buttons); content_box.add_child(panel)
 
 func _draw_craft():
     content_box.add_child(_heading("CRAFT", 26))

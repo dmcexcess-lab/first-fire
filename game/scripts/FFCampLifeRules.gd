@@ -13,6 +13,11 @@ const FIRE_DECAY_PER_SECOND := 0.24
 const FIRE_MAINTAIN_THRESHOLD := 36.0
 const FIRE_MAINTAIN_GAIN := 58.0
 const FIRE_MAINTAIN_SECONDS := 5.0
+const CAMP_MAINTENANCE_START := 82.0
+const CAMP_MAINTENANCE_DECAY_PER_SECOND := 0.035
+const MAX_PETS := 3
+const PET_NEED_KEYS := ["hunger", "thirst", "affection", "cleanliness"]
+const PET_NAMES := ["Mochi", "Scout", "Beans", "Pepper", "Lucky", "Ash", "Noodle", "Patch", "Sunny", "Rook"]
 const NEED_KEYS := ["hunger", "thirst", "sleep", "fun", "safety", "hygiene"]
 
 static func default_needs() -> Dictionary:
@@ -40,7 +45,7 @@ static func apply_daily_rations(needs:Dictionary,fed:bool,watered:bool)->Diction
     n["thirst"]=clampf(float(n["thirst"])+(52.0 if watered else -32.0),0.0,100.0)
     return n
 
-static func safety_target(buildings:Dictionary,population_count:int,shelter_capacity_value:int,fire_level:float,away:bool)->float:
+static func safety_target(buildings:Dictionary,population_count:int,shelter_capacity_value:int,fire_level:float,away:bool,camp_maintenance:float=100.0)->float:
     if away: return 24.0
     var v:=48.0
     if bool(buildings.get("Noise Line",false)): v+=11.0
@@ -50,6 +55,9 @@ static func safety_target(buildings:Dictionary,population_count:int,shelter_capa
     if fire_level>=55.0: v+=8.0
     elif fire_level<=18.0: v-=10.0
     if population_count>shelter_capacity_value: v-=float(population_count-shelter_capacity_value)*8.0
+    if camp_maintenance < 30.0: v -= 12.0
+    elif camp_maintenance < 55.0: v -= 5.0
+    elif camp_maintenance >= 85.0: v += 3.0
     return clampf(v,5.0,95.0)
 
 static func need_stress_rate(needs:Dictionary)->float:
@@ -90,14 +98,10 @@ static func moodlets(needs:Dictionary)->Array:
     return r
 
 static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,has_table:bool,hygiene_support:bool,rng:RandomNumberGenerator)->Dictionary:
+    # Idle needs are autonomous. Productive camp labor is never auto-assigned.
     var n:=normalize_needs(needs)
-    if fire_level<FIRE_MAINTAIN_THRESHOLD and wood>0: return {"kind":"maintain_fire","label":"Maintaining Fire","remaining":FIRE_MAINTAIN_SECONDS,"duration":FIRE_MAINTAIN_SECONDS}
-    if float(n["sleep"])<48.0: return {"kind":"rest","label":"Resting","remaining":7.0,"duration":7.0}
-    if float(n["hygiene"])<42.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":5.0,"duration":5.0}
-    # Leisure activities must be backed by real camp items before entering this pool.
-    # Watching the fire is the only item-free fun action for now.
-    if float(n["fun"])<58.0:
-        return {"kind":"watch_fire","label":"Watching Fire","remaining":7.0,"duration":7.0}
+    if float(n["sleep"])<48.0: return {"kind":"rest","label":"Sleeping","remaining":7.0,"duration":7.0}
+    if float(n["fun"])<58.0: return {"kind":"watch_fire","label":"Watching Fire","remaining":7.0,"duration":7.0}
     return {}
 
 static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dictionary:
@@ -107,6 +111,50 @@ static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dicti
         "wash": n["hygiene"]=clampf(float(n["hygiene"])+48.0,0.0,100.0)
         "watch_fire": n["fun"]=clampf(float(n["fun"])+22.0,0.0,100.0); n["safety"]=clampf(float(n["safety"])+6.0,0.0,100.0)
     return {"needs":n,"fatigue":f}
+
+static func default_pet_needs() -> Dictionary:
+    return {"hunger":78.0,"thirst":82.0,"affection":70.0,"cleanliness":72.0}
+
+static func normalize_pet_needs(value) -> Dictionary:
+    var result:=default_pet_needs()
+    var incoming:Dictionary=value.duplicate(true) if value is Dictionary else {}
+    for key in PET_NEED_KEYS: result[key]=clampf(float(incoming.get(key,result[key])),0.0,100.0)
+    return result
+
+static func update_pet_needs(needs:Dictionary,delta:float)->Dictionary:
+    var n:=normalize_pet_needs(needs)
+    n["hunger"]=clampf(float(n["hunger"])-delta*0.07,0.0,100.0)
+    n["thirst"]=clampf(float(n["thirst"])-delta*0.09,0.0,100.0)
+    n["affection"]=clampf(float(n["affection"])-delta*0.04,0.0,100.0)
+    n["cleanliness"]=clampf(float(n["cleanliness"])-delta*0.035,0.0,100.0)
+    return n
+
+static func apply_pet_care(needs:Dictionary,action:String)->Dictionary:
+    var n:=normalize_pet_needs(needs)
+    match action:
+        "feed": n["hunger"]=clampf(float(n["hunger"])+42.0,0.0,100.0)
+        "water": n["thirst"]=clampf(float(n["thirst"])+52.0,0.0,100.0)
+        "play": n["affection"]=clampf(float(n["affection"])+38.0,0.0,100.0)
+        "groom": n["cleanliness"]=clampf(float(n["cleanliness"])+46.0,0.0,100.0)
+    return n
+
+static func pet_mood(needs:Dictionary)->String:
+    var n:=normalize_pet_needs(needs)
+    var lowest:=100.0
+    for key in PET_NEED_KEYS: lowest=minf(lowest,float(n[key]))
+    if lowest < 18.0: return "DISTRESSED"
+    if lowest < 35.0: return "NEEDS CARE"
+    if lowest < 60.0: return "OKAY"
+    if float(n["affection"]) >= 82.0: return "BONDED"
+    return "CONTENT"
+
+static func pet_can_forage(needs:Dictionary)->bool:
+    var n:=normalize_pet_needs(needs)
+    return float(n["hunger"])>=42.0 and float(n["thirst"])>=42.0 and float(n["affection"])>=48.0
+
+static func pet_forage_resource(species:String,rng:RandomNumberGenerator)->String:
+    var pool:Array = ["Wood","Cloth","Plastic","Raw Food"] if species=="Dog" else ["Cloth","Plastic","Raw Food","Raw Food"]
+    return str(pool[rng.randi_range(0,pool.size()-1)])
 
 static func fatigue_gain(base_amount: float) -> float:
     return maxf(0.0, base_amount) * FATIGUE_GAIN_MULTIPLIER

@@ -65,6 +65,9 @@ var settlement_mature := false
 var settlement_mature_shown := false
 var recent_expedition_ids := []
 var fire_level := CampLifeRules.FIRE_START_LEVEL
+var camp_maintenance := CampLifeRules.CAMP_MAINTENANCE_START
+var pets := []
+var next_pet_id := 1
 
 func _ready():
     rng.randomize()
@@ -128,6 +131,9 @@ func new_game():
     settlement_mature_shown = false
     recent_expedition_ids = []
     fire_level = CampLifeRules.FIRE_START_LEVEL
+    camp_maintenance = CampLifeRules.CAMP_MAINTENANCE_START
+    pets = []
+    next_pet_id = 1
     camp_event_accum = 0.0
     camp_event_cooldown = CampLifeRules.NEW_GAME_EVENT_COOLDOWN
     camp_chatter_accum = 0.0
@@ -152,6 +158,8 @@ func _process(delta):
         camp_event_cooldown = max(0.0, camp_event_cooldown - delta)
 
     fire_level = maxf(0.0, fire_level - CampLifeRules.FIRE_DECAY_PER_SECOND * float(delta))
+    camp_maintenance = maxf(0.0, camp_maintenance - CampLifeRules.CAMP_MAINTENANCE_DECAY_PER_SECOND * float(delta))
+    _process_pets(float(delta))
     _process_survivors(delta)
     _process_camp_chatter(delta)
     _process_expeditions(delta)
@@ -463,7 +471,7 @@ func _process_survivors(delta):
         if not s.has("needs"): s["needs"]=CampLifeRules.default_needs()
         if not s.has("camp_activity"): s["camp_activity"]={}
         var away:=["Expedition","Pending Expedition Event","Tactical Encounter"].has(str(s.get("status","Available")))
-        var safety:=CampLifeRules.safety_target(buildings,pop,capacity,fire_level,away)
+        var safety:=CampLifeRules.safety_target(buildings,pop,capacity,fire_level,away,camp_maintenance)
         s["needs"]=CampLifeRules.update_needs(s.get("needs",{}),float(s.get("fatigue",0.0)),float(delta),safety,hygiene_support,away)
         s["stress"]=clampf(float(s.get("stress",0.0))+CampLifeRules.need_stress_rate(s["needs"])*float(delta),0.0,100.0)
         if s["status"]=="Available":
@@ -485,6 +493,9 @@ func _process_survivors(delta):
                     else:
                         s["condition"]="Healthy"
                         s["history"].append("Day %d — Recovered from minor injuries." % day)
+        elif ["Chore","Pet Care"].has(s["status"]):
+            s["camp_activity"]={}
+            if s["task"].is_empty(): s["status"]="Available"
         elif ["Crafting","Building","Recovering","Tending"].has(s["status"]):
             s["camp_activity"]={}
             if s["task"].is_empty(): s["status"]="Available"; continue
@@ -516,6 +527,84 @@ func _clear_camp_activity(s)->void:
 
 func survivor_moodlets(survivor:Dictionary)->Array:
     return CampLifeRules.moodlets(survivor.get("needs",{}))
+
+func _process_pets(delta:float)->void:
+    for pet in pets:
+        pet["needs"]=CampLifeRules.update_pet_needs(pet.get("needs",{}),delta)
+
+func get_pet(pet_id:int) -> Variant:
+    for pet in pets:
+        if int(pet.get("id",-1))==pet_id: return pet
+    return null
+
+func pet_mood_label(pet:Dictionary)->String:
+    return CampLifeRules.pet_mood(pet.get("needs",{}))
+
+func _generate_pet_candidate()->Dictionary:
+    var species := "Dog" if rng.randf()<0.58 else "Cat"
+    var name := str(CampLifeRules.PET_NAMES[rng.randi_range(0,CampLifeRules.PET_NAMES.size()-1)])
+    return {
+        "id": -10000-next_pet_id, "name": name, "species": species, "is_pet": true,
+        "skills": {"Combat":0,"Agility":3,"Leadership":0}, "traits": [], "fatigue":0.0,"stress":35.0,
+        "condition":"Healthy", "equipment":{"Weapon":"","Secondary":"","Clothing":"","Pack":"","Tool":""},
+        "appearance":{}, "needs":CampLifeRules.default_pet_needs()
+    }
+
+func _add_pet(candidate_value)->Variant:
+    if pets.size()>=CampLifeRules.MAX_PETS:
+        toast_requested.emit("First Fire can only support %d pets right now." % CampLifeRules.MAX_PETS); return null
+    var candidate:Dictionary=candidate_value.duplicate(true) if candidate_value is Dictionary else {}
+    if candidate.is_empty(): candidate=_generate_pet_candidate()
+    candidate["id"]=next_pet_id; next_pet_id+=1
+    candidate["is_pet"]=true
+    candidate["needs"]=CampLifeRules.normalize_pet_needs(candidate.get("needs",{}))
+    candidate.erase("skills"); candidate.erase("traits"); candidate.erase("fatigue"); candidate.erase("stress"); candidate.erase("condition"); candidate.erase("equipment"); candidate.erase("appearance")
+    pets.append(candidate)
+    _add_history("Day %d — %s the %s was rescued and brought to First Fire." % [day,candidate["name"],candidate["species"]])
+    toast_requested.emit("%s the %s joined camp." % [candidate["name"],candidate["species"]])
+    save_game(); state_changed.emit(); return candidate
+
+func start_camp_chore(sid:int,chore:String)->bool:
+    var s:Variant=get_survivor(sid)
+    if s==null or s["status"]!="Available": return false
+    var label:=""; var goal:=4
+    match chore:
+        "stoke_fire":
+            if int(resources.get("Wood",0))<=0: toast_requested.emit("Stoking the fire needs 1 Wood."); return false
+            resources["Wood"]=int(resources.get("Wood",0))-1; label="Stoke First Fire"; goal=4
+        "clean_camp": label="Clean Camp"; goal=5
+        "repair_perimeter":
+            if int(resources.get("Scrap Metal",0))>0: resources["Scrap Metal"]=int(resources.get("Scrap Metal",0))-1
+            elif int(resources.get("Wood",0))>0: resources["Wood"]=int(resources.get("Wood",0))-1
+            else: toast_requested.emit("Perimeter maintenance needs 1 Scrap Metal or Wood."); return false
+            label="Repair Perimeter"; goal=6
+        _: return false
+    _clear_camp_activity(s); s["status"]="Chore"; s["task"]={"kind":"chore","chore":chore,"label":label,"progress":0,"goal":goal}
+    save_game(); state_changed.emit(); return true
+
+func start_pet_care(sid:int,pet_id:int,action:String)->bool:
+    var s:Variant=get_survivor(sid); var pet:Variant=get_pet(pet_id)
+    if s==null or s["status"]!="Available" or pet==null: return false
+    if action=="feed":
+        if int(resources.get("Raw Food",0))>0: resources["Raw Food"]=int(resources.get("Raw Food",0))-1
+        elif int(resources.get("Cooked Food",0))>0: resources["Cooked Food"]=int(resources.get("Cooked Food",0))-1
+        else: toast_requested.emit("Pet feeding needs 1 Raw or Cooked Food."); return false
+    elif action=="water":
+        if int(resources.get("Clean Water",0))<=0: toast_requested.emit("Pet watering needs 1 Clean Water."); return false
+        resources["Clean Water"]=int(resources.get("Clean Water",0))-1
+    elif action not in ["play","groom"]: return false
+    _clear_camp_activity(s); s["status"]="Pet Care"
+    s["task"]={"kind":"pet_care","pet_id":pet_id,"action":action,"label":"%s %s" % [action.capitalize(),pet["name"]],"progress":0,"goal":3 if action in ["feed","water"] else 4}
+    save_game(); state_changed.emit(); return true
+
+func perform_camp_task_tap(sid:int)->bool:
+    var s:Variant=get_survivor(sid)
+    if s==null or not ["Chore","Pet Care"].has(str(s.get("status",""))) or s.get("task",{}).is_empty(): return false
+    s["task"]["progress"]=int(s["task"].get("progress",0))+1
+    s["fatigue"]=minf(100.0,float(s.get("fatigue",0.0))+0.7)
+    if int(s["task"]["progress"])>=int(s["task"].get("goal",1)): _complete_task(s)
+    else: save_game(); state_changed.emit()
+    return true
 
 func treat_survivor(sid):
     var s: Variant = get_survivor(sid)
@@ -595,6 +684,22 @@ func _complete_task(s):
         garden_tended_day = day
         add_skill_xp(s, "Technical", 2)
         toast_requested.emit("Garden tended for Day %d." % day)
+    elif kind == "chore":
+        var chore:=str(task.get("chore",""))
+        if chore=="stoke_fire": fire_level=clampf(fire_level+CampLifeRules.FIRE_MAINTAIN_GAIN,0.0,100.0)
+        elif chore=="clean_camp":
+            camp_maintenance=clampf(camp_maintenance+22.0,0.0,100.0)
+            for survivor in survivors:
+                if survivor["condition"]!="Dead" and survivor["status"] not in ["Expedition","Tactical Encounter"]:
+                    var needs:=CampLifeRules.normalize_needs(survivor.get("needs",{})); needs["hygiene"]=clampf(float(needs["hygiene"])+18.0,0.0,100.0); survivor["needs"]=needs
+        elif chore=="repair_perimeter": camp_maintenance=clampf(camp_maintenance+38.0,0.0,100.0)
+        _add_history("Day %d — %s completed camp duty: %s." % [day,s["name"],task.get("label","Chore")])
+        toast_requested.emit("%s complete." % task.get("label","Chore"))
+    elif kind == "pet_care":
+        var pet:Variant=get_pet(int(task.get("pet_id",-1)))
+        if pet!=null:
+            pet["needs"]=CampLifeRules.apply_pet_care(pet.get("needs",{}),str(task.get("action","")))
+            toast_requested.emit("%s is %s." % [pet["name"],pet_mood_label(pet).to_lower()])
     elif kind == "treatment":
         if s["condition"] == "Critical":
             s["condition"] = "Wounded"
@@ -823,6 +928,7 @@ func start_expedition(primary_id, zone):
         "combat_triggered": false,
         "combat_trigger_remaining": duration * rng.randf_range(0.25, 0.65),
         "tactical_resolved": false,
+        "force_recruit": force_recruit,
         "special_site": "",
     }
     next_expedition_id += 1
@@ -912,12 +1018,17 @@ func _begin_tactical_encounter(exp):
     var environment_variant := TacticalScenarios.environment_variant(environment_id, rng)
     var scene_state: Dictionary = TacticalScenarios.pick_scene_state(environment_id, rng)
     var rescue_candidate := {}
+    var rescue_is_pet := false
     if combat_kind == "rescue":
-        rescue_candidate = _generate_survivor(false)
-        rescue_candidate["status"] = "Awaiting Rescue"
-        rescue_candidate["task"] = {}
-        rescue_candidate["stress"] = rng.randf_range(35.0, 60.0)
-        rescue_candidate["fatigue"] = rng.randf_range(15.0, 35.0)
+        rescue_is_pet = not bool(exp.get("force_recruit",false)) and pets.size()<CampLifeRules.MAX_PETS and population()>=2 and rng.randf()<0.30
+        if rescue_is_pet:
+            rescue_candidate = _generate_pet_candidate()
+        else:
+            rescue_candidate = _generate_survivor(false)
+            rescue_candidate["status"] = "Awaiting Rescue"
+            rescue_candidate["task"] = {}
+            rescue_candidate["stress"] = rng.randf_range(35.0, 60.0)
+            rescue_candidate["fatigue"] = rng.randf_range(15.0, 35.0)
     current_combat = {
         "uid": "%d-%d-%d" % [day, int(exp["id"]), rng.randi_range(1000, 999999)],
         "expedition_id": int(exp["id"]),
@@ -925,6 +1036,7 @@ func _begin_tactical_encounter(exp):
         "zone": str(exp["zone"]),
         "kind": combat_kind,
         "rescue_candidate": rescue_candidate.duplicate(true) if combat_kind == "rescue" else {},
+        "rescue_is_pet": rescue_is_pet,
         "environment_id": environment_id,
         "environment_variant": environment_variant,
         "time_of_day": str(scene_state.get("time_of_day", "day")),
@@ -1085,7 +1197,11 @@ func resolve_combat(result):
     var loot_note := " Container loot: %s." % container_reward if container_reward != "" else ""
     if container_reward != "":
         _add_history("Day %d — Recovered from field containers at %s: %s." % [day, place, container_reward])
-    if kind == "rescue" and bool(result.get("rescued", false)):
+    if kind == "rescue" and bool(result.get("rescued", false)) and bool(encounter.get("rescue_is_pet",false)):
+        var pet_candidate:Dictionary=encounter.get("rescue_candidate",{}).duplicate(true)
+        _add_pet(pet_candidate)
+        _queue_field_result(event,"%s Rescued" % str(pet_candidate.get("name","Pet")),"You get the stranded %s out of %s alive. It follows you all the way back to First Fire.%s" % [str(pet_candidate.get("species","animal")).to_lower(),place,loot_note],"A rescued pet made it back to First Fire.")
+    elif kind == "rescue" and bool(result.get("rescued", false)):
         var rescue_candidate: Dictionary = _prepare_rescue_candidate(encounter.get("rescue_candidate", {}), int(result.get("rescue_survivor_hp", 1)), int(result.get("rescue_survivor_max_hp", TacticalBalance.RESCUE_SURVIVOR_HP)))
         var rescue_name := str(rescue_candidate.get("name", "The survivor"))
         _queue_recruit_offer(event, "%s Makes It Out" % rescue_name, "You get %s out of %s alive. Away from the infected and with a little room to breathe, they finally decide whether they trust First Fire enough to come back with you.%s" % [rescue_name, place, loot_note], "tactical_rescue", "", rescue_candidate)
@@ -1469,6 +1585,12 @@ func _daily_tick():
         resources["Dirty Water"] = int(resources.get("Dirty Water", 0)) + CampLifeRules.rain_catcher_yield(bool(buildings.get("Water Tank", false)))
     if buildings.get("Garden Plot", false) and garden_tended_day == day:
         resources["Raw Food"] = int(resources.get("Raw Food", 0)) + 2
+
+    for pet in pets:
+        if CampLifeRules.pet_can_forage(pet.get("needs",{})) and rng.randf()<0.35:
+            var pet_find:=CampLifeRules.pet_forage_resource(str(pet.get("species","Dog")),rng)
+            resources[pet_find]=int(resources.get(pet_find,0))+1
+            _add_history("Day %d — %s brought back 1 %s." % [day,pet.get("name","Pet"),pet_find])
 
     for s in survivors:
         if s["condition"] == "Critical" and s["status"] != "Recovering" and rng.randf() < CampLifeRules.critical_decline_chance(bool(buildings.get("Infirmary", false))):
@@ -2835,7 +2957,8 @@ func save_game():
         "garden_tended_day": garden_tended_day,
         "game_over": game_over, "settlement_mature": settlement_mature, "settlement_mature_shown": settlement_mature_shown,
         "recent_expedition_ids": recent_expedition_ids,
-        "fire_level": fire_level,
+        "fire_level": fire_level, "camp_maintenance": camp_maintenance,
+        "pets": pets, "next_pet_id": next_pet_id,
     }
     SaveCodec.write_json(SAVE_PATH, data)
 
@@ -2882,6 +3005,10 @@ func load_game():
     settlement_mature_shown = bool(parsed.get("settlement_mature_shown", false))
     recent_expedition_ids = parsed.get("recent_expedition_ids", [])
     fire_level=clampf(float(parsed.get("fire_level",CampLifeRules.FIRE_START_LEVEL)),0.0,100.0)
+    camp_maintenance=clampf(float(parsed.get("camp_maintenance",CampLifeRules.CAMP_MAINTENANCE_START)),0.0,100.0)
+    pets=parsed.get("pets",[])
+    next_pet_id=int(parsed.get("next_pet_id",1))
+    for pet in pets: pet["needs"]=CampLifeRules.normalize_pet_needs(pet.get("needs",{}))
     for s in survivors:
         s["needs"]=CampLifeRules.normalize_needs(s.get("needs",{}))
         if not s.has("camp_activity"): s["camp_activity"]={}

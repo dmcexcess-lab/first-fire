@@ -174,7 +174,7 @@ func start_expedition(primary_id: int, zone: String) -> bool:
     elif event_key == "" and rng.randf() < float(D.ZONES[zone]["event_chance"]):
         event_key = _select_field_event(zone); flags["tactical_drought"] = tactical_drought + 1
     elif event_key == "": flags["tactical_drought"] = tactical_drought + 1
-    var exp := {"id": next_expedition_id, "survivor_ids": party_ids, "zone": zone, "duration": duration, "remaining": duration, "state": "traveling", "event_key": event_key, "event_triggered": false, "event_trigger_remaining": duration * rng.randf_range(0.25, 0.65), "combat_kind": combat_kind, "combat_triggered": false, "combat_trigger_remaining": duration * rng.randf_range(0.25, 0.65), "tactical_resolved": false, "special_site": ""}
+    var exp := {"id": next_expedition_id, "survivor_ids": party_ids, "zone": zone, "duration": duration, "remaining": duration, "state": "traveling", "event_key": event_key, "event_triggered": false, "event_trigger_remaining": duration * rng.randf_range(0.25, 0.65), "combat_kind": combat_kind, "combat_triggered": false, "combat_trigger_remaining": duration * rng.randf_range(0.25, 0.65), "tactical_resolved": false, "force_recruit": force_recruit, "special_site": ""}
     next_expedition_id += 1; expeditions.append(exp)
     s["status"] = "Expedition"; s["task"] = {"expedition_id": exp["id"]}
     recent_expedition_ids.append(primary_id)

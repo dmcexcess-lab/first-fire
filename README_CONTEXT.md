@@ -24,7 +24,7 @@ Feature-freeze means deepen/unify existing systems rather than add new pillars.
 - **Persistent consequences.** Field outcomes feed back into camp/world state.
 - **Extraction over extermination.** Survival, rescue, investigation, loot, and escape matter more than clearing every enemy.
 - **Low content count, high implementation depth.**
-- **Low pointless micromanagement.** Routine recovery/social behavior should be systemic where natural.
+- **Intentional management.** Eating, drinking, sleeping, fun, recovery, and social behavior are systemic where natural; productive chores, maintenance, crafting, building, pet care, and expeditions are deliberately player-assigned.
 - **Phone/Web first.** Touch, portrait layout, browser lifecycle, storage, pause/resume, and mobile Safari are architectural inputs.
 - **Original presentation.** Avoid third-party franchise identifiers unless explicitly requested and appropriate.
 
@@ -44,7 +44,7 @@ Backgrounds now seed the three current stats rather than six specialist skills. 
 
 Outside-world danger is tactical/physical. Camp social life/politics remains narrative/dialogue.
 
-Tactical encounters use the actual expedition survivor. Current encounter types are **Survivor Rescue, Explore Location, and Ambush**. Wounds, deaths, fatigue, stress, ammunition use, and Combat XP return to camp state. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
+Tactical encounters use the actual expedition survivor. Current encounter types are **Rescue, Explore Location, and Ambush**. Rescue calls can now reveal either a stranded survivor or a stranded camp pet (dog/cat); pets use the same physical reach/contact/escort/extract structure. Wounds, deaths, fatigue, stress, ammunition use, and Combat XP return to camp state. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
 
 The active combat layer is intentionally compact:
 
@@ -85,7 +85,7 @@ The persistent 2D tactical-style living camp is final camp presentation. `FFCamp
 
 The living camp now uses a layered authored presentation rather than a flat grid of isolated symbols: connected dirt paths organize the settlement around the First Fire, sleeping/work/service areas have distinct visual pads, the perimeter reads as a fenced camp with a gate, built structures have stronger purpose-specific silhouettes and shadows, and the fire has visible stonework, flames, smoke, sparks, resource-reflective wood stacking, and stronger clock-driven dusk/night glow. These graphics remain a direct reflection of authoritative `Game` state and do not create separate camp simulation or pathfinding.
 
-`FFCampLifeRules.gd` owns six persistent needs—Hunger, Thirst, Sleep, Fun, Safety, Hygiene—plus moodlets, fire maintenance, autonomous downtime, recovery, treatment modifiers, and camp cadence.
+`FFCampLifeRules.gd` owns six survivor needs plus pet needs, fire/maintenance tuning, autonomous idle recovery/downtime, and camp cadence. Productive work is player-directed: fire tending, cleaning, perimeter repair, crafting, building, garden work, pet care, and expeditions require assignment. Camp chores and pet care use short touch-first WORK interactions rather than completing as hidden autonomous behavior.
 
 Treatment is physical-wound aware:
 - **Hurt:** 1 Sterile Dressing; minor recovery capped to 30s.
@@ -132,7 +132,7 @@ These specialize mature base scripts with a small blast radius. Legacy six-skill
 
 ## Frozen scope
 
-No pets, vehicles, tactical companion expeditions, multi-survivor dispatch, or 3D camp. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which the game continues indefinitely.
+Pets and active camp work are now part of the approved scope. Vehicles, tactical companion expeditions, multi-survivor dispatch, and 3D camp remain cut. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which the game continues indefinitely.
 
 ## Source-of-truth order
 

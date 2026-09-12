@@ -200,7 +200,7 @@ func setup_rescuee() -> void:
             "appearance": TacticalVisuals.survivor_appearance(rng),
         }
     rescuee = make_actor(candidate, rescue_cell, false)
-    rescuee["max_hp"] = mini(int(rescuee.get("max_hp", 18)), TacticalBalance.RESCUE_SURVIVOR_HP)
+    rescuee["max_hp"] = 8 if bool(rescuee.get("is_pet",false)) else mini(int(rescuee.get("max_hp", 18)), TacticalBalance.RESCUE_SURVIVOR_HP)
     rescuee["hp"] = int(rescuee["max_hp"])
     rescuee["weapon"] = weapon_profile("")
     rescuee["active"] = false
@@ -216,6 +216,8 @@ func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
     var actor = {
         "id": int(s.get("id", -1)),
         "name": str(s.get("name", "Survivor")),
+        "is_pet": bool(s.get("is_pet", false)),
+        "species": str(s.get("species", "")),
         "skills": s.get("skills", {}).duplicate(true),
         "traits": s.get("traits", []).duplicate(true),
         "fatigue": float(s.get("fatigue", 0.0)),
@@ -1734,11 +1736,14 @@ func draw_units():
                 draw_string(font, c + Vector2(-16, -12), intent_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, .84, .35))
 
     if not rescuee.is_empty() and visible_cells.has(rescuee.pos):
-        if rescuee.dead:
+        if bool(rescuee.get("is_pet",false)):
+            TacticalVisuals.draw_pet(self,cell_center(rescuee.pos),rescuee,bool(rescuee.dead))
+        elif rescuee.dead:
             TacticalVisuals.draw_survivor_corpse(self, cell_center(rescuee.pos), rescuee)
         else:
             TacticalVisuals.draw_survivor(self, cell_center(rescuee.pos), rescuee, false)
-            var rescue_label := "FOLLOW" if rescue_contacted else "RESCUE"
+        if not rescuee.dead:
+            var rescue_label := "FOLLOW" if rescue_contacted else ("PET" if bool(rescuee.get("is_pet",false)) else "RESCUE")
             draw_string(font, cell_center(rescuee.pos) + Vector2(-24, -13), rescue_label, HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color(.98, .82, .36))
 
     if not ally.is_empty() and visible_cells.has(ally.pos):

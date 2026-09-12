@@ -97,7 +97,7 @@ A small forwarding method in `Game.gd` may remain if deleting it would require u
 - Camp relationships, political standing, and autonomous chatter → `FFCampSocial`.
 - Camp recovery/cadence/building effects → `FFCampLifeRules`.
 - Living 2D camp/menu visualization → `FFCampView`, reading `Game` state only.
-- No new pet, vehicle, companion-expedition, or 3D-camp modules: those features are permanently cut.
+- Pets and active camp duties are explicitly approved. Vehicles, companion expeditions, and 3D camp remain cut.
 
 The remaining field text-event selector is deliberately legacy. Do not deepen that path; convert events into tactical scenarios instead.
 
@@ -237,7 +237,7 @@ Important bugs should leave behind a cheaper future check when practical.
 - tactical encounters pause settlement simulation;
 - survivor social behavior is autonomous rather than conversation micromanagement;
 - expeditions are single-survivor only; no tactical companion AI;
-- living 2D camp is final; no pets, vehicles, or 3D camp;
+- living 2D camp is final; pets and active camp duties are in scope; vehicles and 3D camp remain cut;
 - hard population cap is 18; mature settlement is 15+ survivors plus all buildings and elected leadership, with endless continuation;
 - feature freeze: completion/balance/content/bugfixes only, no new foundational pillars;
 - low encounter count with deep mechanics beats many fake choices;

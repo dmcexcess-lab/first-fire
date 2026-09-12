@@ -15,7 +15,6 @@ The hard population ceiling is **18 survivors**.
 These are no longer planned for First Fire:
 
 - 3D camp rendering—the living 2D tactical-style camp is the final camp presentation;
-- pets or pet-care systems;
 - vehicles or vehicle logistics;
 - multi-survivor expeditions;
 - tactical companion AI;
@@ -30,8 +29,9 @@ Removing these is intentional scope control, not deferred work.
 Finish tuning the systems that already exist:
 
 - autonomous relationship/politics-based chatter in the living camp;
-- survivor moodlets driven by hunger, thirst, sleep, fun, safety, and hygiene, with autonomous interruptible camp chores/leisure rather than manual routine scheduling;
-- fire maintenance as the first persistent camp chore, plus downtime such as watching the fire, cards, and guitar;
+- survivor moodlets driven by hunger, thirst, sleep, fun, safety, and hygiene; eating/drinking/sleep/fun remain autonomous idle behavior while productive labor is player-assigned;
+- an active camp work loop covering fire tending, cleaning, perimeter maintenance, building, crafting, gardening, pet care and expeditions; short camp chores use touch-first WORK interactions;
+- rescued dogs/cats as persistent Tamagotchi-style camp pets with hunger/thirst/bond/cleanliness care and small cared-for forage returns;
 - relationship drift from meaningful positive/negative interactions;
 - shortages and repeated expedition duty feeding camp opinion;
 - coordinator → formal election progression;

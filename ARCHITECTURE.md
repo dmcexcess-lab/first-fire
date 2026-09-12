@@ -111,7 +111,7 @@ Detailed survivor/item inspection also pauses settlement simulation while open a
 
 ## Frozen scope
 
-The living 2D camp is final presentation. Pets, vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI are cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
+The living 2D camp is final presentation. Pets and active camp duties are approved gameplay. Vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI remain cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
 
 ## Save boundary
 

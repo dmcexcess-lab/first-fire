@@ -132,6 +132,25 @@ static func _draw_secondary_icon(canvas: CanvasItem, center: Vector2, facing: Ve
     canvas.draw_circle(p, 6.2, Color(0, 0, 0, .42))
     Tiles.draw_region(canvas, atlas_index, _sprite_rect(p, 12.0))
 
+static func draw_pet(canvas:CanvasItem,center:Vector2,actor:Dictionary,dead:=false)->void:
+    var species:=str(actor.get("species","Dog"))
+    var body:=Color("9a704b") if species=="Dog" else Color("8a9296")
+    if dead: body=Color(body.r*0.45,body.g*0.45,body.b*0.45,0.75)
+    canvas.draw_circle(center+Vector2(-1,2),7.0,body)
+    canvas.draw_circle(center+Vector2(5,-3),5.0,body)
+    if species=="Cat":
+        canvas.draw_colored_polygon(PackedVector2Array([center+Vector2(2,-7),center+Vector2(4,-13),center+Vector2(6,-7)]),body)
+        canvas.draw_colored_polygon(PackedVector2Array([center+Vector2(6,-7),center+Vector2(10,-12),center+Vector2(10,-5)]),body)
+        canvas.draw_line(center+Vector2(-7,1),center+Vector2(-12,-5),body,2.0)
+    else:
+        canvas.draw_circle(center+Vector2(2,-6),2.5,Color(body.r*0.72,body.g*0.72,body.b*0.72))
+        canvas.draw_line(center+Vector2(-7,1),center+Vector2(-11,-2),body,2.5)
+    canvas.draw_circle(center+Vector2(7,-4),1.0,Color("161616"))
+    canvas.draw_circle(center,11.5,Color(.96,.72,.24,.72),false,1.4)
+    if dead:
+        canvas.draw_line(center+Vector2(-5,-5),center+Vector2(5,5),Color(.55,.12,.10,.9),2.0)
+        canvas.draw_line(center+Vector2(5,-5),center+Vector2(-5,5),Color(.55,.12,.10,.9),2.0)
+
 static func draw_zombie(canvas: CanvasItem, center: Vector2, zombie: Dictionary) -> void:
     var look: Dictionary = zombie.get("look", {})
     var variant := clampi(int(look.get("sprite", 0)), 0, 7)

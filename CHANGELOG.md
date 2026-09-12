@@ -1,3 +1,12 @@
+
+## Camp work and rescued pets
+
+- Added tactical dog/cat rescue candidates using the existing physical rescue/escort/extraction loop; forced survivor-recruit catch-up rescues remain human.
+- Added persistent camp pets with Food, Water, Bond and Cleanliness needs plus small cared-for daily forage returns.
+- Added touch-first pet care assignments (feed/water/play/groom) and manual camp chores (stoke fire, clean camp, repair perimeter). Assigned chores require repeated WORK taps, making camp maintenance an active minigame rather than hidden automation.
+- Survivor eating/drinking, sleeping and fun remain passive/idle. Productive fire maintenance and washing were removed from autonomous downtime.
+- Added persistent camp-maintenance condition that affects camp safety and requires upkeep.
+
 ## Beta Candidate — Tactical Map Planning, Physical Loot & Rescue Reliability — 2026-09-11
 
 - Reworked authored extraction so tactical maps no longer place the escape beside the entry; every layout now guarantees a reachable exit at least eight route steps from spawn.
