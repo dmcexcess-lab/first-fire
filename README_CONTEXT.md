@@ -54,8 +54,8 @@ The active combat layer is intentionally compact:
 - **2H Gun** — shotgun class, including spread behavior.
 - **Stealth** — Agility-driven quieter movement with positional stealth-attack opportunity; slower than normal movement.
 - **Sprint** — Agility-driven faster movement, louder noise, and improved grab avoidance.
-- **Guard** — spend time on defense to reduce the next infected grab threat.
-- **Shove** — spacing/stagger action; heavier infected resist it more, and attempting a shove always drops Guard before resolution.
+- **Forward** — dedicated touch movement action, now placed in the former Guard control slot for faster thumb access.
+- **Shove** — spacing/stagger action; heavier infected resist it more.
 
 **There is no armor mitigation.** Clothing must not cancel or reduce incoming physical damage. Clothing may remain as identity/weight/crafting/utility gear, but it is not an armor stat layer.
 

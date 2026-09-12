@@ -36,8 +36,8 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 - **2H Gun**
 - **Stealth** — Agility-driven, quieter and slower movement with positional stealth-attack opportunity
 - **Sprint** — Agility-driven, faster/louder movement with increased grab avoidance
-- **Guard** — defensive stance reducing the next infected grab threat
-- **Shove** — spacing/stagger action that always sacrifices Guard before resolution
+- **Forward** — dedicated touch movement action occupying the former Guard slot
+- **Shove** — spacing/stagger action with mass-based resistance/stagger
 
 There is **no armor mitigation** in the active combat or abstract-injury paths. Clothing may remain as carried/equipped gear for identity, weight, crafting, or future non-armor utility, but it must not cancel or reduce incoming physical damage.
 
@@ -62,7 +62,7 @@ Concise Survivors-tab dashboard: CAMP/OUT/BUSY/LOST summary, outside-camp cards,
 Established tactical board/runtime foundation: map state, actors, zombies, vision/fog, facing, sound propagation, doors/glass/hazards, objectives, rescue escort state, persistence, and rendering integration. Current player combat rules are specialized by `FFCombatThreeStat.gd`.
 
 ### `FFTacticalBalance.gd`
-Pure tactical tuning. Current formulas use Combat and Agility only. It owns infected counts/damage, search timing/noise, Guard, Shove resistance/stagger, and zombie hit chance. Search/explore rewards are no longer improved by a Scavenging stat.
+Pure tactical tuning. Current formulas use Combat and Agility only. It owns infected counts/damage, search timing/noise, Shove resistance/stagger, and zombie hit chance. Search/explore rewards are no longer improved by a Scavenging stat.
 
 ### `FFTacticalTime.gd`
 Low-level tactical timeline utilities for load, fatigue, condition, stance, weapon timing, and infected pace. `FFThreeStatRules.gd` applies the current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.

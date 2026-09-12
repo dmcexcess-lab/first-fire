@@ -1,3 +1,10 @@
+## Beta Candidate — Forward Control & Guard Removal — 2026-09-11
+
+- Removed Guard from the active tactical combat model and from infected hit/damage handling.
+- Moved the dedicated FORWARD touch action into Guard's former center-top control slot; the previous forward slot now carries the compact tactical tick/step/kill readout instead of overlapping BACK.
+- Shove remains the spacing/stagger action, with infected mass continuing to affect resistance and stagger.
+- Existing in-progress tactical runtime discards stale Guard state without changing save schema 7.
+
 ## Beta Candidate — Camp Needs, Moodlets & Autonomous Downtime — 2026-09-11
 
 - Added six persistent survivor needs: Hunger, Thirst, Sleep, Fun, Safety, and Hygiene. Sleep stays synchronized with existing Fatigue instead of creating a second exhaustion system.
