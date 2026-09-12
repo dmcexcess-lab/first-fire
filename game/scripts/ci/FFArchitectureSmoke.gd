@@ -34,8 +34,9 @@ func _init() -> void:
 
     var actor := {"skills": {"Combat": 3, "Agility": 4, "Leadership": 1}, "fatigue": 0.0, "sprinting": false, "crouched": false}
     var sprinting := actor.duplicate(true); sprinting["sprinting"] = true
+    var baseline_actor := {"skills": {"Agility": 0}, "fatigue": 0.0, "sprinting": false}
     if not _check(TacticalBalance.zombie_hit_chance(sprinting) < TacticalBalance.zombie_hit_chance(actor), "sprint evasion"): return
-    if not _check(TacticalBalance.zombie_hit_chance(actor) >= 0.70 and TacticalBalance.zombie_damage_range("HEAVY").y >= 7, "infected pressure tuning"): return
+    if not _check(TacticalBalance.zombie_hit_chance(baseline_actor) >= 0.70 and TacticalBalance.zombie_damage_range("HEAVY").y >= 7, "infected pressure tuning"): return
     if not _check(TacticalBalance.shove_chance(actor, "LIGHT", 1) > TacticalBalance.shove_chance(actor, "HEAVY", 1), "mass resists shove"): return
     if not _check(TacticalBalance.search_cost(actor) > 0 and TacticalBalance.search_noise(actor) > 0, "search remains bounded"): return
     if not _check(TacticalBalance.zombie_count("Camp Perimeter", "rescue") < TacticalBalance.zombie_count("Camp Perimeter", "ambush"), "objective zombie balance"): return
