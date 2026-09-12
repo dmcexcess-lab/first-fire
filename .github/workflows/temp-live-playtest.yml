@@ -41,27 +41,39 @@ jobs:
           await page.goto('https://dmcexcess-lab.github.io/first-fire/', {waitUntil:'load', timeout:120000});
           await page.waitForTimeout(9000);
           const canvas = page.locator('canvas').first();
-          const box = await canvas.boundingBox();
-          if (!box) throw new Error('Godot canvas not found');
+          if (!(await canvas.boundingBox())) throw new Error('Godot canvas not found');
           async function shot(name){ await page.screenshot({path:`qa/${name}.png`, fullPage:true}); }
-          async function clickGame(gx,gy){
+          async function clickGame(gx,gy,wait=1200){
             const b=await canvas.boundingBox();
             await page.mouse.click(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height);
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(wait);
           }
           async function mouseGame(gx,gy){
             const b=await canvas.boundingBox();
             await page.mouse.move(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height);
           }
-          await clickGame(195,354);
-          await clickGame(93,524);
-          await clickGame(343,810);
-          await mouseGame(195,650);
-          await page.mouse.wheel(0,520);
-          await page.waitForTimeout(1400);
-          await shot('01_roster');
-          await clickGame(280,749); // SEND OUT
-          await shot('02_expedition_overlay');
+          async function openRoster(){
+            await clickGame(343,810,900);
+            await mouseGame(195,650);
+            await page.mouse.wheel(0,540);
+            await page.waitForTimeout(1000);
+          }
+          async function dispatch(n){
+            await openRoster();
+            await shot(`run${n}_01_roster`);
+            await clickGame(280,749,900); // SEND OUT
+            await shot(`run${n}_02_overlay`);
+            await clickGame(195,465,900); // SEND Camp Perimeter
+            await shot(`run${n}_03_sent`);
+            await page.waitForTimeout(15000);
+            await shot(`run${n}_04_after_wait`);
+          }
+          await clickGame(195,354,1200); // NEW GAME
+          await clickGame(93,524,900); // SKIP tutorial
+          await dispatch(1);
+          await dispatch(2);
+          await dispatch(3);
+          await shot('final_state');
           fs.writeFileSync('qa/console.txt', consoleLines.join('\n'));
           await browser.close();
           EOF
