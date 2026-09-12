@@ -19,12 +19,12 @@ Feature-freeze means deepen/unify existing systems rather than add new pillars.
 ## Design pillars
 
 - **Simulation first.** Drama comes from interacting systems and persistent state.
-- **Survivors are people.** Gear, health, fatigue, stress, relationships, history, wounds, deaths, and a small number of meaningful stats matter.
+- **Survivors are people.** Gear, health, fatigue, stress, relationships, history, wounds, infection, deaths, and a small number of meaningful stats matter.
 - **No conventional levels.** Capability comes from three use-based stats, equipment, condition, traits, tactical decisions, and camp infrastructure.
 - **Persistent consequences.** Field outcomes feed back into camp/world state.
 - **Extraction over extermination.** Survival, rescue, investigation, loot, and escape matter more than clearing every enemy.
 - **Low content count, high implementation depth.**
-- **Intentional management.** Eating, drinking, sleeping, fun, recovery, and social behavior are systemic where natural; productive chores, maintenance, crafting, building, pet care, and expeditions are deliberately player-assigned.
+- **Intentional management.** Eating, drinking, sleeping, fun, recovery, and social behavior are systemic where natural; productive chores, maintenance, crafting, building, pet care, treatment choices, quarantine, and expeditions are deliberate assignments/decisions.
 - **Phone/Web first.** Touch, portrait layout, browser lifecycle, storage, pause/resume, and mobile Safari are architectural inputs.
 - **Original presentation.** Avoid third-party franchise identifiers unless explicitly requested and appropriate.
 
@@ -38,13 +38,13 @@ The active survivor progression model contains exactly three stats:
 
 The former **Scavenging, Survival, Medical, Technical, and Social** stats are removed from the active survivor model. Do not recreate them as hidden parallel progression systems. Crafting, treatment, searching, scavenging, and technical interactions should instead use authored rules, tools, resources, traits, infrastructure, condition, and player choices where appropriate.
 
-Backgrounds now seed the three current stats rather than six specialist skills. XP/progression is only valid for Combat, Agility, and Leadership.
+Backgrounds seed the three current stats rather than six specialist skills. XP/progression is only valid for Combat, Agility, and Leadership.
 
 ## Tactical combat
 
 Outside-world danger is tactical/physical. Camp social life/politics remains narrative/dialogue.
 
-Tactical encounters use the actual expedition survivor. Current encounter types are **Rescue, Explore Location, and Ambush**. Rescue calls can now reveal either a stranded survivor or a stranded camp pet (dog/cat); pets use the same physical reach/contact/escort/extract structure. Wounds, deaths, fatigue, stress, ammunition use, and Combat XP return to camp state. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
+Tactical encounters use the actual expedition survivor. Current encounter types are **Rescue, Explore Location, and Ambush**. Rescue calls can reveal either a stranded survivor or a stranded camp pet (dog/cat); pets use the same physical reach/contact/escort/extract structure. Wounds, zombie-virus exposure, deaths, fatigue, stress, ammunition use, and Combat XP return to camp state. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
 
 The active combat layer is intentionally compact:
 
@@ -54,22 +54,22 @@ The active combat layer is intentionally compact:
 - **2H Gun** — shotgun class, including spread behavior.
 - **Stealth** — Agility-driven quieter crouched movement with positional stealth-attack opportunity; its tactical action cost is deliberately and materially slower than walking.
 - **Sprint** — Agility-driven movement with a deliberately and materially lower action cost than walking, louder noise, and improved grab avoidance.
-- **Forward** — dedicated touch movement action, now placed in the former Guard control slot for faster thumb access.
+- **Forward** — dedicated touch movement action in the former Guard control slot.
 - **Shove** — spacing/stagger action; heavier infected resist it more.
 
 **There is no armor mitigation.** Clothing must not cancel or reduce incoming physical damage. Clothing may remain as identity/weight/crafting/utility gear, but it is not an armor stat layer.
 
 Combat and Agility are the only survivor stats that affect tactical fighting/movement. Leadership does not secretly improve attacks.
 
-`FFThreeStatRules.gd` owns the three-stat catalog, weapon classes/profiles, and Agility movement/stealth/sprint math. `FFTacticalBalance.gd` owns tactical tuning using Combat/Agility only. `FFCombatThreeStat.gd` is the active tactical specialization over the established `FFCombat.gd` board/runtime foundation.
+`FFThreeStatRules.gd` owns the three-stat catalog, weapon classes/profiles, and Agility movement/stealth/sprint math. `FFTacticalBalance.gd` owns tactical tuning using Combat/Agility only. `FFCombatThreeStat.gd` remains the combat-model specialization over the established `FFCombat.gd` board/runtime foundation; active play routes through `FFCombatVirus.gd`, which adds direct infected-contact tracking for virus exposure without changing physical damage rules.
 
 ## Tactical world
 
 `FFTacticalScenarios.gd` owns objectives/scenario selection. `FFTacticalEnvironments.gd` owns authored places/geometry/props/entries/exits. `FFTacticalLighting.gd` owns tactical lighting rules. `FFTacticalTiles.gd` owns atlas rendering. `FFTacticalTime.gd` owns low-level action-time/load/fatigue/condition timing. `FFTacticalSound.gd` owns labels/localization helpers. `FFTacticalVisuals.gd` owns survivor/infected/weapon rendering.
 
-Authored environments include back alleys, gas stations, houses, apartments, stores, warehouse yards, and drainage washes. Every map now has far-side extraction rather than an exit beside the entry, plus authored physical loot containers (dumpsters, shelves, fridges, crates, vehicles, debris, etc.) whose contents are only retained after escape. Rescue civilians are protected from infected targeting until first contact, then become vulnerable escorts.
+Authored environments include back alleys, gas stations, houses, apartments, stores, warehouse yards, and drainage washes. Every map has far-side extraction rather than an exit beside the entry, plus authored physical loot containers whose contents are only retained after escape. Rescue civilians are protected from infected targeting until first contact, then become vulnerable escorts.
 
-Tactical scene lighting uses the actual settlement clock at encounter creation with DAWN / DAY / DUSK / NIGHT phases plus independently powered/unpowered environments. Actual per-cell light now shapes the player's vision cone geometry as well as visibility thresholds: darkness contracts and narrows sight, while bright cells and portable/fixed lighting extend and widen it. Portable Secondary lights can be switched on/off and persist in tactical runtime. Off-screen audible events continue to appear as fuzzy **yellow/gold sound callouts** at approximate locations and disappear when the true source becomes directly visible.
+Tactical scene lighting uses the actual settlement clock at encounter creation with DAWN / DAY / DUSK / NIGHT phases plus independently powered/unpowered environments. Actual per-cell light shapes the player's vision cone geometry as well as visibility thresholds: darkness contracts and narrows sight, while bright cells and portable/fixed lighting extend and widen it. Portable Secondary lights can be switched on/off and persist in tactical runtime. Off-screen audible events continue to appear as fuzzy **yellow/gold sound callouts** at approximate locations and disappear when the true source becomes directly visible.
 
 ## Expedition logistics
 
@@ -81,26 +81,38 @@ The SEND OUT selector uses touch-safe PREV/NEXT controls rather than popup `Opti
 
 ## Living camp and camp life
 
-The persistent 2D tactical-style living camp is final camp presentation. `FFCampView.gd` is presentation-only.
+The persistent 2D tactical-style living camp is final camp presentation. `FFCampView.gd` remains the presentation foundation; active camp rendering routes through `FFCampViewSleepVirus.gd` for authoritative sleep/treatment/quarantine placement.
 
-The living camp now uses a layered authored presentation rather than a flat grid of isolated symbols: connected dirt paths organize the settlement around the First Fire, sleeping/work/service areas have distinct visual pads, the perimeter reads as a fenced camp with a gate, built structures have stronger purpose-specific silhouettes and shadows, and the fire has visible stonework, flames, smoke, sparks, resource-reflective wood stacking, and stronger clock-driven dusk/night glow. These graphics remain a direct reflection of authoritative `Game` state and do not create separate camp simulation or pathfinding.
+The living camp uses connected dirt paths, distinct sleeping/work/service areas, a fenced perimeter and gate, purpose-specific structures, and a resource-reflective First Fire. These graphics read authoritative `Game` state and do not create separate camp simulation or pathfinding.
 
-`FFCampLifeRules.gd` owns six survivor needs plus pet affection/retention/reward rules, fire/maintenance tuning, autonomous idle recovery/downtime, and camp cadence. Pets do not consume camp food or water: their Bond/Affection falls without attention, PLAY/LOVE assignments restore it, neglected pets can leave camp, and each pet that stays brings back exactly one random material or Raw Food per in-game day. Productive work is player-directed: fire tending, cleaning, perimeter repair, crafting, building, garden work, pet care, and expeditions require assignment. Camp chores and pet care use short touch-first WORK interactions rather than completing as hidden autonomous behavior.
+Sleep is now a real availability state rather than a passive visual label. When autonomous sleep triggers, the survivor enters **Sleeping**, receives a timed sleep task, walks to a deterministic bed/sleep slot in the camp view, lies down visually, and is excluded from worker/expedition/equipment assignment until waking. Existing productive work, treatment, chores, pet care, crafting, building, garden work, expeditions, quarantine, and severe sickness likewise keep survivors unavailable through authoritative statuses/tasks.
 
-Treatment is physical-wound aware:
+`FFCampLifeRules.gd` owns six survivor needs plus pet affection/retention/reward rules, fire/maintenance tuning, idle recovery/downtime, and camp cadence. Pets do not consume camp food or water: Bond/Affection falls without attention, PLAY/LOVE restore it, neglected pets can leave camp, and each pet that stays brings back exactly one random material or Raw Food per in-game day. Productive work is player-directed: fire tending, cleaning, perimeter repair, crafting, building, garden work, pet care, and expeditions require assignment. Camp chores and pet care use short touch-first WORK interactions.
+
+Physical trauma and zombie virus are separate health axes.
+
+Physical wound treatment:
 - **Hurt:** 1 Sterile Dressing; minor recovery capped to 30s.
 - **Wounded:** 1 Sterile Dressing; timed wound care.
 - **Critical:** 1 Medicine; timed emergency stabilization to Wounded, after which normal wound care applies.
 
-Disease/illness is not currently part of the survivor condition model and should remain a separate future axis if added.
+Zombie virus:
+- Only successful direct infected contact can create field exposure; generic damage does not.
+- Exposure chance rises with repeated direct infected hits during the encounter.
+- **Exposed:** can be decontaminated with 1 Clean Water + 1 Sterile Dressing; untreated exposure gets one 30% natural-clear chance, otherwise becomes Infected at the next daily transition.
+- **Infected:** 1 Medicine starts a timed treatment course; untreated infection becomes Feverish at the next daily transition.
+- **Feverish:** survivor is automatically unavailable; emergency treatment requires a built Infirmary + 2 Medicine. An untreated feverish case can become terminal at the next daily transition.
+- **Quarantine:** available for any active virus stage when the survivor is otherwise free; it makes the survivor unavailable and prevents close-contact camp spread. Unquarantined Infected/Feverish survivors can expose campmates.
+
+Virus treatment is timed and visible in the survivor inspector/camp view. Completing a virus course clears the virus axis without rewriting the physical wound condition ladder. Medicine therefore has distinct roles in Critical trauma stabilization and established/severe viral treatment.
 
 Treatment time does not depend on a removed Medical stat. Craft/build duration does not depend on a removed Technical stat.
 
-`FFCampSocial.gd` owns relationships, chatter, candidate standing, and politics. **Leadership** is the active progression stat for social/political capability.
+`FFCampSocial.gd` owns relationships, chatter, candidate standing, and politics. **Leadership** is the active progression stat for social/political capability. Sleeping, quarantined, sick, and otherwise busy survivors are not selected for normal available-survivor chatter.
 
 ## Time / economy
 
-For testing, one full in-game day is **2 real active minutes**.
+Settlement simulation now runs at **half the previous real-time speed** through the active orchestration layer. The base day remains 120 simulation seconds, but a full in-game day now takes about **4 real active minutes** instead of 2. Camp needs, work/recovery, expeditions, fire/maintenance decay, camp events, and daily transitions all use the slowed simulation delta. UI refresh and autosave cadence remain real-time responsiveness concerns rather than simulation balance.
 
 Fire Pit conversions:
 - **1 Raw Food → 2 Cooked Food**
@@ -112,27 +124,29 @@ Routine scavenging stays constrained by zone caps/depletion, pack capacity, and 
 
 Current save schema remains **7**.
 
-Current survivor-model marker is **`combat-agility-leadership-v1`**. A schema-7 save containing the previous six-skill survivor shape is deliberately invalidated and restarted rather than migrated. This is an intentional compatibility break for the combat/stat reset.
+Current survivor-model marker is **`combat-agility-leadership-v1`**. The zombie-virus state is additive survivor data normalized through `FFVirusRules.gd`; active saves receive a `zombie-virus-v1` flag without a schema reset. A schema-7 save containing the previous six-skill survivor shape is still deliberately invalidated and restarted rather than migrated.
 
 The filename remains `user://first_fire_alpha01.json` intentionally.
 
-`FFSaveCodec.gd` owns JSON/file transport; active state specialization is in `GameThreeStat.gd`, which extends the established `Game.gd` orchestration foundation.
+`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is now `GameSleepVirus.gd`, which extends it with half-speed camp simulation, authoritative sleep availability, zombie-virus state/treatment/quarantine, and tactical exposure integration.
 
 ## Canonical technical reality
 
 Canonical Godot source lives directly under `game/`; CI builds that directory directly. Current Web CI uses **Godot 4.7.1** and runs canonical validation, import/parse, architecture smoke, startup smoke, Web export, error-log rejection, Pages artifact upload, and Pages deployment.
 
 The active project seams are:
-- `project.godot` autoload → `GameThreeStat.gd`
-- `main.tscn` → `MainThreeStat.gd`
-- active tactical runtime → `FFCombatThreeStat.gd`
-- active survivor inspector → `FFInspectorThreeStat.gd`
+- `project.godot` autoload → `GameSleepVirus.gd` → `GameThreeStat.gd` → `Game.gd`
+- `main.tscn` → `MainSleepVirus.gd` → `MainThreeStat.gd` → `Main.gd`
+- active tactical runtime → `FFCombatVirus.gd` → `FFCombatThreeStat.gd` → `FFCombat.gd`
+- active survivor inspector → `FFInspectorVirus.gd` → `FFInspectorThreeStat.gd`
+- active living camp renderer → `FFCampViewSleepVirus.gd` → `FFCampView.gd`
+- zombie-virus pure rules → `FFVirusRules.gd`
 
-These specialize mature base scripts with a small blast radius. Legacy six-skill strings may remain inside inherited base/legacy event code for compatibility while the active runtime exposes only the three current stats. New gameplay must target the three-stat owners rather than revive the legacy model.
+These wrappers keep the blast radius small while preserving the mature three-stat/camp/tactical foundations. Legacy six-skill strings may remain inside inherited base/legacy event code for compatibility while active runtime exposes only the three current stats. New gameplay must target the active wrapper seam or the correct underlying owner rather than revive the legacy model.
 
 ## Frozen scope
 
-Pets and active camp work are now part of the approved scope. Vehicles, tactical companion expeditions, multi-survivor dispatch, and 3D camp remain cut. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which the game continues indefinitely.
+Pets, active camp work, authoritative sleep, and zombie-virus consequences/treatment are now part of the approved final-system depth. Vehicles, tactical companion expeditions, multi-survivor dispatch, and 3D camp remain cut. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which the game continues indefinitely.
 
 ## Source-of-truth order
 
