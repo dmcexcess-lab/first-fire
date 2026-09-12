@@ -29,9 +29,15 @@ jobs:
           test -f game/main.tscn
           test -f game/assets/tactical_atlas.svg
           test -f game/scripts/Game.gd
+          test -f game/scripts/GameThreeStat.gd
+          test -f game/scripts/GameSleepVirus.gd
           test -f game/scripts/Main.gd
+          test -f game/scripts/MainThreeStat.gd
+          test -f game/scripts/MainSleepVirus.gd
           test -f game/scripts/FFData.gd
           test -f game/scripts/FFCombat.gd
+          test -f game/scripts/FFCombatThreeStat.gd
+          test -f game/scripts/FFCombatVirus.gd
           test -f game/scripts/FFTacticalVisuals.gd
           test -f game/scripts/FFTacticalEnvironments.gd
           test -f game/scripts/FFTacticalLighting.gd
@@ -46,6 +52,10 @@ jobs:
           test -f game/scripts/FFCampLifeRules.gd
           test -f game/scripts/FFCampSocial.gd
           test -f game/scripts/FFCampView.gd
+          test -f game/scripts/FFCampViewSleepVirus.gd
+          test -f game/scripts/FFInspectorThreeStat.gd
+          test -f game/scripts/FFInspectorVirus.gd
+          test -f game/scripts/FFVirusRules.gd
           test -f game/scripts/ci/FFArchitectureSmoke.gd
           test ! -e first_fire_alpha01_web_ready.zip
           test ! -d .deploy
@@ -72,6 +82,7 @@ jobs:
           test ! -e .github/workflows/temp-tactical-depth-balance.yml
           test ! -e .github/workflows/temp-live-playtest.yml
           test ! -e .github/workflows/temp-tactical-map-depth.yml
+          test ! -e .github/scripts/temp_sleep_virus_patch.py
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
@@ -124,6 +135,15 @@ jobs:
           grep -q 'TacticalTime.movement_cost' game/scripts/FFCombat.gd
           grep -q 'TacticalSound.estimate_location' game/scripts/FFCombat.gd
           grep -q 'TacticalTiles.draw_ground' game/scripts/FFCombat.gd
+          grep -Fq 'Game="*res://scripts/GameSleepVirus.gd"' game/project.godot
+          grep -Fq 'res://scripts/MainSleepVirus.gd' game/main.tscn
+          grep -Fq 'const SIM_TIME_SCALE := 0.5' game/scripts/GameSleepVirus.gd
+          grep -q 'func survivor_can_assign' game/scripts/GameSleepVirus.gd
+          grep -q 'func start_virus_treatment' game/scripts/GameSleepVirus.gd
+          grep -q 'func quarantine_survivor' game/scripts/GameSleepVirus.gd
+          grep -q 'infected_hits' game/scripts/FFCombatVirus.gd
+          grep -q 'status == "Sleeping"' game/scripts/FFCampViewSleepVirus.gd
+          grep -q 'ZOMBIE VIRUS' game/scripts/FFInspectorVirus.gd
           grep -q 'pointing/emulate_mouse_from_touch=false' game/project.godot
           grep -q 'vram_texture_compression/for_mobile=false' game/export_presets.cfg
           if grep -q 'func _normalize_loaded_state' game/scripts/Game.gd; then exit 1; fi
