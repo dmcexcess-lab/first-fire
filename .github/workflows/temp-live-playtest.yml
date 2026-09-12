@@ -43,31 +43,25 @@ jobs:
           const canvas = page.locator('canvas').first();
           const box = await canvas.boundingBox();
           if (!box) throw new Error('Godot canvas not found');
-          console.log('CANVAS', JSON.stringify(box));
           async function shot(name){ await page.screenshot({path:`qa/${name}.png`, fullPage:true}); }
           async function clickGame(gx,gy){
             const b=await canvas.boundingBox();
-            const x=b.x+(gx/390)*b.width;
-            const y=b.y+(gy/844)*b.height;
-            console.log('CLICK', gx, gy, '=>', x, y);
-            await page.mouse.click(x,y);
-            await page.waitForTimeout(1600);
+            await page.mouse.click(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height);
+            await page.waitForTimeout(1500);
           }
           async function mouseGame(gx,gy){
             const b=await canvas.boundingBox();
             await page.mouse.move(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height);
           }
-          await clickGame(195,354); // NEW GAME
-          await clickGame(93,524); // tutorial SKIP
-          await clickGame(343,810); // SURVIVORS nav
-          await shot('01_survivors_top');
+          await clickGame(195,354);
+          await clickGame(93,524);
+          await clickGame(343,810);
           await mouseGame(195,650);
           await page.mouse.wheel(0,520);
-          await page.waitForTimeout(1600);
-          await shot('02_survivors_scrolled_520');
-          await page.mouse.wheel(0,520);
-          await page.waitForTimeout(1600);
-          await shot('03_survivors_scrolled_1040');
+          await page.waitForTimeout(1400);
+          await shot('01_roster');
+          await clickGame(280,749); // SEND OUT
+          await shot('02_expedition_overlay');
           fs.writeFileSync('qa/console.txt', consoleLines.join('\n'));
           await browser.close();
           EOF
