@@ -130,6 +130,22 @@ static func item_contribution(origin: Vector2i, facing: Vector2i, cell: Vector2i
     var cone_factor := clampf((dot - min_dot) / (1.0 - min_dot), 0.0, 1.0)
     return clampf(strength * (0.34 + cone_factor * 0.66) * (0.34 + range_factor * 0.66), 0.0, 1.0)
 
+static func vision_range_for_light(light_level: float, max_range: int) -> int:
+    # Visibility geometry now follows real illumination. Near-black cells only
+    # extend the cone a couple of tiles; well-lit cells can use the full range.
+    var capped_max := maxi(2, max_range)
+    var light := clampf(light_level, 0.0, 1.0)
+    var factor := clampf((light - 0.04) / 0.56, 0.0, 1.0)
+    var span := maxi(0, capped_max - 2)
+    return clampi(2 + int(round(factor * float(span))), 2, capped_max)
+
+static func vision_cone_min_dot(light_level: float) -> float:
+    # Darkness narrows peripheral vision; bright cells remain readable farther
+    # off the facing axis. Lower dot thresholds mean a wider cone.
+    var light := clampf(light_level, 0.0, 1.0)
+    var factor := clampf((light - 0.04) / 0.56, 0.0, 1.0)
+    return lerpf(0.38, 0.10, factor)
+
 static func visible_at_distance(light_level: float, distance: int, max_range: int) -> bool:
     if distance <= 1:
         return true
