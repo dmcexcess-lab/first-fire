@@ -54,6 +54,7 @@ func _init() -> void:
     if not _check(combat_source.contains("No armor layer") and combat_source.contains("target_actor.hp -= dmg"), "no armor damage mitigation"): return
     if not _check(combat_source.contains("super.shove()") and combat_source.contains("sacrifices the defensive state"), "shove drops guard"): return
     if not _check(combat_source.contains("func toggle_sprint()") and combat_source.contains("func stealth_attack"), "sprint and stealth actions"): return
+    if not _check(combat_source.contains("vision_range_for_light") and combat_source.contains("vision_cone_min_dot"), "active sight uses light-sensitive cone geometry"): return
 
     if not _check(ExpeditionRules.zone_cap("Camp Perimeter") == 3, "perimeter cap"): return
     if not _check(ExpeditionRules.should_force_tactical(2), "tactical drought protection"): return
@@ -64,6 +65,8 @@ func _init() -> void:
     if not _check(TacticalScenarios.time_of_day_for_hour(18.5) == "dusk", "dusk phase"): return
     if not _check(TacticalScenarios.time_of_day_for_hour(2.0) == "night", "night phase"): return
     if not _check(TacticalLighting.ambient_level("alley", "dawn", false) > TacticalLighting.ambient_level("alley", "night", false), "dawn lighting"): return
+    if not _check(TacticalLighting.vision_range_for_light(0.85, 7) > TacticalLighting.vision_range_for_light(0.08, 7), "bright light extends vision cone"): return
+    if not _check(TacticalLighting.vision_cone_min_dot(0.85) < TacticalLighting.vision_cone_min_dot(0.08), "bright light widens vision cone"): return
     for environment_id in TacticalEnvironments.all_ids():
         for variant in range(TacticalEnvironments.variant_count(str(environment_id))):
             if not _check(TacticalEnvironments.validate_layout(TacticalEnvironments.build_layout(str(environment_id), variant)), "reachable exits: %s v%d" % [environment_id, variant]): return
