@@ -69,7 +69,7 @@ Combat and Agility are the only survivor stats that affect tactical fighting/mov
 
 Authored environments include back alleys, gas stations, houses, apartments, stores, warehouse yards, and drainage washes. Every map has reachable exits and retreat remains valid.
 
-Tactical scene lighting uses the actual settlement clock at encounter creation with DAWN / DAY / DUSK / NIGHT phases plus independently powered/unpowered environments. Light affects actual visibility/detectability. Portable Secondary lights can be switched on/off and persist in tactical runtime.
+Tactical scene lighting uses the actual settlement clock at encounter creation with DAWN / DAY / DUSK / NIGHT phases plus independently powered/unpowered environments. Actual per-cell light now shapes the player's vision cone geometry as well as visibility thresholds: darkness contracts and narrows sight, while bright cells and portable/fixed lighting extend and widen it. Portable Secondary lights can be switched on/off and persist in tactical runtime. Off-screen audible events continue to appear as fuzzy **yellow/gold sound callouts** at approximate locations and disappear when the true source becomes directly visible.
 
 ## Expedition logistics
 
