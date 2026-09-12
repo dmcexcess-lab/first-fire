@@ -43,7 +43,7 @@ jobs:
           const canvas = page.locator('canvas').first();
           if (!(await canvas.boundingBox())) throw new Error('Godot canvas not found');
           async function shot(name){ await page.screenshot({path:`qa/${name}.png`, fullPage:true}); }
-          async function clickGame(gx,gy,wait=1200){
+          async function clickGame(gx,gy,wait=650){
             const b=await canvas.boundingBox();
             await page.mouse.click(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height);
             await page.waitForTimeout(wait);
@@ -52,28 +52,51 @@ jobs:
             const b=await canvas.boundingBox();
             await page.mouse.move(b.x+(gx/390)*b.width,b.y+(gy/844)*b.height);
           }
-          async function openRoster(){
-            await clickGame(343,810,900);
+          async function dispatch(){
+            await clickGame(343,810,700);
             await mouseGame(195,650);
             await page.mouse.wheel(0,540);
-            await page.waitForTimeout(1000);
-          }
-          async function dispatch(n){
-            await openRoster();
-            await shot(`run${n}_01_roster`);
-            await clickGame(280,749,900); // SEND OUT
-            await shot(`run${n}_02_overlay`);
-            await clickGame(195,465,900); // SEND Camp Perimeter
-            await shot(`run${n}_03_sent`);
+            await page.waitForTimeout(800);
+            await clickGame(280,749,700);
+            await clickGame(195,465,700);
             await page.waitForTimeout(15000);
-            await shot(`run${n}_04_after_wait`);
           }
-          await clickGame(195,354,1200); // NEW GAME
-          await clickGame(93,524,900); // SKIP tutorial
-          await dispatch(1);
-          await dispatch(2);
-          await dispatch(3);
-          await shot('final_state');
+
+          await clickGame(195,354,1000); // NEW GAME
+          await clickGame(93,524,700); // tutorial SKIP
+          await dispatch();
+          await dispatch(); // tactical drought protection reaches combat
+          await shot('01_tactical_initial_light_on');
+
+          await clickGame(197,721,700); // LIGHT OFF
+          await shot('02_light_off');
+          await clickGame(197,721,700); // LIGHT ON
+          await shot('03_light_back_on');
+
+          await clickGame(76,809,700); // STEALTH
+          await shot('04_stealth_on');
+          await clickGame(197,809,700); // SPRINT (also cancels crouch)
+          await shot('05_sprint_on');
+
+          await clickGame(197,675,700); // GUARD
+          await shot('06_guard_on');
+          await clickGame(197,765,700); // SHOVE, should drop Guard even with no target
+          await shot('07_after_shove');
+
+          // Generate tactical time so ambient off-screen sounds have repeated chances
+          // to create the fuzzy yellow/gold sound callouts.
+          for (let i=0;i<20;i++) await clickGame(314,739,120); // TURN R x20 => original facing
+          await page.waitForTimeout(600);
+          await shot('08_after_20_turns_sound_check');
+
+          // Initial rescue spawn faces east in this authored alley; rotate south and
+          // step toward the nearby green exit to exercise movement/extraction.
+          await clickGame(314,739,500); // TURN R => south
+          await clickGame(318,674,700); // FORWARD
+          await shot('09_after_forward_1');
+          await clickGame(318,674,1200); // FORWARD again / exit if reached
+          await shot('10_after_forward_2');
+
           fs.writeFileSync('qa/console.txt', consoleLines.join('\n'));
           await browser.close();
           EOF
