@@ -9,6 +9,20 @@ func persist_runtime():
     runtime["infected_hits"] = int(stats.get("infected_hits", 0))
     Game.update_combat_runtime(runtime)
 
+func check_objective_and_exit():
+    if str(context.get("kind", "")) == "rescue" and exit_cells.has(player.pos) and rescue_contacted and not rescuee.is_empty() and not bool(rescuee.get("dead", false)) and not rescuee_ready_to_extract():
+        msg = "Hold the exit — %s is catching up." % str(rescuee.get("name", "The survivor"))
+        queue_redraw()
+        return
+    super.check_objective_and_exit()
+
+func commit_action(cost: int):
+    super.commit_action(cost)
+    if game_over:
+        return
+    if str(context.get("kind", "")) == "rescue" and exit_cells.has(player.pos):
+        check_objective_and_exit()
+
 func zombie_attack(i: int, target_actor: Dictionary):
     var hp_before := int(target_actor.get("hp", 0))
     super.zombie_attack(i, target_actor)
