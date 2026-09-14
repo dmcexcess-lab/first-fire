@@ -6,19 +6,21 @@ This file records durable product/design context. `README_SOPS.md` records proce
 
 ## Current game
 
-**First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game combining camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
+**First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game combining a living camp-management home screen, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
 
 Current milestone: **Beta Candidate — Feature Freeze**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
-Core navigation: **CAMP | CRAFT | BUILD | SURVIVORS**.
+The **living camp is the primary game/menu surface**. The CAMP / CRAFT / BUILD / SURVIVORS controls remain as shortcuts and detail screens, but normal play should begin from the camp itself rather than from disconnected menu pages.
 
 Feature-freeze means deepen/unify existing systems rather than add new pillars.
 
 ## Design pillars
 
 - **Simulation first.** Drama comes from interacting systems and persistent state.
+- **The camp is the Tamagotchi.** The player watches a small settlement live, identifies what it needs, sends survivors out to bring resources home, and sees the camp physically grow and change.
+- **Camp is interface.** Survivors, stations, plots, the communal stash, the fire, and the gate are touch targets in the living camp. Detailed panels are contextual views opened from that world.
 - **Survivors are people.** Gear, health, fatigue, stress, relationships, history, wounds, infection, deaths, and a small number of meaningful stats matter.
 - **No conventional levels.** Capability comes from three use-based stats, equipment, condition, traits, tactical decisions, and camp infrastructure.
 - **Persistent consequences.** Field outcomes feed back into camp/world state.
@@ -67,7 +69,7 @@ Combat and Agility are the only survivor stats that affect tactical fighting/mov
 
 `FFTacticalScenarios.gd` owns objectives/scenario selection. `FFTacticalEnvironments.gd` owns authored places/geometry/props/entries/exits. `FFTacticalLighting.gd` owns tactical lighting rules. `FFTacticalTiles.gd` owns atlas rendering. `FFTacticalTime.gd` owns low-level action-time/load/fatigue/condition timing. `FFTacticalSound.gd` owns labels/localization helpers. `FFTacticalVisuals.gd` owns survivor/infected/weapon rendering.
 
-Authored environments include back alleys, gas stations, houses, apartments, stores, warehouse yards, and drainage washes. Every map has far-side extraction rather than an exit beside the entry, plus authored physical loot containers whose contents are only retained after escape. Rescue civilians are protected from infected targeting until first contact, then become vulnerable escorts.
+Authored environments include back alleys, gas stations, houses, apartments, stores, warehouse yards, and drainage washes. Every map has far-side extraction rather than an exit beside the entry, plus authored physical loot containers whose contents are only retained after escape. Rescue civilians are protected from infected targeting until first contact, then become vulnerable escorts. On extraction, a contacted living rescue may catch up to a player holding the exit instead of being abandoned solely because the player reached the exit one tactical step first.
 
 Tactical scene lighting uses the actual settlement clock at encounter creation with DAWN / DAY / DUSK / NIGHT phases plus independently powered/unpowered environments. Actual per-cell light shapes the player's vision cone geometry as well as visibility thresholds: darkness contracts and narrows sight, while bright cells and portable/fixed lighting extend and widen it. Portable Secondary lights can be switched on/off and persist in tactical runtime. Off-screen audible events continue to appear as fuzzy **yellow/gold sound callouts** at approximate locations and disappear when the true source becomes directly visible.
 
@@ -79,13 +81,19 @@ Agility is the active survivor stat used for expedition travel pace. Routine loo
 
 The SEND OUT selector uses touch-safe PREV/NEXT controls rather than popup `OptionButton` controls because of mobile Safari behavior. Its modal pauses camp simulation until SEND/CANCEL restores the previous pause state.
 
+The camp gate and survivor inspector are the intended in-world routes into expedition preparation; the Survivors shortcut remains available for direct roster access.
+
 ## Living camp and camp life
 
-The persistent 2D tactical-style living camp is final camp presentation. `FFCampView.gd` remains the presentation foundation; active camp rendering routes through `FFCampViewSleepVirus.gd` for authoritative sleep/treatment/quarantine placement.
+The persistent 2D tactical-style living camp is both the final camp presentation **and the primary menu/home screen**. `FFCampView.gd` remains the presentation foundation; active camp rendering and interaction route through `FFCampViewSleepVirus.gd` for authoritative sleep/treatment/quarantine placement plus camp touch targets.
 
 The living camp uses connected dirt paths, distinct sleeping/work/service areas, a fenced perimeter and gate, purpose-specific structures, and a resource-reflective First Fire. These graphics read authoritative `Game` state and do not create separate camp simulation or pathfinding.
 
-Sleep is now a real availability state rather than a passive visual label. When autonomous sleep triggers, the survivor enters **Sleeping**, receives a timed sleep task, walks to a deterministic bed/sleep slot in the camp view, lies down visually, and is excluded from worker/expedition/equipment assignment until waking. Existing productive work, treatment, chores, pet care, crafting, building, garden work, expeditions, quarantine, and severe sickness likewise keep survivors unavailable through authoritative statuses/tasks.
+On the focused CAMP screen, the living camp expands to occupy the main play area. The player can tap a survivor to open the detailed survivor/inventory inspector; tap the communal chest to open communal inventory; tap built crafting stations to open crafting; tap an empty authored building plot to open BUILD; tap the First Fire to open camp duties; and tap the gate to move into survivor/send-out flow. The old tab screens remain supporting detail/shortcut surfaces rather than the conceptual center of the game.
+
+Survivors carry floating at-a-glance state in the camp: existing need pips remain, while the focused camp adds a compact mood/priority-need/virus badge so hunger, thirst, sleep, fun, safety, hygiene pressure, stress, and infection are readable without opening a roster panel.
+
+Sleep is a real availability state rather than a passive visual label. When autonomous sleep triggers, the survivor enters **Sleeping**, receives a timed sleep task, walks to a deterministic bed/sleep slot in the camp view, lies down visually, and is excluded from worker/expedition/equipment assignment until waking. Existing productive work, treatment, chores, pet care, crafting, building, garden work, expeditions, quarantine, and severe sickness likewise keep survivors unavailable through authoritative statuses/tasks.
 
 `FFCampLifeRules.gd` owns six survivor needs plus pet affection/retention/reward rules, fire/maintenance tuning, idle recovery/downtime, and camp cadence. Pets do not consume camp food or water: Bond/Affection falls without attention, PLAY/LOVE restore it, neglected pets can leave camp, and each pet that stays brings back exactly one random material or Raw Food per in-game day. Productive work is player-directed: fire tending, cleaning, perimeter repair, crafting, building, garden work, pet care, and expeditions require assignment. Camp chores and pet care use short touch-first WORK interactions.
 
@@ -112,7 +120,7 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 
 ## Time / economy
 
-Settlement simulation now runs at **half the previous real-time speed** through the active orchestration layer. The base day remains 120 simulation seconds, but a full in-game day now takes about **4 real active minutes** instead of 2. Camp needs, work/recovery, expeditions, fire/maintenance decay, camp events, and daily transitions all use the slowed simulation delta. UI refresh and autosave cadence remain real-time responsiveness concerns rather than simulation balance.
+Settlement simulation runs at **half the previous real-time speed** through the active orchestration layer. The base day remains 120 simulation seconds, but a full in-game day takes about **4 real active minutes** instead of 2. Camp needs, work/recovery, expeditions, fire/maintenance decay, camp events, and daily transitions all use the slowed simulation delta. UI refresh and autosave cadence remain real-time responsiveness concerns rather than simulation balance.
 
 Fire Pit conversions:
 - **1 Raw Food → 2 Cooked Food**
@@ -128,7 +136,7 @@ Current survivor-model marker is **`combat-agility-leadership-v1`**. The zombie-
 
 The filename remains `user://first_fire_alpha01.json` intentionally.
 
-`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is now `GameSleepVirus.gd`, which extends it with half-speed camp simulation, authoritative sleep availability, zombie-virus state/treatment/quarantine, and tactical exposure integration.
+`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with half-speed camp simulation, authoritative sleep availability, zombie-virus state/treatment/quarantine, and tactical exposure integration.
 
 ## Canonical technical reality
 
@@ -139,14 +147,16 @@ The active project seams are:
 - `main.tscn` → `MainSleepVirus.gd` → `MainThreeStat.gd` → `Main.gd`
 - active tactical runtime → `FFCombatVirus.gd` → `FFCombatThreeStat.gd` → `FFCombat.gd`
 - active survivor inspector → `FFInspectorVirus.gd` → `FFInspectorThreeStat.gd`
-- active living camp renderer → `FFCampViewSleepVirus.gd` → `FFCampView.gd`
+- active living camp/menu renderer → `FFCampViewSleepVirus.gd` → `FFCampView.gd`
 - zombie-virus pure rules → `FFVirusRules.gd`
+
+`MainSleepVirus.gd` owns the current camp-as-menu routing/layout: the focused CAMP view expands and consumes touch signals emitted by `FFCampViewSleepVirus.gd`, then opens existing inspector/inventory/craft/build/survivor flows. The renderer remains non-authoritative; it emits intent only.
 
 These wrappers keep the blast radius small while preserving the mature three-stat/camp/tactical foundations. Legacy six-skill strings may remain inside inherited base/legacy event code for compatibility while active runtime exposes only the three current stats. New gameplay must target the active wrapper seam or the correct underlying owner rather than revive the legacy model.
 
 ## Frozen scope
 
-Pets, active camp work, authoritative sleep, and zombie-virus consequences/treatment are now part of the approved final-system depth. Vehicles, tactical companion expeditions, multi-survivor dispatch, and 3D camp remain cut. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which the game continues indefinitely.
+Pets, active camp work, authoritative sleep, zombie-virus consequences/treatment, and the living camp as the primary menu surface are part of the approved final-system depth. Vehicles, tactical companion expeditions, multi-survivor dispatch, and 3D camp remain cut. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which play continues indefinitely.
 
 ## Source-of-truth order
 
