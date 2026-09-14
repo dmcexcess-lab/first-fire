@@ -22,7 +22,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Exercise live camp interactions
+      - name: Exercise camp work and send-out entry
         run: |
           cat > playtest.mjs <<'EOF'
           import { chromium } from 'playwright';
@@ -39,23 +39,20 @@ jobs:
           if(!(await canvas.boundingBox())) throw new Error('canvas missing');
           async function shot(name){await page.screenshot({path:`qa/${name}.png`,fullPage:true});}
           async function clickGame(x,y,w=700){const b=await canvas.boundingBox();await page.mouse.click(b.x+(x/390)*b.width,b.y+(y/844)*b.height);await page.waitForTimeout(w);}
+          async function wheel(dy){const b=await canvas.boundingBox();await page.mouse.move(b.x+b.width*0.5,b.y+b.height*0.82);await page.mouse.wheel(0,dy);await page.waitForTimeout(700);}
           await clickGame(195,354,1000); // NEW GAME
           await clickGame(93,524,900);   // SKIP
           await shot('01_home');
-          await clickGame(159,452,700);  // First Fire
-          await shot('02_fire_crafting');
-          await clickGame(111,217,700);  // Work board while contextual camp is compact
-          await shot('03_work_board');
-          await clickGame(183,289,700);  // Stash
-          await shot('04_stash');
-          await clickGame(333,44,700);   // Inspector CLOSE
-          await clickGame(62,289,700);   // Makeshift Shelter plot
-          await shot('05_build_plot');
-          await clickGame(171,385,700);  // Gate
-          await shot('06_gate');
-          await clickGame(183,241,700);  // Founder in compact camp
-          await shot('07_survivor_inspector');
-          await clickGame(333,44,700);   // close inspector
+          await clickGame(111,428,700);  // physical work board on full camp
+          await shot('02_work_board_top');
+          await wheel(520);
+          await shot('03_work_board_scrolled');
+          await clickGame(195,469,700);  // CAMP back
+          await shot('04_home_again');
+          await clickGame(183,452,700);  // founder
+          await shot('05_survivor');
+          await clickGame(285,661,800);  // SEND OUT from inspector
+          await shot('06_expedition_setup');
           fs.writeFileSync('qa/console.txt',logs.join('\n'));
           await browser.close();
           EOF
@@ -64,6 +61,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: camp-playtest-stage2
+          name: camp-playtest-stage3
           path: qa
           retention-days: 1
