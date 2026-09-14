@@ -173,7 +173,7 @@ func _draw_station_context(station_name: String) -> void:
         var v := VBoxContainer.new()
         panel.add_child(v)
         v.add_child(_make_label(str(recipe.get("id", "Recipe")), 16))
-        var desc := _format_cost(recipe.get("cost", {}), recipe.get("component_cost", {})) + "  •  %.0fs base" % float(recipe.get("time", 0.0))
+        var desc: String = str(_format_cost(recipe.get("cost", {}), recipe.get("component_cost", {}))) + "  •  %.0fs base" % float(recipe.get("time", 0.0))
         var outputs: Array = []
         for out_key in recipe.get("gives_resource", {}).keys():
             outputs.append("%d %s" % [int(recipe["gives_resource"][out_key]), out_key])
