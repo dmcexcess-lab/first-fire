@@ -6,7 +6,7 @@ First Fire is now in **feature freeze** and shelved for Beta testing/release wor
 
 **Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare one survivor → expedition → tactical field situation → escape with resources/rescues → return to a visibly changing camp → repeat.**
 
-The living camp is the primary home/menu surface. CAMP / CRAFT / BUILD / SURVIVORS remain shortcuts/detail screens, but normal play should be readable and navigable from the camp itself: tap survivors, stations, plots, stash, fire/duties, and the gate rather than treating the camp as a decorative card above menus.
+The living camp is the primary home/menu surface. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is being retired from active play rather than preserved as parallel navigation. Normal management starts by touching the camp itself: survivors open inspection, the communal stash opens inventory/resources, the First Fire provides default Day-1 crafting, built crafting stations expose their own recipes, empty plots expose their one construction project, built structures expose contextual information/interactions, the work board owns chores/pets, and the gate owns expedition dispatch. Contextual sheets may reuse mature underlying UI logic, but they are entered from physical camp objects and return to the camp.
 
 The game has **no scripted ending**. A settlement with every building completed and roughly **15–18 living survivors** is the mature/top-level state; play can continue indefinitely after that.
 
@@ -30,7 +30,8 @@ Removing these is intentional scope control, not deferred work.
 
 Finish tuning the systems that already exist:
 
-- make the living camp itself carry the normal management/navigation load: survivor taps open stats/inventory, built stations open their work surfaces, empty authored plots open BUILD, the communal stash opens inventory, the First Fire opens duties, and the gate leads toward SEND OUT;
+- make the living camp itself carry the normal management/navigation load: survivor taps open stats/inventory, the First Fire opens starter crafting, built stations open their own work surfaces, empty authored plots open that specific BUILD action, built structures expose contextual details, the communal stash opens inventory/resources, the work board opens duties/pet care, and the gate opens a send-out chooser;
+- keep the legacy four-tab navigation hidden in the active UI and continue removing assumptions that Craft/Build/Survivors are standalone destinations;
 - keep mood/need/virus state glanceable on the camp through compact floating indicators rather than forcing routine roster-panel inspection;
 - autonomous relationship/politics-based chatter in the living camp;
 - survivor moodlets driven by hunger, thirst, sleep, fun, safety, and hygiene; eating/drinking/sleep/fun remain autonomous idle behavior while productive labor is player-assigned;
@@ -65,7 +66,7 @@ Every current `FFData.GEAR` item must be represented in the finished equipment l
 
 The tactical HUD exposes all five equipment slots: Weapon, Secondary, Tool, Clothing and Pack. Explore objectives also place a real named gear pickup on the board; it is only retained after physical recovery and successful escape. Every current gear catalog entry belongs to a zone-tiered field-loot pool.
 
-Crafting remains a detail surface opened from the living camp's built stations or the CRAFT shortcut; it is not a second inventory system.
+Crafting is contextual camp interaction, not a standalone navigation mode. **First Fire / Fire Pit is always present from Day 1** and supplies the default Cook Food, Boil Water, and Sterile Dressing recipes. Built Workbench and Sewing Table objects expose their own recipe sets when tapped.
 
 ### Final building tree
 
@@ -87,7 +88,7 @@ The final build list is:
 14. Armory
 15. Dormitory
 
-Housing grows additively to the final 18-person ceiling. Utility buildings deepen existing food/water/recovery/security/social/crafting rules rather than creating new minigames. Empty authored plots are visible/tappable in the living camp and route into the existing BUILD flow.
+Housing grows additively to the final 18-person ceiling. Utility buildings deepen existing food/water/recovery/security/social/crafting rules rather than creating new minigames. Empty authored plots are visible/tappable in the living camp and expose only their associated construction project; built structures remain tappable for contextual information and any active interaction such as tending the Garden Plot.
 
 ### Mature settlement state
 
