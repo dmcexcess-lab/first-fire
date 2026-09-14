@@ -3,6 +3,7 @@ extends "res://scripts/FFCampView.gd"
 signal survivor_pressed(survivor_id: int)
 signal craft_station_pressed(station_name: String)
 signal build_plot_pressed(building_name: String)
+signal building_pressed(building_name: String)
 signal communal_inventory_pressed
 signal duties_pressed
 signal gate_pressed
@@ -171,12 +172,14 @@ func _handle_camp_press(local_pos: Vector2) -> void:
         return
     for building_value in BUILDING_CELLS.keys():
         var building_name := str(building_value)
-        if bool(Game.buildings.get(building_name, false)):
-            continue
         var building_pos: Vector2i = BUILDING_CELLS[building_value]
-        if cell == building_pos:
+        if cell != building_pos:
+            continue
+        if bool(Game.buildings.get(building_name, false)):
+            building_pressed.emit(building_name)
+        else:
             build_plot_pressed.emit(building_name)
-            return
+        return
 
 func _sleep_slots() -> Array:
     var slots: Array = [SLEEP_CELL]
