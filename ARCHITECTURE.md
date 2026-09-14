@@ -28,11 +28,11 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 
 `MainThreeStat.gd` remains the three-stat UI specialization over `Main.gd`. `MainSleepVirus.gd` is the **active main-scene script** and routes the living camp, inspector, and tactical runtime to their sleep/virus-aware wrappers.
 
-`FFCombatThreeStat.gd` remains the active combat-model specialization over `FFCombat.gd`; `FFCombatVirus.gd` is the final active tactical wrapper and adds only direct infected-contact counting/persistence/result data for virus exposure.
+`FFCombatThreeStat.gd` remains the active combat-model specialization over `FFCombat.gd`; `FFCombatVirus.gd` is the final active tactical wrapper and adds direct infected-contact counting plus rescue-extraction ordering protection.
 
 `FFInspectorThreeStat.gd` remains the three-stat survivor/item presentation foundation; `FFInspectorVirus.gd` is the active inspector wrapper and adds zombie-virus status, treatment, quarantine, and medical-item explanations.
 
-`FFCampView.gd` remains presentation-only living-camp foundation; `FFCampViewSleepVirus.gd` is the active renderer wrapper and maps authoritative Sleeping/Recovering/Quarantined/Sick state to beds, treatment space, and isolation visuals.
+`FFCampView.gd` remains the living-camp drawing/motion foundation. `FFCampViewSleepVirus.gd` is the active camp/menu surface: it maps authoritative sleep/treatment/quarantine state, draws at-a-glance mood/need information, performs touch hit-testing against visible camp entities, and emits navigation/selection intent without mutating simulation state.
 
 ## Core owners
 
@@ -55,16 +55,16 @@ Top-level UI/input foundation: navigation, overlays, Camp/Craft/Build/Survivors 
 Three-stat UI specialization, including the three-stat worker picker and routing foundations.
 
 ### `MainSleepVirus.gd`
-Active main-scene wrapper. Replaces the base camp renderer with the sleep/virus renderer, mounts the virus-aware inspector and combat wrapper, and presents Sleeping/virus/busy state in the camp work/status UI.
+Active main-scene wrapper and current camp-as-menu controller. On the normal CAMP state it expands the living camp and hides the generic scrolling content pane; it consumes non-authoritative camp-view signals and routes them into existing survivor inspector, communal inventory, Craft, Build, Camp Duties, and Survivors/SEND OUT flows. Other tabs remain supporting detail screens and shrink the camp back to its compact presentation.
 
 ### `FFCampView.gd`
 Living 2D camp presentation foundation. Reads authoritative state and maps it to visual stations/cosmetic survivor motion only. It must not own work timing, resources, survivor rules, or pathfinding gameplay.
 
 ### `FFCampViewSleepVirus.gd`
-Active camp-presentation wrapper. Owns deterministic visual sleep-slot selection and presentation for Sleeping, treatment, chores, pet care, quarantine, and severe illness. It does not decide when those states begin/end.
+Active camp/menu renderer and touch hit-test layer. Owns deterministic visual sleep-slot selection and presentation for Sleeping, treatment, chores, pet care, quarantine, and severe illness. It also owns the visual/touch locations for survivor selection, the communal stash, built craft stations, empty building plots, First Fire duties, and the camp gate. Those interactions emit intent signals only; `MainSleepVirus.gd` decides which overlay/tab to open and `Game` remains authoritative for all simulation changes.
 
 ### `FFSurvivorPanel.gd`
-Concise Survivors-tab dashboard: CAMP/OUT/BUSY/LOST summary, outside-camp cards, recent returns, and roster. Detailed current presentation belongs to the active inspector wrapper.
+Concise Survivors-tab dashboard: CAMP/OUT/BUSY/LOST summary, outside-camp cards, recent returns, and roster. Detailed current presentation belongs to the active inspector wrapper. This remains a shortcut/detail screen rather than the primary home surface.
 
 ### `FFCombat.gd`
 Established tactical board/runtime foundation: map state, actors, infected, vision/fog, facing, sound propagation, doors/glass/hazards, physical loot-container state, objectives, survivor/pet rescue escort state, persistence, and rendering integration.
@@ -73,7 +73,7 @@ Established tactical board/runtime foundation: map state, actors, infected, visi
 Current combat rules: Combat/Agility attack and movement behavior, Stealth, Sprint, Forward, Shove, weapon-class handling, and no armor mitigation.
 
 ### `FFCombatVirus.gd`
-Thin active tactical wrapper. Counts successful direct infected attacks against the controlled survivor and persists/returns that count. It must not treat generic physical damage as virus exposure.
+Thin active tactical wrapper. Counts successful direct infected attacks against the controlled survivor, persists/returns that count, and prevents a contacted living rescue from being failed merely because the player reaches the exit before the escort's next scheduled movement. It must not treat generic physical damage as virus exposure.
 
 ### `FFTacticalBalance.gd`
 Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected counts/HP/damage, container search/loot tuning, Shove resistance/stagger, and infected hit chance.
@@ -122,6 +122,12 @@ Persistence transport only: JSON/file read-write, compatibility check, invalidat
 ### `scripts/ci/FFArchitectureSmoke.gd`
 Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts are compiled by import/startup gates in their real project context; smoke asserts the active wrapper chain plus durable rules such as sleep selection, half-speed simulation, infected-contact tracking, and virus treatment requirements.
 
+## Camp interaction boundary
+
+The living camp is now the primary interaction surface, but it remains a UI layer rather than a second simulation. `FFCampViewSleepVirus.gd` may determine which visible entity/cell was tapped and emit an intent signal. It must not spend resources, assign workers, start expeditions, alter survivor state, or perform crafting/building directly. `MainSleepVirus.gd` routes intent to the existing UI flows; those flows call `Game`, which remains authoritative.
+
+At-a-glance mood/need/virus indicators are derived presentation from existing survivor state. They do not create a second need or mood model.
+
 ## Availability boundary
 
 A survivor is assignable only when the active Game layer says so. `GameSleepVirus.survivor_can_assign()` is the canonical current check for worker/equipment availability: living, `Available`, no active task, not quarantined, and not severely ill.
@@ -140,7 +146,7 @@ Detailed survivor/item inspection also pauses settlement simulation while open a
 
 ## Frozen scope
 
-The living 2D camp is final presentation. Pets, active camp duties, authoritative sleep, and zombie-virus consequence/treatment depth are approved gameplay. Vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI remain cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
+The living 2D camp is the final presentation and primary home/menu surface. Pets, active camp duties, authoritative sleep, and zombie-virus consequence/treatment depth are approved gameplay. Vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI remain cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
 
 ## Save boundary
 
@@ -150,7 +156,7 @@ Current survivor-model marker: **`combat-agility-leadership-v1`**.
 
 Current additive virus marker: **`zombie-virus-v1`**.
 
-A schema-7 save carrying the previous six-skill survivor shape is deliberately invalidated and restarted instead of migrated. Virus fields are additive/normalized and do not require a schema reset. The filename `user://first_fire_alpha01.json` remains intentionally unchanged.
+A schema-7 save carrying the previous six-skill survivor shape is deliberately invalidated and restarted instead of migrated. Virus fields are additive/normalized and do not require a schema reset. Camp-menu interaction/layout is presentation-only and does not change save shape. The filename `user://first_fire_alpha01.json` remains intentionally unchanged.
 
 ## Permanent CI gate
 
