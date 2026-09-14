@@ -49,22 +49,22 @@ Three-stat specialization and compatibility boundary. It keeps the base orchestr
 Active settlement orchestration layer. Owns the current real-time-to-simulation scale, authoritative Sleeping status/tasks, centralized assignment availability, zombie-virus state progression, quarantine, timed virus treatment, camp spread, and handoff of tactical infected-contact results into persistent survivor state.
 
 ### `Main.gd`
-Top-level UI/input foundation: navigation, overlays, Camp/Craft/Build/Survivors shells, work board, expedition modal, and shared interaction flow.
+Top-level UI/input foundation: legacy navigation shells, overlays, work board primitives, expedition modal, and shared interaction flow. The active runtime may reuse these mature UI functions without exposing their old standalone tab navigation.
 
 ### `MainThreeStat.gd`
 Three-stat UI specialization, including the three-stat worker picker and routing foundations.
 
 ### `MainSleepVirus.gd`
-Active main-scene wrapper and current camp-as-menu controller. On the normal CAMP state it expands the living camp and hides the generic scrolling content pane; it consumes non-authoritative camp-view signals and routes them into existing survivor inspector, communal inventory, Craft, Build, Camp Duties, and Survivors/SEND OUT flows. Other tabs remain supporting detail screens and shrink the camp back to its compact presentation.
+Active main-scene wrapper and current camp-as-menu controller. It hides the legacy CAMP / CRAFT / BUILD / SURVIVORS tab bar in active play and keeps `current_tab` as an internal compatibility detail only. The living camp remains touch-active at all times outside modal overlays. Camp objects open narrow contextual sheets: First Fire → starter Fire Pit crafting, Workbench/Sewing Table → station-specific crafting, empty plot → that plot's construction project, built structure → contextual details/actions, work board → chores/pets, gate → send-out chooser, survivor → inspector, communal stash → communal inventory. Those sheets return to the camp rather than becoming parallel top-level menus.
 
 ### `FFCampView.gd`
 Living 2D camp presentation foundation. Reads authoritative state and maps it to visual stations/cosmetic survivor motion only. It must not own work timing, resources, survivor rules, or pathfinding gameplay.
 
 ### `FFCampViewSleepVirus.gd`
-Active camp/menu renderer and touch hit-test layer. Owns deterministic visual sleep-slot selection and presentation for Sleeping, treatment, chores, pet care, quarantine, and severe illness. It also owns the visual/touch locations for survivor selection, the communal stash, built craft stations, empty building plots, First Fire duties, and the camp gate. Those interactions emit intent signals only; `MainSleepVirus.gd` decides which overlay/tab to open and `Game` remains authoritative for all simulation changes.
+Active camp/menu renderer and touch hit-test layer. Owns deterministic visual sleep-slot selection and presentation for Sleeping, treatment, chores, pet care, quarantine, and severe illness. It also owns the visual/touch locations for survivor selection, the communal stash, First Fire, Workbench/Sewing Table, built structures, empty building plots, the camp work board, and the camp gate. Those interactions emit intent signals only; `MainSleepVirus.gd` decides which contextual sheet/overlay to open and `Game` remains authoritative for all simulation changes.
 
 ### `FFSurvivorPanel.gd`
-Concise Survivors-tab dashboard: CAMP/OUT/BUSY/LOST summary, outside-camp cards, recent returns, and roster. Detailed current presentation belongs to the active inspector wrapper. This remains a shortcut/detail screen rather than the primary home surface.
+Legacy concise roster/dashboard implementation retained as an internal reusable component while camp interaction replaces standalone roster navigation. Detailed current presentation belongs to the active inspector wrapper.
 
 ### `FFCombat.gd`
 Established tactical board/runtime foundation: map state, actors, infected, vision/fog, facing, sound propagation, doors/glass/hazards, physical loot-container state, objectives, survivor/pet rescue escort state, persistence, and rendering integration.
@@ -124,7 +124,9 @@ Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts ar
 
 ## Camp interaction boundary
 
-The living camp is now the primary interaction surface, but it remains a UI layer rather than a second simulation. `FFCampViewSleepVirus.gd` may determine which visible entity/cell was tapped and emit an intent signal. It must not spend resources, assign workers, start expeditions, alter survivor state, or perform crafting/building directly. `MainSleepVirus.gd` routes intent to the existing UI flows; those flows call `Game`, which remains authoritative.
+The living camp is the primary interaction surface, but it remains a UI layer rather than a second simulation. `FFCampViewSleepVirus.gd` may determine which visible entity/cell was tapped and emit an intent signal. It must not spend resources, assign workers, start expeditions, alter survivor state, or perform crafting/building directly. `MainSleepVirus.gd` routes intent to contextual UI that calls the existing authoritative Game APIs.
+
+The active UI no longer exposes the legacy four-tab bar. The Fire Pit is the guaranteed default crafting point because `Game.new_game()` always starts with `Fire Pit = true`; it exposes Cook Food, Boil Water, and Sterile Dressing recipes from `FFData.RECIPES`. Workbench and Sewing Table remain build-gated recipe stations. The dedicated work board owns chores/pet-care access so First Fire itself can remain the default crafting target.
 
 At-a-glance mood/need/virus indicators are derived presentation from existing survivor state. They do not create a second need or mood model.
 
