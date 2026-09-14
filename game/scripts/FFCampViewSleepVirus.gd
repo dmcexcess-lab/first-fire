@@ -8,6 +8,7 @@ signal duties_pressed
 signal gate_pressed
 
 const CAMP_CHEST_CELL := Vector2i(8, 6)
+const WORK_BOARD_CELL := Vector2i(5, 3)
 const MENU_VISIBLE_GRID_WIDTH := 15.5
 
 var menu_mode := false
@@ -45,6 +46,7 @@ func _draw() -> void:
     _draw_structures(origin, tile)
     _draw_construction(origin, tile)
     _draw_communal_chest(origin, tile)
+    _draw_work_board(origin, tile)
     _draw_night(origin, tile)
     _draw_ambient_life(origin, tile)
     _draw_survivors(origin, tile)
@@ -78,11 +80,21 @@ func _draw_communal_chest(origin: Vector2, tile: float) -> void:
     Tiles.draw_prop(self, rect, "crate")
     draw_rect(rect, Color(0.87, 0.72, 0.39, 0.72), false, maxf(1.0, tile * 0.035))
 
+func _draw_work_board(origin: Vector2, tile: float) -> void:
+    var rect := _cell_rect(WORK_BOARD_CELL, origin, tile).grow(-tile * 0.16)
+    draw_rect(rect, Color("493a28"))
+    draw_rect(rect, Color("b49a62"), false, maxf(1.0, tile * 0.045))
+    draw_line(rect.position + Vector2(tile * 0.18, rect.size.y), rect.position + Vector2(tile * 0.18, rect.size.y + tile * 0.28), Color("725338"), maxf(2.0, tile * 0.07))
+    draw_line(rect.position + Vector2(rect.size.x - tile * 0.18, rect.size.y), rect.position + Vector2(rect.size.x - tile * 0.18, rect.size.y + tile * 0.28), Color("725338"), maxf(2.0, tile * 0.07))
+    draw_line(rect.position + Vector2(tile * 0.12, tile * 0.20), rect.position + Vector2(rect.size.x - tile * 0.12, tile * 0.20), Color("d8cfaa"), maxf(1.0, tile * 0.035))
+    draw_line(rect.position + Vector2(tile * 0.12, tile * 0.42), rect.position + Vector2(rect.size.x * 0.68, tile * 0.42), Color("d8cfaa"), maxf(1.0, tile * 0.035))
+
 func _draw_menu_affordances(origin: Vector2, tile: float) -> void:
     var font: Font = get_theme_default_font()
     var label_size := maxi(7, int(tile * 0.27))
     _draw_action_label(font, _cell_center(CAMP_CHEST_CELL, origin, tile) + Vector2(0, -tile * 0.58), "STASH", tile, label_size)
-    _draw_action_label(font, _cell_center(FIRE_CELL, origin, tile) + Vector2(0, tile * 0.72), "DUTIES", tile, label_size)
+    _draw_action_label(font, _cell_center(FIRE_CELL, origin, tile) + Vector2(0, tile * 0.72), "CRAFT", tile, label_size)
+    _draw_action_label(font, _cell_center(WORK_BOARD_CELL, origin, tile) + Vector2(0, -tile * 0.58), "WORK", tile, label_size)
     if bool(Game.buildings.get("Workbench", false)):
         _draw_action_label(font, _cell_center(building_cell("Workbench"), origin, tile) + Vector2(0, -tile * 0.58), "CRAFT", tile, label_size)
     if bool(Game.buildings.get("Sewing Table", false)):
@@ -143,6 +155,9 @@ func _handle_camp_press(local_pos: Vector2) -> void:
         communal_inventory_pressed.emit()
         return
     if cell == FIRE_CELL:
+        craft_station_pressed.emit("Fire Pit")
+        return
+    if cell == WORK_BOARD_CELL:
         duties_pressed.emit()
         return
     if cell == building_cell("Workbench") and bool(Game.buildings.get("Workbench", false)):
