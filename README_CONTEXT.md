@@ -12,7 +12,7 @@ Current milestone: **Beta Candidate — Feature Freeze**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
-The **living camp is the primary game/menu surface**. The CAMP / CRAFT / BUILD / SURVIVORS controls remain as shortcuts and detail screens, but normal play should begin from the camp itself rather than from disconnected menu pages.
+The **living camp is the primary game/menu surface**. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is being retired from active play rather than preserved as parallel navigation. All normal management must be reachable by touching physical camp entities and opening contextual sheets/overlays from them.
 
 Feature-freeze means deepen/unify existing systems rather than add new pillars.
 
@@ -20,7 +20,7 @@ Feature-freeze means deepen/unify existing systems rather than add new pillars.
 
 - **Simulation first.** Drama comes from interacting systems and persistent state.
 - **The camp is the Tamagotchi.** The player watches a small settlement live, identifies what it needs, sends survivors out to bring resources home, and sees the camp physically grow and change.
-- **Camp is interface.** Survivors, stations, plots, the communal stash, the fire, and the gate are touch targets in the living camp. Detailed panels are contextual views opened from that world.
+- **Camp is interface.** Survivors, stations, plots, the communal stash, the fire, work board, buildings, and gate are touch targets in the living camp. Detailed panels are contextual views opened from that world, not top-level menu destinations.
 - **Survivors are people.** Gear, health, fatigue, stress, relationships, history, wounds, infection, deaths, and a small number of meaningful stats matter.
 - **No conventional levels.** Capability comes from three use-based stats, equipment, condition, traits, tactical decisions, and camp infrastructure.
 - **Persistent consequences.** Field outcomes feed back into camp/world state.
@@ -81,7 +81,7 @@ Agility is the active survivor stat used for expedition travel pace. Routine loo
 
 The SEND OUT selector uses touch-safe PREV/NEXT controls rather than popup `OptionButton` controls because of mobile Safari behavior. Its modal pauses camp simulation until SEND/CANCEL restores the previous pause state.
 
-The camp gate and survivor inspector are the intended in-world routes into expedition preparation; the Survivors shortcut remains available for direct roster access.
+The **camp gate** is the normal route into expedition preparation. Tapping it opens a contextual chooser of living survivors, showing availability and key field readiness; a survivor can then be sent through the existing expedition modal. Tapping a survivor directly still opens their inspector, which also exposes SEND OUT when valid. The old standalone Survivors navigation is hidden from active play.
 
 ## Living camp and camp life
 
@@ -89,7 +89,18 @@ The persistent 2D tactical-style living camp is both the final camp presentation
 
 The living camp uses connected dirt paths, distinct sleeping/work/service areas, a fenced perimeter and gate, purpose-specific structures, and a resource-reflective First Fire. These graphics read authoritative `Game` state and do not create separate camp simulation or pathfinding.
 
-On the focused CAMP screen, the living camp expands to occupy the main play area. The player can tap a survivor to open the detailed survivor/inventory inspector; tap the communal chest to open communal inventory; tap built crafting stations to open crafting; tap an empty authored building plot to open BUILD; tap the First Fire to open camp duties; and tap the gate to move into survivor/send-out flow. The old tab screens remain supporting detail/shortcut surfaces rather than the conceptual center of the game.
+The active screen no longer presents the legacy CAMP / CRAFT / BUILD / SURVIVORS tab bar. The camp stays touch-active even while a contextual sheet is open. Current in-world routes are:
+
+- tap a **survivor** → full survivor stats/condition/equipment/inventory inspector;
+- tap the **communal chest / Storage Crate** → communal resources, components and gear inventory;
+- tap the **First Fire** → default Day-1 Fire Pit crafting;
+- tap a built **Workbench** or **Sewing Table** → recipes for that station only;
+- tap an **empty authored plot** → information/cost/prerequisites and BUILD for that one structure;
+- tap a **built structure** → contextual structure information and any active interaction (for example Garden Plot tending);
+- tap the **camp work board** → chores, maintenance and pet-care assignment;
+- tap the **gate** → survivor/send-out chooser.
+
+The First Fire is guaranteed from a new game and therefore serves as the default crafting system before any construction. Its current recipes are Cook Food, Boil Water, and Sterile Dressing. Later crafting depth is unlocked physically by building the Workbench and Sewing Table rather than by unlocking a separate Craft screen.
 
 Survivors carry floating at-a-glance state in the camp: existing need pips remain, while the focused camp adds a compact mood/priority-need/virus badge so hunger, thirst, sleep, fun, safety, hygiene pressure, stress, and infection are readable without opening a roster panel.
 
@@ -150,7 +161,7 @@ The active project seams are:
 - active living camp/menu renderer → `FFCampViewSleepVirus.gd` → `FFCampView.gd`
 - zombie-virus pure rules → `FFVirusRules.gd`
 
-`MainSleepVirus.gd` owns the current camp-as-menu routing/layout: the focused CAMP view expands and consumes touch signals emitted by `FFCampViewSleepVirus.gd`, then opens existing inspector/inventory/craft/build/survivor flows. The renderer remains non-authoritative; it emits intent only.
+`MainSleepVirus.gd` owns the current camp-only routing/layout. The legacy four-tab nav created by `Main.gd` is hidden by the active wrapper. `FFCampViewSleepVirus.gd` emits camp-object intent; `MainSleepVirus.gd` opens contextual station/build/work/gate sheets or existing inspector/inventory/expedition overlays. The renderer remains non-authoritative and `Game` remains the sole owner of simulation/resource mutation.
 
 These wrappers keep the blast radius small while preserving the mature three-stat/camp/tactical foundations. Legacy six-skill strings may remain inside inherited base/legacy event code for compatibility while active runtime exposes only the three current stats. New gameplay must target the active wrapper seam or the correct underlying owner rather than revive the legacy model.
 
