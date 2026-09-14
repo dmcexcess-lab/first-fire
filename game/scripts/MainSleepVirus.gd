@@ -4,10 +4,13 @@ const CombatVirus = preload("res://scripts/FFCombatVirus.gd")
 const InspectorVirus = preload("res://scripts/FFInspectorVirus.gd")
 const CampViewSleepVirus = preload("res://scripts/FFCampViewSleepVirus.gd")
 
+var camp_details_open := false
+
 func _build_ui():
     super._build_ui()
     camp_view = _replace_camp_view(camp_view, false)
     menu_camp_view = _replace_camp_view(menu_camp_view, true)
+    _apply_camp_menu_layout()
 
 func _replace_camp_view(old_view: Control, menu_view: bool) -> Control:
     if old_view == null or old_view.get_parent() == null:
@@ -24,6 +27,14 @@ func _replace_camp_view(old_view: Control, menu_view: bool) -> Control:
     parent.move_child(replacement, index)
     if menu_view:
         replacement.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        replacement.set_menu_mode(false)
+    else:
+        replacement.survivor_pressed.connect(_on_camp_survivor_pressed)
+        replacement.craft_station_pressed.connect(_on_camp_craft_station_pressed)
+        replacement.build_plot_pressed.connect(_on_camp_build_plot_pressed)
+        replacement.communal_inventory_pressed.connect(_on_camp_inventory_pressed)
+        replacement.duties_pressed.connect(_on_camp_duties_pressed)
+        replacement.gate_pressed.connect(_on_camp_gate_pressed)
     return replacement
 
 func _build_inspector_overlay():
@@ -37,6 +48,64 @@ func _build_combat_overlay():
     combat_overlay.visible = false
     combat_overlay.encounter_finished.connect(_on_combat_finished)
     add_child(combat_overlay)
+
+func _on_tab_pressed(tab):
+    camp_details_open = false
+    super._on_tab_pressed(tab)
+
+func _refresh_content():
+    super._refresh_content()
+    _apply_camp_menu_layout()
+
+func _apply_camp_menu_layout() -> void:
+    if camp_view == null or content_scroll == null:
+        return
+    var focus := current_tab == "Camp" and not camp_details_open
+    content_scroll.visible = not focus
+    var frame := camp_view.get_parent()
+    if frame != null:
+        frame.size_flags_vertical = Control.SIZE_EXPAND_FILL if focus else Control.SIZE_SHRINK_BEGIN
+        frame.custom_minimum_size = Vector2(0, 430 if focus else 210)
+    camp_view.custom_minimum_size = Vector2(0, 430 if focus else 210)
+    camp_view.set_menu_mode(focus)
+    camp_view.queue_redraw()
+
+func _on_camp_survivor_pressed(survivor_id: int) -> void:
+    _open_survivor_inspector(survivor_id)
+
+func _on_camp_craft_station_pressed(station_name: String) -> void:
+    camp_details_open = false
+    current_tab = "Craft"
+    _show_toast("%s — crafting" % station_name)
+    _refresh_nav_buttons()
+    _refresh_content()
+    content_scroll.scroll_vertical = 0
+
+func _on_camp_build_plot_pressed(building_name: String) -> void:
+    camp_details_open = false
+    current_tab = "Build"
+    _show_toast("Build plot — %s" % building_name)
+    _refresh_nav_buttons()
+    _refresh_content()
+    content_scroll.scroll_vertical = 0
+
+func _on_camp_inventory_pressed() -> void:
+    _open_camp_inventory_inspector()
+
+func _on_camp_duties_pressed() -> void:
+    camp_details_open = true
+    current_tab = "Camp"
+    _refresh_nav_buttons()
+    _refresh_content()
+    content_scroll.scroll_vertical = 0
+
+func _on_camp_gate_pressed() -> void:
+    camp_details_open = false
+    current_tab = "Survivors"
+    _show_toast("Choose a survivor, then SEND OUT.")
+    _refresh_nav_buttons()
+    _refresh_content()
+    content_scroll.scroll_vertical = 0
 
 func _activity_text(s):
     var status := str(s.get("status", "Available"))
