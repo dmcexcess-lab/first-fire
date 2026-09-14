@@ -4,7 +4,9 @@ First Fire is now in **feature freeze** and shelved for Beta testing/release wor
 
 ## Final game loop
 
-**Camp → prepare one survivor → expedition → tactical field situation → escape → persistent consequences → living camp/politics → recover/build/craft → repeat.**
+**Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare one survivor → expedition → tactical field situation → escape with resources/rescues → return to a visibly changing camp → repeat.**
+
+The living camp is the primary home/menu surface. CAMP / CRAFT / BUILD / SURVIVORS remain shortcuts/detail screens, but normal play should be readable and navigable from the camp itself: tap survivors, stations, plots, stash, fire/duties, and the gate rather than treating the camp as a decorative card above menus.
 
 The game has **no scripted ending**. A settlement with every building completed and roughly **15–18 living survivors** is the mature/top-level state; play can continue indefinitely after that.
 
@@ -14,7 +16,7 @@ The hard population ceiling is **18 survivors**.
 
 These are no longer planned for First Fire:
 
-- 3D camp rendering—the living 2D tactical-style camp is the final camp presentation;
+- 3D camp rendering—the living 2D tactical-style camp is the final camp presentation and home/menu surface;
 - vehicles or vehicle logistics;
 - multi-survivor expeditions;
 - tactical companion AI;
@@ -24,13 +26,15 @@ Removing these is intentional scope control, not deferred work.
 
 ## Beta completion work
 
-### Camp life, politics and events
+### Camp life, interaction and politics
 
 Finish tuning the systems that already exist:
 
+- make the living camp itself carry the normal management/navigation load: survivor taps open stats/inventory, built stations open their work surfaces, empty authored plots open BUILD, the communal stash opens inventory, the First Fire opens duties, and the gate leads toward SEND OUT;
+- keep mood/need/virus state glanceable on the camp through compact floating indicators rather than forcing routine roster-panel inspection;
 - autonomous relationship/politics-based chatter in the living camp;
 - survivor moodlets driven by hunger, thirst, sleep, fun, safety, and hygiene; eating/drinking/sleep/fun remain autonomous idle behavior while productive labor is player-assigned;
-- an active camp work loop covering fire tending, cleaning, perimeter maintenance, building, crafting, gardening, pet care and expeditions; short camp chores use touch-first WORK interactions;
+- an active camp work loop covering fire tending, cleaning, perimeter maintenance, building, crafting, gardening, pet care and expeditions; chores are assigned from the camp and short active WORK interactions remain available where appropriate;
 - rescued dogs/cats as persistent Tamagotchi-style camp pets whose affection is maintained through PLAY/LOVE assignments; pets consume no camp food/water, can leave if neglected, and each retained pet contributes exactly one random material or Raw Food per day;
 - relationship drift from meaningful positive/negative interactions;
 - shortages and repeated expedition duty feeding camp opinion;
@@ -38,6 +42,8 @@ Finish tuning the systems that already exist:
 - recurring confidence challenges when an elected leader loses support;
 - camp events for shelter pressure, duty complaints, food, theft, fights, burnout, perimeter danger, personal requests, shared meals and shortage politics;
 - enough event weighting/cooldowns that camp life feels alive without becoming popup spam.
+
+The core presentation goal is **watch, prioritize, assign, prepare, grow**. The player should feel like they are nurturing a small settlement, not operating a spreadsheet with a decorative camp preview.
 
 ### Tactical field completion
 
@@ -59,7 +65,7 @@ Every current `FFData.GEAR` item must be represented in the finished equipment l
 
 The tactical HUD exposes all five equipment slots: Weapon, Secondary, Tool, Clothing and Pack. Explore objectives also place a real named gear pickup on the board; it is only retained after physical recovery and successful escape. Every current gear catalog entry belongs to a zone-tiered field-loot pool.
 
-Future work here is balance/art/readability, not introducing a second inventory system.
+Crafting remains a detail surface opened from the living camp's built stations or the CRAFT shortcut; it is not a second inventory system.
 
 ### Final building tree
 
@@ -81,7 +87,7 @@ The final build list is:
 14. Armory
 15. Dormitory
 
-Housing grows additively to the final 18-person ceiling. Utility buildings deepen existing food/water/recovery/security/social/crafting rules rather than creating new minigames.
+Housing grows additively to the final 18-person ceiling. Utility buildings deepen existing food/water/recovery/security/social/crafting rules rather than creating new minigames. Empty authored plots are visible/tappable in the living camp and route into the existing BUILD flow.
 
 ### Mature settlement state
 
@@ -97,7 +103,7 @@ This produces a milestone event only. It does **not** end the save.
 
 First Fire does **not** become 1.0 because a calendar date or feature count says so. Release happens only when all of these gates are satisfied:
 
-1. **No known release-blocking bugs.** Normal play, save/load, browser lifecycle, tactical encounters, camp simulation, crafting/building, and long-run play must survive Beta testing without known blockers.
+1. **No known release-blocking bugs.** Normal play, save/load, browser lifecycle, living-camp interaction, tactical encounters, camp simulation, crafting/building, and long-run play must survive Beta testing without known blockers.
 2. **All systems and timers are balanced.** Economy, resource use, construction, crafting, recovery, expedition cadence, camp events, politics, recruitment, and progression must feel coherent across early, middle, and mature settlement play.
 3. **Final game speed is decided.** The current four-real-minute game day is test tuning, not automatically the shipping answer. Beta determines the final simulation speed and timer scale.
 4. **Combat and tactical systems are balanced and reliable.** Action timing, movement, vision, lighting, sound, stealth, melee, firearms, infected behavior, hazards, objectives, loot, exits, and encounter frequency must all work consistently and produce the intended survival/extraction feel.
