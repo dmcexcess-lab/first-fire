@@ -83,6 +83,7 @@ jobs:
           test ! -e .github/workflows/temp-live-playtest.yml
           test ! -e .github/workflows/temp-tactical-map-depth.yml
           test ! -e .github/scripts/temp_sleep_virus_patch.py
+          test ! -e .github/workflows/temp-clock-retune.yml
           grep -q 'const ExpeditionRules = preload' game/scripts/Game.gd
           grep -q 'const TacticalScenarios = preload' game/scripts/Game.gd
           grep -q 'const LegacyFieldEvents = preload' game/scripts/Game.gd
@@ -90,6 +91,7 @@ jobs:
           grep -q 'const TacticalBalance = preload' game/scripts/Game.gd
           grep -q 'signal camp_chatter_requested' game/scripts/Game.gd
           grep -q 'const SAVE_SCHEMA_VERSION := 7' game/scripts/Game.gd
+          grep -q 'const DAY_SECONDS := 120.0' game/scripts/Game.gd
           grep -q 'const MAX_POPULATION := 18' game/scripts/Game.gd
           grep -Fq 'func start_expedition(primary_id, zone):' game/scripts/Game.gd
           grep -Fq 'func start_special_site(primary_id, site):' game/scripts/Game.gd
@@ -97,6 +99,7 @@ jobs:
           if grep -q 'expedition_companion' game/scripts/Main.gd; then exit 1; fi
           grep -Fq 'founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight"' game/scripts/Game.gd
           grep -q 'TACTICAL_GEAR_UNLOCKS_BY_ZONE' game/scripts/FFData.gd
+          grep -Fq '"duration": 10.0, "danger": "Minimal"' game/scripts/FFData.gd
           grep -q 'func _pick_tactical_gear' game/scripts/Game.gd
           grep -q '"field_gear"' game/scripts/Game.gd
           grep -q 'field_gear_visual' game/scripts/FFTacticalVisuals.gd
@@ -137,7 +140,7 @@ jobs:
           grep -q 'TacticalTiles.draw_ground' game/scripts/FFCombat.gd
           grep -Fq 'Game="*res://scripts/GameSleepVirus.gd"' game/project.godot
           grep -Fq 'res://scripts/MainSleepVirus.gd' game/main.tscn
-          grep -Fq 'const SIM_TIME_SCALE := 0.5' game/scripts/GameSleepVirus.gd
+          grep -Fq 'const SIM_TIME_SCALE := 1.0' game/scripts/GameSleepVirus.gd
           grep -q 'func survivor_can_assign' game/scripts/GameSleepVirus.gd
           grep -q 'func start_virus_treatment' game/scripts/GameSleepVirus.gd
           grep -q 'func quarantine_survivor' game/scripts/GameSleepVirus.gd
