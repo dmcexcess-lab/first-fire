@@ -1,0 +1,38 @@
+name: Temporary portrait camp fill fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/temp-camp-fill-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fill portrait camp viewport
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('game/scripts/FFCampViewSleepVirus.gd')
+          s=p.read_text()
+          old='var tile: float = size.x / MENU_VISIBLE_GRID_WIDTH'
+          if s.count(old) != 2:
+              raise SystemExit(f'unexpected tile anchors: {s.count(old)}')
+          s=s.replace(old, 'var tile: float = maxf(size.x / MENU_VISIBLE_GRID_WIDTH, size.y / float(GRID_H))')
+          old_title='draw_string(font, origin + Vector2(7.0, float(title_size) + 4.0), "FIRST FIRE CAMP  •  %s  •  %s" % [Game.formatted_time(), _day_phase()], HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.94, 0.94, 0.86, 0.95))'
+          new_title='var title_origin := Vector2(7.0, float(title_size) + 4.0) if menu_mode else origin + Vector2(7.0, float(title_size) + 4.0)\n    draw_string(font, title_origin, "FIRST FIRE CAMP  •  %s  •  %s" % [Game.formatted_time(), _day_phase()], HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.94, 0.94, 0.86, 0.95))'
+          if old_title not in s:
+              raise SystemExit('title anchor missing')
+          p.write_text(s.replace(old_title,new_title,1))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add game/scripts/FFCampViewSleepVirus.gd
+          git diff --cached --check
+          git commit -m "Fill portrait camp viewport"
+          git push
