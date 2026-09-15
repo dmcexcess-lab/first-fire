@@ -101,6 +101,9 @@ The active screen no longer presents the legacy CAMP / CRAFT / BUILD / SURVIVORS
 - tap the **gate** → survivor/send-out chooser.
 
 The First Fire is guaranteed from a new game and therefore serves as the default crafting system before any construction. Its current recipes are Cook Food, Boil Water, and Sterile Dressing. Later crafting depth is unlocked physically by building the Workbench and Sewing Table rather than by unlocking a separate Craft screen.
+Crafting cards show explicit owned/required shortages (for example `Raw Food 0/1`) when a recipe cannot be paid, so a disabled action explains itself without requiring a stash detour.
+
+The top camp HUD is the authoritative clock/resource readout. The map title stays intentionally short (`FIRST FIRE CAMP • DAY N`), the idle `RUNNING` label is hidden, and the secondary status line only appears for meaningful states such as an away survivor, tactical encounter, active work, illness, or pause. Routine expedition returns are promoted from transient toast text into a persistent tap-to-dismiss camp return notice carrying the exact haul/empty-handed result.
 
 Survivors carry floating at-a-glance state in the camp: existing need pips remain, while the focused camp adds a compact mood/priority-need/virus badge so hunger, thirst, sleep, fun, safety, hygiene pressure, stress, and infection are readable without opening a roster panel.
 

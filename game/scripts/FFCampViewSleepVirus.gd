@@ -92,7 +92,7 @@ func _draw() -> void:
     var font: Font = get_theme_default_font()
     var title_size: int = maxi(9, int(tile * 0.38))
     var title_origin := Vector2(7.0, float(title_size) + 4.0) if menu_mode else origin + Vector2(7.0, float(title_size) + 4.0)
-    draw_string(font, title_origin, "FIRST FIRE CAMP  •  %s  •  %s" % [Game.formatted_time(), _day_phase()], HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.94, 0.94, 0.86, 0.95))
+    draw_string(font, title_origin, "FIRST FIRE CAMP  •  DAY %d" % Game.day, HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.94, 0.94, 0.86, 0.95))
 
 func _draw_build_plots(origin: Vector2, tile: float) -> void:
     if not menu_mode:

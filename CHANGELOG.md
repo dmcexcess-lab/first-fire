@@ -1,3 +1,9 @@
+## Beta Candidate — Camp Return & Crafting Feedback — 2026-09-14
+
+- Routine expedition returns now produce a persistent tap-to-dismiss camp notice with the survivor and exact haul (or empty-handed result), instead of relying only on a transient toast.
+- Simplified the camp header: the in-world title now shows only `FIRST FIRE CAMP • DAY N`; the top HUD remains the clock/resource source, idle `RUNNING` is hidden, and the activity line appears only for useful away/work/pause states.
+- Disabled crafting recipes now state the exact missing resource/component counts such as `Raw Food 0/1` or `Sterile Dressing 0/1`.
+
 ## Beta Candidate — Camp Focus & Problem-Driven Management — 2026-09-14
 
 - Zoomed the living camp for portrait play and added drag panning instead of shrinking the full settlement into a narrow minimap strip.

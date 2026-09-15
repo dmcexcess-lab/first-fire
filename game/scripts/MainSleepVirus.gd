@@ -30,6 +30,7 @@ var gate_survivor_ids: Array = []
 var gate_survivor_index := 0
 var gate_zone_names: Array = []
 var gate_zone_index := 0
+var expedition_return_notice: Button
 
 func _build_ui():
     super._build_ui()
@@ -38,6 +39,9 @@ func _build_ui():
     _hide_legacy_navigation()
     _hide_development_placeholder()
     _apply_camp_menu_layout()
+    _build_expedition_return_notice()
+    if not Game.toast_requested.is_connected(_on_return_toast):
+        Game.toast_requested.connect(_on_return_toast)
 
 func _replace_camp_view(old_view: Control, menu_view: bool) -> Control:
     if old_view == null or old_view.get_parent() == null:
@@ -86,6 +90,46 @@ func _hide_development_placeholder() -> void:
                 panel.visible = false
                 panel.custom_minimum_size = Vector2.ZERO
             return
+
+func _build_expedition_return_notice() -> void:
+    expedition_return_notice = Button.new()
+    expedition_return_notice.visible = false
+    expedition_return_notice.z_index = 50
+    expedition_return_notice.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+    expedition_return_notice.offset_left = 14.0
+    expedition_return_notice.offset_right = -14.0
+    expedition_return_notice.offset_top = -90.0
+    expedition_return_notice.offset_bottom = -14.0
+    expedition_return_notice.custom_minimum_size = Vector2(0, 68)
+    expedition_return_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    expedition_return_notice.add_theme_font_size_override("font_size", 13)
+    expedition_return_notice.pressed.connect(_dismiss_return_notice)
+    add_child(expedition_return_notice)
+
+func _on_return_toast(message) -> void:
+    if expedition_return_notice == null:
+        return
+    var source := str(message)
+    var lower := source.to_lower()
+    var marker := " returned: "
+    var marker_index := lower.find(marker)
+    var display := ""
+    if marker_index >= 0:
+        var who := source.substr(0, marker_index)
+        var haul := source.substr(marker_index + marker.length())
+        display = "%s RETURNED\n%s" % [who.to_upper(), haul]
+    elif lower.ends_with(" returned empty-handed."):
+        var suffix := " returned empty-handed."
+        var who := source.substr(0, source.length() - suffix.length())
+        display = "%s RETURNED\nEmpty-handed" % who.to_upper()
+    else:
+        return
+    expedition_return_notice.text = display + "  •  TAP TO DISMISS"
+    expedition_return_notice.visible = true
+
+func _dismiss_return_notice() -> void:
+    if expedition_return_notice != null:
+        expedition_return_notice.visible = false
 
 func _build_inspector_overlay():
     inspector_overlay = InspectorVirus.new()
@@ -199,6 +243,11 @@ func _draw_station_context(station_name: String) -> void:
         if not outputs.is_empty():
             desc += "  →  " + ", ".join(outputs)
         v.add_child(_make_label(desc, 12))
+        var missing_text := _craft_missing_text(recipe)
+        if missing_text != "":
+            var missing_label: Label = _make_label("Missing: " + missing_text, 12)
+            missing_label.modulate = Color(0.95, 0.67, 0.43, 1.0)
+            v.add_child(missing_label)
         var req_ok := true
         if recipe.has("requires"):
             v.add_child(_make_label("Requires: " + ", ".join(recipe["requires"]), 12))
@@ -212,6 +261,24 @@ func _draw_station_context(station_name: String) -> void:
         craft.pressed.connect(_on_craft_pressed.bind(station_name, str(recipe.get("id", ""))))
         v.add_child(craft)
         content_box.add_child(panel)
+
+func _craft_missing_text(recipe: Dictionary) -> String:
+    var missing: Array = []
+    var resource_cost: Dictionary = recipe.get("cost", {})
+    for key_value in resource_cost.keys():
+        var key := str(key_value)
+        var needed := int(resource_cost[key_value])
+        var have := int(Game.resources.get(key, 0))
+        if have < needed:
+            missing.append("%s %d/%d" % [key, have, needed])
+    var component_cost: Dictionary = recipe.get("component_cost", {})
+    for key_value in component_cost.keys():
+        var key := str(key_value)
+        var needed := int(component_cost[key_value])
+        var have := int(Game.components.get(key, 0))
+        if have < needed:
+            missing.append("%s %d/%d" % [key, have, needed])
+    return ", ".join(missing)
 
 func _draw_building_context(building_name: String) -> void:
     if not CampData.BUILDINGS.has(building_name):
@@ -383,6 +450,7 @@ func _leave_from_gate() -> void:
     var zone := str(gate_zone_names[clampi(gate_zone_index, 0, gate_zone_names.size() - 1)])
     selected_survivor_id = survivor_id
     if Game.start_expedition(survivor_id, zone):
+        _dismiss_return_notice()
         _close_camp_context()
 
 func _leave_special_from_gate(site: String) -> void:
@@ -473,8 +541,7 @@ func _activity_text(s):
 func _refresh_status():
     if status_label == null:
         return
-    var pause_text := "PAUSED" if Game.sim_paused else "RUNNING"
-    status_label.text = "D%d  %s  •  Food %d  Water %d" % [
+    status_label.text = "D%d  %s  •  FOOD %d  WATER %d" % [
         Game.day,
         Game.formatted_time(),
         int(Game.resources.get("Cooked Food", 0)),
@@ -483,12 +550,14 @@ func _refresh_status():
     pause_button.text = "PAUSE"
     var active: Array = []
     for exp in Game.expeditions:
+        var names := Game._party_names(exp["survivor_ids"])
+        var zone := str(exp.get("zone", ""))
         if exp.get("state", "") == "traveling":
-            active.append("%s: %.0fs" % [Game._party_names(exp["survivor_ids"]), float(exp["remaining"])])
+            active.append("AWAY • %s • %s • %.0fs" % [names, zone, float(exp["remaining"])])
         elif exp.get("state", "") == "pending":
-            active.append("%s: DECISION" % Game._party_names(exp["survivor_ids"]))
+            active.append("AWAY • %s • %s • DECISION" % [names, zone])
         elif exp.get("state", "") == "combat":
-            active.append("%s: TACTICAL" % Game._party_names(exp["survivor_ids"]))
+            active.append("TACTICAL • %s • %s" % [names, zone])
     for s in Game.survivors:
         var status := str(s.get("status", ""))
         if status in ["Crafting", "Building", "Recovering", "Tending", "Sleeping"] and not s.get("task", {}).is_empty():
@@ -499,7 +568,11 @@ func _refresh_status():
             active.append("%s %s %d/%d" % [s["name"], s["task"].get("label", "work"), int(s["task"].get("progress", 0)), int(s["task"].get("goal", 1))])
         elif status in ["Quarantined", "Sick"]:
             active.append("%s: %s" % [s["name"], _activity_text(s)])
-    timer_label.text = pause_text + ("  •  " + "  |  ".join(active) if not active.is_empty() else "")
+    var timer_text := "PAUSED" if Game.sim_paused else ""
+    if not active.is_empty():
+        timer_text += ("  •  " if timer_text != "" else "") + "  |  ".join(active)
+    timer_label.text = timer_text
+    timer_label.visible = timer_text != ""
 
 func _draw_camp_work_board() -> void:
     content_box.add_child(_separator())
