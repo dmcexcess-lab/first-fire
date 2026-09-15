@@ -38,37 +38,36 @@ jobs:
           if(!(await canvas.boundingBox())) throw new Error('Godot canvas missing');
           async function shot(name){await page.screenshot({path:`play/${name}.png`,fullPage:true});}
           async function clickGame(x,y,wait=700){const b=await canvas.boundingBox();await page.mouse.click(b.x+(x/390)*b.width,b.y+(y/844)*b.height);await page.waitForTimeout(wait);}
-          async function dragGame(x1,y1,x2,y2,wait=700){const b=await canvas.boundingBox();const ax=b.x+(x1/390)*b.width, ay=b.y+(y1/844)*b.height;const bx=b.x+(x2/390)*b.width, by=b.y+(y2/844)*b.height;await page.mouse.move(ax,ay);await page.mouse.down();await page.mouse.move(bx,by,{steps:12});await page.mouse.up();await page.waitForTimeout(wait);}
           await clickGame(195,354,1000);
           await clickGame(93,524,1200);
           await shot('01_camp_start.png');
-          await clickGame(160,385,800);
-          await shot('02_survivor_sheet.png');
-          await clickGame(360,75,800); // close survivor inspector
-          await clickGame(95,390,800); // First Fire
-          await shot('03_fire_sheet.png');
-          await clickGame(195,365,700); // back to camp from contextual sheet
-          await dragGame(320,430,80,430,700);
-          await shot('04_camp_panned.png');
-          await dragGame(80,430,320,430,700);
-          await clickGame(125,805,900); // gate
-          await shot('05_gate_sheet.png');
-          await clickGame(195,670,1000); // leave camp
-          await shot('06_after_leave_1s.png');
-          await page.waitForTimeout(7000);
-          await shot('07_after_leave_8s.png');
+          await clickGame(95,390,900); // First Fire
+          await shot('02_fire_sheet.png');
+          await clickGame(195,365,800); // CAMP on contextual sheet
+          await shot('03_back_from_fire.png');
+          await clickGame(125,805,1000); // camp gate
+          await shot('04_gate_sheet.png');
+          await clickGame(195,670,1200); // LEAVE CAMP
+          await shot('05_departed.png');
           await page.waitForTimeout(9000);
-          await shot('08_after_leave_17s.png');
-          await page.waitForTimeout(12000);
-          await shot('09_after_leave_29s.png');
+          await shot('06_travel_10s.png');
+          await page.waitForTimeout(11000);
+          await shot('07_travel_21s.png');
+          await page.waitForTimeout(9000);
+          await shot('08_field_30s.png');
           await page.keyboard.press('KeyL');
           await page.keyboard.press('KeyC');
           await page.keyboard.press('KeyW');
           await page.keyboard.press('KeyW');
           await page.keyboard.press('KeyE');
           await page.keyboard.press('KeyW');
-          await page.waitForTimeout(1200);
-          await shot('10_after_actions.png');
+          await page.waitForTimeout(1300);
+          await shot('09_field_after_actions.png');
+          await page.keyboard.press('KeyX');
+          await page.keyboard.press('KeyQ');
+          await page.keyboard.press('KeyW');
+          await page.waitForTimeout(1000);
+          await shot('10_field_more_actions.png');
           fs.writeFileSync('play/console.txt',logs.join('\n'));
           await browser.close();
           EOF
@@ -77,6 +76,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: first-fire-play-suggestions-v2
+          name: first-fire-expedition-playtest
           path: play
           retention-days: 1
