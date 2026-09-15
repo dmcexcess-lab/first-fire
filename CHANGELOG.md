@@ -1,3 +1,9 @@
+## Beta Candidate — Settlement Clock Retune — 2026-09-14
+
+- Retuned settlement time to a direct **5 real seconds = 1 in-game hour** mapping. A full in-game day now takes 120 real active seconds (2 minutes).
+- The existing Camp Perimeter trip remains 10 base seconds, which now reads as a 2-hour round trip before the existing Agility travel-time reduction.
+- Needs, work/recovery, expeditions, fire/maintenance, camp events, and daily transitions continue to share the same settlement simulation clock.
+
 ## Beta Candidate — Camp Return & Crafting Feedback — 2026-09-14
 
 - Routine expedition returns now produce a persistent tap-to-dismiss camp notice with the survivor and exact haul (or empty-handed result), instead of relying only on a transient toast.

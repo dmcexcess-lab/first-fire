@@ -1,7 +1,7 @@
 extends "res://scripts/GameThreeStat.gd"
 
 const VirusRules = preload("res://scripts/FFVirusRules.gd")
-const SIM_TIME_SCALE := 0.5
+const SIM_TIME_SCALE := 1.0
 
 func new_game():
     super.new_game()

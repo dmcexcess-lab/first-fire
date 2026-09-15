@@ -134,7 +134,7 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 
 ## Time / economy
 
-Settlement simulation runs at **half the previous real-time speed** through the active orchestration layer. The base day remains 120 simulation seconds, but a full in-game day takes about **4 real active minutes** instead of 2. Camp needs, work/recovery, expeditions, fire/maintenance decay, camp events, and daily transitions all use the slowed simulation delta. UI refresh and autosave cadence remain real-time responsiveness concerns rather than simulation balance.
+Settlement time uses a direct authored clock: **5 real active seconds = 1 in-game hour**. With the existing 120-second simulation day, one full in-game day is therefore **120 real active seconds / 2 minutes**. Camp needs, work/recovery, expeditions, fire/maintenance, camp events, and daily transitions all share this same simulation clock. The Camp Perimeter expedition is authored at 10 base seconds, so it represents a 2-hour round trip before the existing Agility travel-time reduction. UI refresh and autosave cadence remain real-time responsiveness concerns rather than simulation balance.
 
 New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages; scavenging still has to sustain the camp after that.
 
