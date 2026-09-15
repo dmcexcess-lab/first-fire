@@ -34,7 +34,7 @@ func _camp_geometry() -> Dictionary:
         var base_tile: float = minf(size.x / float(GRID_W), size.y / float(GRID_H))
         var base_map_size := Vector2(base_tile * float(GRID_W), base_tile * float(GRID_H))
         return {"tile": base_tile, "origin": (size - base_map_size) * 0.5, "map_size": base_map_size}
-    var tile: float = size.x / MENU_VISIBLE_GRID_WIDTH
+    var tile: float = maxf(size.x / MENU_VISIBLE_GRID_WIDTH, size.y / float(GRID_H))
     var map_size := Vector2(tile * float(GRID_W), tile * float(GRID_H))
     var base_origin := (size - map_size) * 0.5
     var origin := Vector2(
@@ -49,7 +49,7 @@ func _panned_axis_origin(view_size: float, map_size: float, base_origin: float, 
     return clampf(base_origin + pan, view_size - map_size, 0.0)
 
 func _set_menu_pan(value: Vector2) -> void:
-    var tile: float = size.x / MENU_VISIBLE_GRID_WIDTH
+    var tile: float = maxf(size.x / MENU_VISIBLE_GRID_WIDTH, size.y / float(GRID_H))
     var map_size := Vector2(tile * float(GRID_W), tile * float(GRID_H))
     var base_origin := (size - map_size) * 0.5
     var next := value
@@ -91,7 +91,8 @@ func _draw() -> void:
     draw_rect(Rect2(origin, map_size), Color(0.38, 0.49, 0.40, 0.55), false, 1.0)
     var font: Font = get_theme_default_font()
     var title_size: int = maxi(9, int(tile * 0.38))
-    draw_string(font, origin + Vector2(7.0, float(title_size) + 4.0), "FIRST FIRE CAMP  •  %s  •  %s" % [Game.formatted_time(), _day_phase()], HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.94, 0.94, 0.86, 0.95))
+    var title_origin := Vector2(7.0, float(title_size) + 4.0) if menu_mode else origin + Vector2(7.0, float(title_size) + 4.0)
+    draw_string(font, title_origin, "FIRST FIRE CAMP  •  %s  •  %s" % [Game.formatted_time(), _day_phase()], HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.94, 0.94, 0.86, 0.95))
 
 func _draw_build_plots(origin: Vector2, tile: float) -> void:
     if not menu_mode:
