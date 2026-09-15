@@ -39,27 +39,21 @@ jobs:
           async function shot(name){await page.screenshot({path:`play/${name}.png`,fullPage:true});}
           async function clickGame(x,y,wait=700){const b=await canvas.boundingBox();await page.mouse.click(b.x+(x/390)*b.width,b.y+(y/844)*b.height);await page.waitForTimeout(wait);}
           async function dragGame(x1,y1,x2,y2,wait=700){const b=await canvas.boundingBox();const ax=b.x+(x1/390)*b.width, ay=b.y+(y1/844)*b.height;const bx=b.x+(x2/390)*b.width, by=b.y+(y2/844)*b.height;await page.mouse.move(ax,ay);await page.mouse.down();await page.mouse.move(bx,by,{steps:12});await page.mouse.up();await page.waitForTimeout(wait);}
-          await clickGame(195,354,1000); // new game
-          await clickGame(93,524,1200);   // skip tutorial
+          await clickGame(195,354,1000);
+          await clickGame(93,524,1200);
           await shot('01_camp_start.png');
-          // Inspect founder by tapping visible survivor.
           await clickGame(160,385,800);
           await shot('02_survivor_sheet.png');
-          // Back/camp contextual control is near top of sheet on current portrait layout.
-          await clickGame(195,365,700);
-          // Try fire interaction.
-          await clickGame(95,390,800);
+          await clickGame(360,75,800); // close survivor inspector
+          await clickGame(95,390,800); // First Fire
           await shot('03_fire_sheet.png');
-          await clickGame(195,365,700);
-          // Pan around camp once.
+          await clickGame(195,365,700); // back to camp from contextual sheet
           await dragGame(320,430,80,430,700);
           await shot('04_camp_panned.png');
           await dragGame(80,430,320,430,700);
-          // Gate near bottom of centered camp.
-          await clickGame(125,805,900);
+          await clickGame(125,805,900); // gate
           await shot('05_gate_sheet.png');
-          // Leave camp.
-          await clickGame(195,670,1000);
+          await clickGame(195,670,1000); // leave camp
           await shot('06_after_leave_1s.png');
           await page.waitForTimeout(7000);
           await shot('07_after_leave_8s.png');
@@ -67,13 +61,13 @@ jobs:
           await shot('08_after_leave_17s.png');
           await page.waitForTimeout(12000);
           await shot('09_after_leave_29s.png');
-          // Exercise tactical keyboard controls if encounter is active; harmless otherwise.
           await page.keyboard.press('KeyL');
           await page.keyboard.press('KeyC');
           await page.keyboard.press('KeyW');
           await page.keyboard.press('KeyW');
           await page.keyboard.press('KeyE');
           await page.keyboard.press('KeyW');
+          await page.waitForTimeout(1200);
           await shot('10_after_actions.png');
           fs.writeFileSync('play/console.txt',logs.join('\n'));
           await browser.close();
@@ -83,6 +77,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: first-fire-play-suggestions
+          name: first-fire-play-suggestions-v2
           path: play
           retention-days: 1
