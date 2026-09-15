@@ -22,7 +22,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Exercise live focused camp
+      - name: Exercise live focused camp after portrait fill
         run: |
           cat > qa.mjs <<'EOF'
           import { chromium } from 'playwright';
@@ -42,18 +42,18 @@ jobs:
           async function dragGame(x1,y1,x2,y2,wait=700){const b=await canvas.boundingBox();const ax=b.x+(x1/390)*b.width, ay=b.y+(y1/844)*b.height;const bx=b.x+(x2/390)*b.width, by=b.y+(y2/844)*b.height;await page.mouse.move(ax,ay);await page.mouse.down();await page.mouse.move(bx,by,{steps:12});await page.mouse.up();await page.waitForTimeout(wait);}
           await clickGame(195,354,1000); // new game
           await clickGame(93,524,800);   // skip tutorial
-          await shot('01_home_zoomed.png');
-          await dragGame(310,430,90,430,800);
-          await shot('02_home_panned_right.png');
-          await dragGame(90,430,310,430,800);
-          await shot('03_home_recentered.png');
-          // Work board is near the left-middle of the initial centered camp.
-          await clickGame(43,365,800);
-          await shot('04_work_board_initial.png');
-          // Return to camp from contextual sheet.
-          await clickGame(195,390,700);
-          // Gate sits near the lower-middle of the initial centered camp.
-          await clickGame(130,675,900);
+          await shot('01_home_portrait_fill.png');
+          // Pull the western side of camp into view.
+          await dragGame(100,430,300,430,800);
+          await shot('02_home_panned_west.png');
+          // Work board is now visible in the western half.
+          await clickGame(153,317,800);
+          await shot('03_work_board_quiet.png');
+          // Contextual back button.
+          await clickGame(195,365,700);
+          await shot('04_home_after_context.png');
+          // With the westward pan retained, the physical gate is near lower-right.
+          await clickGame(292,800,900);
           await shot('05_gate_flat.png');
           fs.writeFileSync('qa/console.txt',logs.join('\n'));
           await browser.close();
