@@ -550,7 +550,7 @@ func _refresh_status():
     pause_button.text = "PAUSE"
     var active: Array = []
     for exp in Game.expeditions:
-        var names := Game._party_names(exp["survivor_ids"])
+        var names: String = str(Game._party_names(exp["survivor_ids"]))
         var zone := str(exp.get("zone", ""))
         if exp.get("state", "") == "traveling":
             active.append("AWAY • %s • %s • %.0fs" % [names, zone, float(exp["remaining"])])
