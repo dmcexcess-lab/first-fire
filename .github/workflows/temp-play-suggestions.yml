@@ -21,54 +21,39 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Play live First Fire
+      - name: Sample multiple live expeditions
         run: |
           cat > play.mjs <<'EOF'
           import { chromium } from 'playwright';
           import fs from 'fs';
           fs.mkdirSync('play', {recursive:true});
           const browser = await chromium.launch({headless:true});
-          const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
-          const logs=[];
-          page.on('console', m=>logs.push(`console:${m.type()}:${m.text()}`));
-          page.on('pageerror', e=>logs.push(`pageerror:${e.message}`));
-          await page.goto('https://dmcexcess-lab.github.io/first-fire/', {waitUntil:'load', timeout:120000});
-          await page.waitForTimeout(9000);
-          const canvas = page.locator('canvas').first();
-          if(!(await canvas.boundingBox())) throw new Error('Godot canvas missing');
-          async function shot(name){await page.screenshot({path:`play/${name}.png`,fullPage:true});}
-          async function clickGame(x,y,wait=700){const b=await canvas.boundingBox();await page.mouse.click(b.x+(x/390)*b.width,b.y+(y/844)*b.height);await page.waitForTimeout(wait);}
-          await clickGame(195,354,1000);
-          await clickGame(93,524,1200);
-          await shot('01_camp_start.png');
-          await clickGame(95,390,900); // First Fire
-          await shot('02_fire_sheet.png');
-          await clickGame(195,365,800); // CAMP on contextual sheet
-          await shot('03_back_from_fire.png');
-          await clickGame(125,805,1000); // camp gate
-          await shot('04_gate_sheet.png');
-          await clickGame(195,670,1200); // LEAVE CAMP
-          await shot('05_departed.png');
-          await page.waitForTimeout(9000);
-          await shot('06_travel_10s.png');
-          await page.waitForTimeout(11000);
-          await shot('07_travel_21s.png');
-          await page.waitForTimeout(9000);
-          await shot('08_field_30s.png');
-          await page.keyboard.press('KeyL');
-          await page.keyboard.press('KeyC');
-          await page.keyboard.press('KeyW');
-          await page.keyboard.press('KeyW');
-          await page.keyboard.press('KeyE');
-          await page.keyboard.press('KeyW');
-          await page.waitForTimeout(1300);
-          await shot('09_field_after_actions.png');
-          await page.keyboard.press('KeyX');
-          await page.keyboard.press('KeyQ');
-          await page.keyboard.press('KeyW');
-          await page.waitForTimeout(1000);
-          await shot('10_field_more_actions.png');
-          fs.writeFileSync('play/console.txt',logs.join('\n'));
+          async function attempt(n) {
+            const context = await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
+            const page = await context.newPage();
+            const logs=[];
+            page.on('console', m=>logs.push(`console:${m.type()}:${m.text()}`));
+            page.on('pageerror', e=>logs.push(`pageerror:${e.message}`));
+            await page.goto('https://dmcexcess-lab.github.io/first-fire/', {waitUntil:'load', timeout:120000});
+            await page.waitForTimeout(9000);
+            const canvas = page.locator('canvas').first();
+            async function clickGame(x,y,wait=700){const b=await canvas.boundingBox();await page.mouse.click(b.x+(x/390)*b.width,b.y+(y/844)*b.height);await page.waitForTimeout(wait);}
+            await clickGame(195,354,900);
+            await clickGame(93,524,1000);
+            await clickGame(125,805,800);
+            await clickGame(195,670,900);
+            await page.waitForTimeout(26000);
+            await page.screenshot({path:`play/${n}_after_26s.png`,fullPage:true});
+            for (const key of ['KeyL','KeyC','KeyW','KeyW','KeyE','KeyW','KeyX','KeyQ','KeyW']) {
+              await page.keyboard.press(key);
+              await page.waitForTimeout(120);
+            }
+            await page.waitForTimeout(1000);
+            await page.screenshot({path:`play/${n}_after_keys.png`,fullPage:true});
+            fs.writeFileSync(`play/${n}_console.txt`,logs.join('\n'));
+            await context.close();
+          }
+          await Promise.all([attempt(1),attempt(2),attempt(3),attempt(4),attempt(5)]);
           await browser.close();
           EOF
           node play.mjs
@@ -76,6 +61,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: first-fire-expedition-playtest
+          name: first-fire-multi-expedition-playtest
           path: play
           retention-days: 1
