@@ -1,0 +1,34 @@
+name: Temporary camp feedback parser fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/temp-approved-camp-feedback-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix GDScript type inference
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('game/scripts/MainSleepVirus.gd')
+          s = p.read_text()
+          old = '        var names := Game._party_names(exp["survivor_ids"])\n'
+          new = '        var names: String = str(Game._party_names(exp["survivor_ids"]))\n'
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git config user.name "dmcexcess-lab"
+          git config user.email "dmcexcess@gmail.com"
+          git add game/scripts/MainSleepVirus.gd
+          git diff --cached --check
+          git commit -m "Fix camp status type inference"
+          git push origin HEAD:main
