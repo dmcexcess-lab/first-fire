@@ -12,7 +12,7 @@ Current milestone: **Beta Candidate — Feature Freeze**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
-The **living camp is the primary game/menu surface**. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is being retired from active play rather than preserved as parallel navigation. All normal management must be reachable by touching physical camp entities and opening contextual sheets/overlays from them.
+The **living camp is the primary game/menu surface**. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. The phone view is intentionally zoomed and pannable instead of shrinking the whole settlement into a minimap; normal management is reached by touching physical camp entities and opening contextual sheets/overlays from them.
 
 Feature-freeze means deepen/unify existing systems rather than add new pillars.
 
@@ -81,7 +81,7 @@ Agility is the active survivor stat used for expedition travel pace. Routine loo
 
 The SEND OUT selector uses touch-safe PREV/NEXT controls rather than popup `OptionButton` controls because of mobile Safari behavior. Its modal pauses camp simulation until SEND/CANCEL restores the previous pause state.
 
-The **camp gate** is the normal route into expedition preparation. Tapping it opens a contextual chooser of living survivors, showing availability and key field readiness; a survivor can then be sent through the existing expedition modal. Tapping a survivor directly still opens their inspector, which also exposes SEND OUT when valid. The old standalone Survivors navigation is hidden from active play.
+The **camp gate** owns expedition preparation end-to-end. Tapping it opens one contextual surface for the available survivor, destination, danger, likely resource categories, and LEAVE CAMP action; the old second SEND OUT modal is no longer part of the active camp flow. Tapping a survivor directly still opens their inspector, whose SEND OUT handoff returns to this same gate context. The old standalone Survivors navigation is hidden from active play.
 
 ## Living camp and camp life
 
@@ -106,7 +106,7 @@ Survivors carry floating at-a-glance state in the camp: existing need pips remai
 
 Sleep is a real availability state rather than a passive visual label. When autonomous sleep triggers, the survivor enters **Sleeping**, receives a timed sleep task, walks to a deterministic bed/sleep slot in the camp view, lies down visually, and is excluded from worker/expedition/equipment assignment until waking. Existing productive work, treatment, chores, pet care, crafting, building, garden work, expeditions, quarantine, and severe sickness likewise keep survivors unavailable through authoritative statuses/tasks.
 
-`FFCampLifeRules.gd` owns six survivor needs plus pet affection/retention/reward rules, fire/maintenance tuning, idle recovery/downtime, and camp cadence. Pets do not consume camp food or water: Bond/Affection falls without attention, PLAY/LOVE restore it, neglected pets can leave camp, and each pet that stays brings back exactly one random material or Raw Food per in-game day. Productive work is player-directed: fire tending, cleaning, perimeter repair, crafting, building, garden work, pet care, and expeditions require assignment. Camp chores and pet care use short touch-first WORK interactions.
+`FFCampLifeRules.gd` owns six survivor needs plus pet affection/retention/reward rules, fire/maintenance tuning, idle recovery/downtime, and camp cadence. Pets do not consume camp food or water: Bond/Affection falls without attention, PLAY/LOVE restore it, neglected pets can leave camp, and each pet that stays brings back exactly one random material or Raw Food per in-game day. Productive work is player-directed: fire tending, cleaning, perimeter repair, crafting, building, garden work, pet care, and expeditions require assignment. Routine chore buttons stay quiet until the fire or maintenance actually crosses an attention threshold; visible dirt/damage/alert cues in camp explain why work is needed before assignment. Camp chores and pet care use short touch-first WORK interactions.
 
 Physical trauma and zombie virus are separate health axes.
 
@@ -132,6 +132,8 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 ## Time / economy
 
 Settlement simulation runs at **half the previous real-time speed** through the active orchestration layer. The base day remains 120 simulation seconds, but a full in-game day takes about **4 real active minutes** instead of 2. Camp needs, work/recovery, expeditions, fire/maintenance decay, camp events, and daily transitions all use the slowed simulation delta. UI refresh and autosave cadence remain real-time responsiveness concerns rather than simulation balance.
+
+New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages; scavenging still has to sustain the camp after that.
 
 Fire Pit conversions:
 - **1 Raw Food → 2 Cooked Food**

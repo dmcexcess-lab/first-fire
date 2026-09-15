@@ -8,7 +8,7 @@ const CampData = preload("res://scripts/FFData.gd")
 const CAMP_TUTORIAL_STEPS := [
     {
         "title": "YOUR CAMP IS THE MENU",
-        "body": "Watch First Fire directly. Tap survivors for stats and gear, the stash for communal inventory, structures for their work, empty plots to build, and the gate to send someone out."
+        "body": "Watch First Fire directly. Drag the camp to look around. Tap survivors for stats and gear, the stash for communal inventory, structures for their work, empty plots to build, and the gate to leave camp."
     },
     {
         "title": "CRAFT AT THE FIRE",
@@ -16,22 +16,27 @@ const CAMP_TUTORIAL_STEPS := [
     },
     {
         "title": "ASSIGN FROM THE CAMP",
-        "body": "Tap the work board for chores and pet care. Tap empty plots to build. Sleeping, eating, drinking, fun, recovery, and social downtime happen through the living camp without menu micromanagement."
+        "body": "The work board stays quiet until something actually needs attention. Tap it when an alert appears. Sleeping, eating, drinking, fun, recovery, and social downtime happen on their own."
     },
     {
         "title": "LEAVE THROUGH THE GATE",
-        "body": "Tap the camp gate to choose an available survivor and SEND OUT. Outside camp, tactical movement, darkness, sound, wounds, infection, loot, rescue and extraction determine what comes home."
+        "body": "Tap the gate to choose a survivor and destination in one place, then LEAVE CAMP. Outside, tactical movement, darkness, sound, wounds, infection, loot, rescue and extraction determine what comes home."
     },
 ]
 
 var camp_context_kind := ""
 var camp_context_target := ""
+var gate_survivor_ids: Array = []
+var gate_survivor_index := 0
+var gate_zone_names: Array = []
+var gate_zone_index := 0
 
 func _build_ui():
     super._build_ui()
     camp_view = _replace_camp_view(camp_view, false)
     menu_camp_view = _replace_camp_view(menu_camp_view, true)
     _hide_legacy_navigation()
+    _hide_development_placeholder()
     _apply_camp_menu_layout()
 
 func _replace_camp_view(old_view: Control, menu_view: bool) -> Control:
@@ -73,6 +78,15 @@ func _hide_legacy_navigation() -> void:
         button.visible = false
         button.custom_minimum_size = Vector2.ZERO
 
+func _hide_development_placeholder() -> void:
+    for node in find_children("*", "Label", true, false):
+        if node is Label and str(node.text).begins_with("AD SPACE"):
+            var panel := node.get_parent()
+            if panel is Control:
+                panel.visible = false
+                panel.custom_minimum_size = Vector2.ZERO
+            return
+
 func _build_inspector_overlay():
     inspector_overlay = InspectorVirus.new()
     inspector_overlay.send_survivor.connect(_on_inspector_send)
@@ -108,8 +122,8 @@ func _apply_camp_menu_layout() -> void:
     var frame := camp_view.get_parent()
     if frame != null:
         frame.size_flags_vertical = Control.SIZE_EXPAND_FILL if home else Control.SIZE_SHRINK_BEGIN
-        frame.custom_minimum_size = Vector2(0, 430 if home else 300)
-    camp_view.custom_minimum_size = Vector2(0, 430 if home else 300)
+        frame.custom_minimum_size = Vector2(0, 520 if home else 260)
+    camp_view.custom_minimum_size = Vector2(0, 520 if home else 260)
     camp_view.set_menu_mode(true)
     camp_view.queue_redraw()
 
@@ -157,6 +171,7 @@ func _on_camp_duties_pressed() -> void:
     _open_camp_context("duties")
 
 func _on_camp_gate_pressed() -> void:
+    _prepare_gate_context(selected_survivor_id)
     _open_camp_context("gate")
 
 func _draw_station_context(station_name: String) -> void:
@@ -236,34 +251,197 @@ func _draw_duties_context() -> void:
     _draw_context_header("CAMP WORK BOARD", "Assign productive camp work here. Everyday eating, drinking, sleep and fun remain autonomous.")
     _draw_camp_work_board()
 
-func _draw_gate_context() -> void:
-    _draw_context_header("CAMP GATE", "Choose who leaves First Fire. Busy, sleeping, sick, quarantined or recovering survivors cannot be sent out.")
+func _prepare_gate_context(preferred_id: int = -1) -> void:
+    gate_survivor_ids.clear()
     for survivor_value in Game.survivors:
         var survivor: Dictionary = survivor_value
-        if str(survivor.get("condition", "Dead")) == "Dead":
+        if Game.survivor_can_assign(survivor):
+            gate_survivor_ids.append(int(survivor.get("id", -1)))
+    gate_survivor_index = 0
+    if preferred_id >= 0 and gate_survivor_ids.has(preferred_id):
+        gate_survivor_index = gate_survivor_ids.find(preferred_id)
+    gate_zone_names.clear()
+    for zone_value in CampData.ZONE_ORDER:
+        var zone := str(zone_value)
+        if Game.unlocked_zones.has(zone):
+            gate_zone_names.append(zone)
+    gate_zone_index = 0
+
+func _draw_gate_context() -> void:
+    _draw_context_header("CAMP GATE", "Choose who goes and where. This is the whole send-out flow.")
+    if gate_survivor_ids.is_empty():
+        content_box.add_child(_make_label("No survivor is currently free to leave camp.", 13))
+        return
+    gate_survivor_index = clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)
+    var survivor_id := int(gate_survivor_ids[gate_survivor_index])
+    var survivor: Variant = Game.get_survivor(survivor_id)
+    if survivor == null:
+        content_box.add_child(_make_label("That survivor is no longer available.", 13))
+        return
+    selected_survivor_id = survivor_id
+    var survivor_row := HBoxContainer.new()
+    if gate_survivor_ids.size() > 1:
+        var prev := Button.new()
+        prev.text = "PREV"
+        prev.custom_minimum_size = Vector2(64, 44)
+        prev.pressed.connect(_cycle_gate_survivor.bind(-1))
+        survivor_row.add_child(prev)
+    var equipment: Dictionary = survivor.get("equipment", {})
+    var survivor_text := "%s\n%s • %s • Fatigue %.0f • Stress %.0f" % [str(survivor.get("name", "Survivor")), str(equipment.get("Weapon", "Unarmed")), str(equipment.get("Pack", "No pack")), float(survivor.get("fatigue", 0.0)), float(survivor.get("stress", 0.0))]
+    var survivor_label := _make_label(survivor_text, 12)
+    survivor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    survivor_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    survivor_row.add_child(survivor_label)
+    if gate_survivor_ids.size() > 1:
+        var next := Button.new()
+        next.text = "NEXT"
+        next.custom_minimum_size = Vector2(64, 44)
+        next.pressed.connect(_cycle_gate_survivor.bind(1))
+        survivor_row.add_child(next)
+    content_box.add_child(survivor_row)
+    var inspect := Button.new()
+    inspect.text = "INSPECT %s" % str(survivor.get("name", "SURVIVOR")).get_slice(" ", 0).to_upper()
+    inspect.custom_minimum_size = Vector2(0, 40)
+    inspect.pressed.connect(_open_survivor_inspector.bind(survivor_id))
+    content_box.add_child(inspect)
+
+    content_box.add_child(_separator())
+    if gate_zone_names.is_empty():
+        content_box.add_child(_make_label("No expedition zone is currently unlocked.", 13))
+        return
+    gate_zone_index = clampi(gate_zone_index, 0, gate_zone_names.size() - 1)
+    var zone := str(gate_zone_names[gate_zone_index])
+    var zone_data: Dictionary = CampData.ZONES.get(zone, {})
+    var zone_row := HBoxContainer.new()
+    if gate_zone_names.size() > 1:
+        var zone_prev := Button.new()
+        zone_prev.text = "PREV"
+        zone_prev.custom_minimum_size = Vector2(64, 44)
+        zone_prev.pressed.connect(_cycle_gate_zone.bind(-1))
+        zone_row.add_child(zone_prev)
+    var zone_label := _make_label(zone, 15)
+    zone_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    zone_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    zone_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    zone_row.add_child(zone_label)
+    if gate_zone_names.size() > 1:
+        var zone_next := Button.new()
+        zone_next.text = "NEXT"
+        zone_next.custom_minimum_size = Vector2(64, 44)
+        zone_next.pressed.connect(_cycle_gate_zone.bind(1))
+        zone_row.add_child(zone_next)
+    content_box.add_child(zone_row)
+    content_box.add_child(_make_label("%.0fs • %s • %s" % [float(zone_data.get("duration", 0.0)), str(zone_data.get("danger", "?")), Game.zone_loot_state(zone)], 12))
+    content_box.add_child(_make_label("Likely finds: %s" % _zone_focus_text(zone), 12))
+    var leave := Button.new()
+    leave.text = "LEAVE CAMP"
+    leave.custom_minimum_size = Vector2(0, 48)
+    leave.pressed.connect(_leave_from_gate)
+    content_box.add_child(leave)
+
+    var found_site := false
+    for site_value in Game.special_sites.keys():
+        var site := str(site_value)
+        var site_state: Dictionary = Game.special_sites[site]
+        if not bool(site_state.get("discovered", false)) or bool(site_state.get("cleared", false)):
             continue
-        var panel := PanelContainer.new()
-        var v := VBoxContainer.new()
-        panel.add_child(v)
-        v.add_child(_make_label("%s — %s" % [str(survivor.get("name", "Survivor")), _activity_text(survivor)], 15))
-        var equipment: Dictionary = survivor.get("equipment", {})
-        v.add_child(_make_label("%s  •  %s  •  Fatigue %.0f  Stress %.0f" % [str(equipment.get("Weapon", "Unarmed")), str(equipment.get("Pack", "No pack")), float(survivor.get("fatigue", 0.0)), float(survivor.get("stress", 0.0))], 11))
-        var row := HBoxContainer.new()
-        var inspect := Button.new()
-        inspect.text = "INSPECT"
-        inspect.custom_minimum_size = Vector2(0, 42)
-        inspect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        inspect.pressed.connect(_open_survivor_inspector.bind(int(survivor.get("id", -1))))
-        row.add_child(inspect)
-        var send := Button.new()
-        send.text = "SEND OUT"
-        send.custom_minimum_size = Vector2(0, 42)
-        send.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        send.disabled = not Game.survivor_can_assign(survivor)
-        send.pressed.connect(_send_survivor_from_panel.bind(int(survivor.get("id", -1))))
-        row.add_child(send)
-        v.add_child(row)
-        content_box.add_child(panel)
+        if not found_site:
+            content_box.add_child(_separator())
+            content_box.add_child(_make_label("Known special sites", 13))
+            found_site = true
+        var site_button := Button.new()
+        site_button.text = "%s — %.0fs" % [site, float(CampData.SPECIAL_SITES[site].get("duration", 0.0))]
+        site_button.custom_minimum_size = Vector2(0, 42)
+        site_button.pressed.connect(_leave_special_from_gate.bind(site))
+        content_box.add_child(site_button)
+
+func _cycle_gate_survivor(direction: int) -> void:
+    if gate_survivor_ids.size() <= 1:
+        return
+    gate_survivor_index = posmod(gate_survivor_index + direction, gate_survivor_ids.size())
+    call_deferred("_refresh_content")
+
+func _cycle_gate_zone(direction: int) -> void:
+    if gate_zone_names.size() <= 1:
+        return
+    gate_zone_index = posmod(gate_zone_index + direction, gate_zone_names.size())
+    call_deferred("_refresh_content")
+
+func _zone_focus_text(zone: String) -> String:
+    match zone:
+        "Camp Perimeter": return "food, water, wood"
+        "Nearby Streets": return "food, water, mixed materials"
+        "Residential Blocks": return "food, cloth, medicine"
+        "Commercial Fringe": return "hardware, scrap, medicine"
+        "Industrial Edge": return "scrap, hardware, ammo"
+    return "mixed supplies"
+
+func _leave_from_gate() -> void:
+    if gate_survivor_ids.is_empty() or gate_zone_names.is_empty():
+        return
+    var survivor_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
+    var zone := str(gate_zone_names[clampi(gate_zone_index, 0, gate_zone_names.size() - 1)])
+    selected_survivor_id = survivor_id
+    if Game.start_expedition(survivor_id, zone):
+        _close_camp_context()
+
+func _leave_special_from_gate(site: String) -> void:
+    if gate_survivor_ids.is_empty():
+        return
+    var survivor_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
+    selected_survivor_id = survivor_id
+    if Game.start_special_site(survivor_id, site):
+        _close_camp_context()
+
+func _send_survivor_from_panel(id):
+    selected_survivor_id = int(id)
+    _prepare_gate_context(selected_survivor_id)
+    _open_camp_context("gate")
+
+func _on_inspector_send(id):
+    _send_survivor_from_panel(id)
+
+func _worker_picker():
+    var box := VBoxContainer.new()
+    var avail: Array = Game.available_survivors()
+    if avail.is_empty():
+        selected_worker_id = -1
+        box.add_child(_make_label("No available survivor", 13))
+        return box
+    var valid_current := false
+    for survivor_value in avail:
+        if int(survivor_value.get("id", -1)) == selected_worker_id:
+            valid_current = true
+            break
+    if not valid_current:
+        selected_worker_id = int(avail[0].get("id", -1))
+    var current: Variant = Game.get_survivor(selected_worker_id)
+    if avail.size() == 1:
+        box.add_child(_make_label("Worker — %s" % str(current.get("name", "Survivor")), 13))
+        return box
+    var current_index := 0
+    for i in range(avail.size()):
+        if int(avail[i].get("id", -1)) == selected_worker_id:
+            current_index = i
+            break
+    var row := HBoxContainer.new()
+    var prev := Button.new()
+    prev.text = "PREV"
+    prev.custom_minimum_size = Vector2(64, 44)
+    prev.pressed.connect(_on_worker_cycle.bind(-1))
+    row.add_child(prev)
+    var label := _make_label("%s  •  %d/%d" % [str(current.get("name", "Survivor")), current_index + 1, avail.size()], 12)
+    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    row.add_child(label)
+    var next := Button.new()
+    next.text = "NEXT"
+    next.custom_minimum_size = Vector2(64, 44)
+    next.pressed.connect(_on_worker_cycle.bind(1))
+    row.add_child(next)
+    box.add_child(row)
+    return box
 
 func _refresh_tutorial_step():
     if tutorial_overlay == null or CAMP_TUTORIAL_STEPS.is_empty():
@@ -296,14 +474,11 @@ func _refresh_status():
     if status_label == null:
         return
     var pause_text := "PAUSED" if Game.sim_paused else "RUNNING"
-    status_label.text = "Day %d  %s  •  Food %d  Water %d  •  Pop %d/%d  Beds %d" % [
+    status_label.text = "D%d  %s  •  Food %d  Water %d" % [
         Game.day,
         Game.formatted_time(),
         int(Game.resources.get("Cooked Food", 0)),
         int(Game.resources.get("Clean Water", 0)),
-        Game.population(),
-        Game.MAX_POPULATION,
-        Game.shelter_capacity(),
     ]
     pause_button.text = "PAUSE"
     var active: Array = []
@@ -328,46 +503,59 @@ func _refresh_status():
 
 func _draw_camp_work_board() -> void:
     content_box.add_child(_separator())
-    content_box.add_child(_heading("Camp Duties", 19))
-    content_box.add_child(_make_label("Meals and downtime happen on their own. Sleep is real downtime: tired survivors go to a bed and cannot be assigned until they wake. Treatment, chores, pet care, crafting, building and other active work also make survivors unavailable.", 12))
-    content_box.add_child(_worker_picker())
-    for s in Game.survivors:
-        if ["Chore", "Pet Care"].has(str(s.get("status", ""))) and not s.get("task", {}).is_empty():
-            var task: Dictionary = s["task"]
+    content_box.add_child(_heading("Camp Work", 19))
+    for survivor_value in Game.survivors:
+        var survivor: Dictionary = survivor_value
+        if str(survivor.get("status", "")) in ["Chore", "Pet Care"] and not survivor.get("task", {}).is_empty():
+            var task: Dictionary = survivor["task"]
             var row := HBoxContainer.new()
             row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-            row.add_child(_make_label("%s — %s  %d/%d" % [s["name"], task.get("label", "Work"), int(task.get("progress", 0)), int(task.get("goal", 1))], 12))
+            row.add_child(_make_label("%s — %s  %d/%d" % [survivor["name"], task.get("label", "Work"), int(task.get("progress", 0)), int(task.get("goal", 1))], 12))
             var work := Button.new()
             work.text = "WORK"
             work.custom_minimum_size = Vector2(92, 44)
-            work.pressed.connect(Game.perform_camp_task_tap.bind(int(s["id"])))
+            work.pressed.connect(Game.perform_camp_task_tap.bind(int(survivor["id"])))
             row.add_child(work)
             content_box.add_child(row)
-    var chores := GridContainer.new()
-    chores.columns = 1
-    chores.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    for entry in [["STOKE FIRE", "stoke_fire"], ["CLEAN CAMP", "clean_camp"], ["REPAIR PERIMETER", "repair_perimeter"]]:
-        var button := Button.new()
-        button.text = str(entry[0])
-        button.custom_minimum_size = Vector2(0, 44)
-        button.disabled = selected_worker_id < 0
-        button.pressed.connect(Game.start_camp_chore.bind(selected_worker_id, str(entry[1])))
-        chores.add_child(button)
-    content_box.add_child(chores)
-    content_box.add_child(_make_label("Fire %.0f%%  •  Camp maintenance %.0f%%" % [Game.fire_level, Game.camp_maintenance], 13))
+
+    var needed: Array = []
+    if Game.camp_chore_needed("stoke_fire"):
+        needed.append(["STOKE FIRE", "stoke_fire", int(Game.resources.get("Wood", 0)) > 0, "needs 1 Wood"])
+    if Game.camp_chore_needed("clean_camp"):
+        needed.append(["CLEAN CAMP", "clean_camp", true, ""])
+    if Game.camp_chore_needed("repair_perimeter"):
+        var repair_material := int(Game.resources.get("Scrap Metal", 0)) > 0 or int(Game.resources.get("Wood", 0)) > 0
+        needed.append(["REPAIR PERIMETER", "repair_perimeter", repair_material, "needs Scrap Metal or Wood"])
+
+    if needed.is_empty():
+        content_box.add_child(_make_label("Nothing urgent right now. Watch the camp; the board will call for work when something actually needs attention.", 12))
+    else:
+        content_box.add_child(_worker_picker())
+        for entry_value in needed:
+            var entry: Array = entry_value
+            var button := Button.new()
+            button.text = str(entry[0]) + ("" if bool(entry[2]) else " — " + str(entry[3]))
+            button.custom_minimum_size = Vector2(0, 44)
+            button.disabled = selected_worker_id < 0 or not bool(entry[2])
+            button.pressed.connect(Game.start_camp_chore.bind(selected_worker_id, str(entry[1])))
+            content_box.add_child(button)
+    content_box.add_child(_make_label("Fire %.0f%%  •  Maintenance %.0f%%" % [Game.fire_level, Game.camp_maintenance], 12))
+
     content_box.add_child(_separator())
     content_box.add_child(_heading("Pets", 19))
     if Game.pets.is_empty():
         content_box.add_child(_make_label("No camp pets yet. Some tactical rescue calls may be a stranded dog or cat.", 12))
         return
-    for pet in Game.pets:
+    content_box.add_child(_worker_picker())
+    for pet_value in Game.pets:
+        var pet: Dictionary = pet_value
         var panel := PanelContainer.new()
         var v := VBoxContainer.new()
         panel.add_child(v)
         v.add_child(_make_label("%s — %s — %s" % [pet.get("name", "Pet"), pet.get("species", "Animal"), Game.pet_mood_label(pet)], 16))
         var needs: Dictionary = Game.CampLifeRules.normalize_pet_needs(pet.get("needs", {}))
         v.add_child(_make_label("Bond %.0f  •  Play with and love them or they may leave camp." % needs["affection"], 12))
-        v.add_child(_make_label("Pets consume no food or water and each bring back 1 material or Raw Food per day.", 11))
+        v.add_child(_make_label("Each retained pet finds 1 material or Raw Food per day.", 11))
         var buttons := GridContainer.new()
         buttons.columns = 2
         for action in ["play", "love"]:

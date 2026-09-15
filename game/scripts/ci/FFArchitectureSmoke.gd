@@ -79,6 +79,7 @@ func _init() -> void:
     if not _check(combat_source.contains("nearest_exit_distance") and combat_source.contains("LOOT %d/%d"), "route-oriented tactical HUD"): return
     if not _check(active_game_source.contains("const SIM_TIME_SCALE := 0.5") and active_game_source.contains("\"status\"] = \"Sleeping\"") and active_game_source.contains("func survivor_can_assign") and active_game_source.contains("func start_virus_treatment") and active_game_source.contains("func quarantine_survivor"), "authoritative sleep virus and half-speed orchestration"): return
     if not _check(active_camp_source.contains("status == \"Sleeping\"") and active_camp_source.contains("_sleep_cell_for_survivor") and active_camp_source.contains("QUARANTINE"), "camp reflects sleep and isolation"): return
+    if not _check(active_game_source.contains("func camp_chore_needed") and active_main_source.contains("LEAVE CAMP") and active_main_source.contains("Nothing urgent right now") and active_camp_source.contains("MENU_VISIBLE_GRID_WIDTH := 8.5") and active_camp_source.contains("_continue_pan_drag"), "camp focus routing and problem-driven work"): return
 
     if not _check(VirusRules.exposure_chance(1) > 0.0 and VirusRules.exposure_chance(4) > VirusRules.exposure_chance(1), "virus exposure scales with infected contact"): return
     var early_plan: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_EXPOSED, false)
@@ -107,6 +108,7 @@ func _init() -> void:
             if not _check(TacticalEnvironments.minimum_exit_distance(layout) >= 8, "planned extraction distance: %s v%d" % [environment_id, variant]): return
             if not _check(layout.get("loot_containers", []).size() >= 3, "physical loot containers: %s v%d" % [environment_id, variant]): return
 
+    if not _check(int(D.STARTING_RESOURCES.get("Cooked Food", 0)) >= 3 and int(D.STARTING_RESOURCES.get("Clean Water", 0)) >= 3, "new game basic supply runway"): return
     var base_needs := CampLifeRules.default_needs()
     if not _check(base_needs.has("hunger") and base_needs.has("safety") and base_needs.has("hygiene"), "camp needs"): return
     var pet_rng:=RandomNumberGenerator.new(); pet_rng.seed=7

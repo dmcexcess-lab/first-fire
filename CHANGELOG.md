@@ -1,3 +1,13 @@
+## Beta Candidate — Camp Focus & Problem-Driven Management — 2026-09-14
+
+- Zoomed the living camp for portrait play and added drag panning instead of shrinking the full settlement into a narrow minimap strip.
+- Removed persistent BUILD/CRAFT/STASH/WORK/SEND OUT text clutter from the camp; physical objects remain tappable and subtle interaction rings plus problem alerts carry the affordance.
+- Camp chores are now problem-driven: fire tending appears below 48%, cleaning below 68% maintenance, and perimeter repair below 42%. The camp view adds visible dirt/damage/alert cues when attention is actually needed.
+- Flattened expedition preparation into the physical gate sheet: choose the available survivor, destination, see danger/likely finds, then LEAVE CAMP without entering a second SEND OUT modal. Inspector SEND OUT routes back to the same gate flow.
+- Simplified one-survivor worker selection so disabled PREV/NEXT controls no longer clutter early camp tasks.
+- Removed the development ad placeholder from active gameplay and compacted the top camp HUD for narrow phones.
+- New games now start with 3 Cooked Food and 3 Clean Water, giving the founder roughly three daily rations before scavenging must sustain the settlement.
+
 ## Beta Candidate — Authoritative Sleep, Zombie Virus & Slower Camp Time — 2026-09-12
 
 - Sleep is now an authoritative survivor state instead of a passive label. Tired survivors enter a timed **Sleeping** task, move to a real sleeping slot in the living camp, lie down visually, and cannot be assigned to work, expeditions, or equipment changes until they wake.

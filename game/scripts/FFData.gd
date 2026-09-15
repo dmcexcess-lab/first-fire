@@ -9,9 +9,9 @@ const RESOURCE_ORDER := [
 
 const STARTING_RESOURCES := {
     "Raw Food": 0,
-    "Cooked Food": 2,
+    "Cooked Food": 3,
     "Dirty Water": 0,
-    "Clean Water": 2,
+    "Clean Water": 3,
     "Wood": 0,
     "Scrap Metal": 0,
     "Cloth": 0,

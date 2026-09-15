@@ -32,7 +32,7 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 
 `FFInspectorThreeStat.gd` remains the three-stat survivor/item presentation foundation; `FFInspectorVirus.gd` is the active inspector wrapper and adds zombie-virus status, treatment, quarantine, and medical-item explanations.
 
-`FFCampView.gd` remains the living-camp drawing/motion foundation. `FFCampViewSleepVirus.gd` is the active camp/menu surface: it maps authoritative sleep/treatment/quarantine state, draws at-a-glance mood/need information, performs touch hit-testing against visible camp entities, and emits navigation/selection intent without mutating simulation state.
+`FFCampView.gd` remains the living-camp drawing/motion foundation. `FFCampViewSleepVirus.gd` is the active camp/menu surface: it maps authoritative sleep/treatment/quarantine state, draws at-a-glance mood/need information, provides the zoomed/pannable phone viewport plus problem-state cues, performs touch hit-testing against visible camp entities, and emits navigation/selection intent without mutating simulation state.
 
 ## Core owners
 
@@ -55,7 +55,7 @@ Top-level UI/input foundation: legacy navigation shells, overlays, work board pr
 Three-stat UI specialization, including the three-stat worker picker and routing foundations.
 
 ### `MainSleepVirus.gd`
-Active main-scene wrapper and current camp-as-menu controller. It hides the legacy CAMP / CRAFT / BUILD / SURVIVORS tab bar in active play and keeps `current_tab` as an internal compatibility detail only. The living camp remains touch-active at all times outside modal overlays. Camp objects open narrow contextual sheets: First Fire → starter Fire Pit crafting, Workbench/Sewing Table → station-specific crafting, empty plot → that plot's construction project, built structure → contextual details/actions, work board → chores/pets, gate → send-out chooser, survivor → inspector, communal stash → communal inventory. Those sheets return to the camp rather than becoming parallel top-level menus.
+Active main-scene wrapper and current camp-as-menu controller. It hides the legacy CAMP / CRAFT / BUILD / SURVIVORS tab bar in active play and keeps `current_tab` as an internal compatibility detail only. The living camp remains touch-active at all times outside modal overlays. Camp objects open narrow contextual sheets: First Fire → starter Fire Pit crafting, Workbench/Sewing Table → station-specific crafting, empty plot → that plot's construction project, built structure → contextual details/actions, work board → chores/pets only when attention is warranted, gate → survivor + destination + LEAVE CAMP in one sheet, survivor → inspector, communal stash → communal inventory. Those sheets return to the camp rather than becoming parallel top-level menus.
 
 ### `FFCampView.gd`
 Living 2D camp presentation foundation. Reads authoritative state and maps it to visual stations/cosmetic survivor motion only. It must not own work timing, resources, survivor rules, or pathfinding gameplay.

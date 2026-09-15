@@ -10,9 +10,15 @@ signal gate_pressed
 
 const CAMP_CHEST_CELL := Vector2i(8, 6)
 const WORK_BOARD_CELL := Vector2i(5, 3)
-const MENU_VISIBLE_GRID_WIDTH := 15.5
+const MENU_VISIBLE_GRID_WIDTH := 8.5
+const PAN_DRAG_THRESHOLD := 8.0
 
 var menu_mode := false
+var menu_pan := Vector2.ZERO
+var drag_active := false
+var drag_start := Vector2.ZERO
+var drag_pan_start := Vector2.ZERO
+var drag_moved := false
 
 func _ready() -> void:
     super._ready()
@@ -24,11 +30,39 @@ func set_menu_mode(active: bool) -> void:
     queue_redraw()
 
 func _camp_geometry() -> Dictionary:
-    var visible_width := MENU_VISIBLE_GRID_WIDTH if menu_mode else float(GRID_W)
-    var tile: float = minf(size.x / visible_width, size.y / float(GRID_H))
+    if not menu_mode:
+        var base_tile: float = minf(size.x / float(GRID_W), size.y / float(GRID_H))
+        var base_map_size := Vector2(base_tile * float(GRID_W), base_tile * float(GRID_H))
+        return {"tile": base_tile, "origin": (size - base_map_size) * 0.5, "map_size": base_map_size}
+    var tile: float = size.x / MENU_VISIBLE_GRID_WIDTH
     var map_size := Vector2(tile * float(GRID_W), tile * float(GRID_H))
-    var origin := (size - map_size) * 0.5
+    var base_origin := (size - map_size) * 0.5
+    var origin := Vector2(
+        _panned_axis_origin(size.x, map_size.x, base_origin.x, menu_pan.x),
+        _panned_axis_origin(size.y, map_size.y, base_origin.y, menu_pan.y)
+    )
     return {"tile": tile, "origin": origin, "map_size": map_size}
+
+func _panned_axis_origin(view_size: float, map_size: float, base_origin: float, pan: float) -> float:
+    if map_size <= view_size:
+        return (view_size - map_size) * 0.5
+    return clampf(base_origin + pan, view_size - map_size, 0.0)
+
+func _set_menu_pan(value: Vector2) -> void:
+    var tile: float = size.x / MENU_VISIBLE_GRID_WIDTH
+    var map_size := Vector2(tile * float(GRID_W), tile * float(GRID_H))
+    var base_origin := (size - map_size) * 0.5
+    var next := value
+    if map_size.x <= size.x:
+        next.x = 0.0
+    else:
+        next.x = clampf(next.x, size.x - map_size.x - base_origin.x, -base_origin.x)
+    if map_size.y <= size.y:
+        next.y = 0.0
+    else:
+        next.y = clampf(next.y, size.y - map_size.y - base_origin.y, -base_origin.y)
+    menu_pan = next
+    queue_redraw()
 
 func _draw() -> void:
     if size.x <= 8.0 or size.y <= 8.0:
@@ -62,19 +96,16 @@ func _draw() -> void:
 func _draw_build_plots(origin: Vector2, tile: float) -> void:
     if not menu_mode:
         return
-    var font: Font = get_theme_default_font()
     for building_value in BUILDING_CELLS.keys():
         var building_name := str(building_value)
         if bool(Game.buildings.get(building_name, false)):
             continue
         var cell: Vector2i = BUILDING_CELLS[building_value]
-        var rect := _cell_rect(cell, origin, tile).grow(-tile * 0.10)
-        draw_rect(rect, Color(0.78, 0.70, 0.45, 0.09))
-        draw_rect(rect, Color(0.82, 0.74, 0.48, 0.55), false, maxf(1.0, tile * 0.035))
-        draw_line(rect.position + Vector2(rect.size.x * 0.28, rect.size.y * 0.50), rect.position + Vector2(rect.size.x * 0.72, rect.size.y * 0.50), Color(0.93, 0.84, 0.58, 0.78), maxf(1.0, tile * 0.05))
-        draw_line(rect.position + Vector2(rect.size.x * 0.50, rect.size.y * 0.28), rect.position + Vector2(rect.size.x * 0.50, rect.size.y * 0.72), Color(0.93, 0.84, 0.58, 0.78), maxf(1.0, tile * 0.05))
-        if tile >= 22.0:
-            draw_string(font, rect.position + Vector2(-tile * 0.12, rect.size.y + maxi(7, int(tile * 0.25))), "BUILD", HORIZONTAL_ALIGNMENT_CENTER, tile * 1.20, maxi(7, int(tile * 0.25)), Color(0.88, 0.80, 0.56, 0.82))
+        var rect := _cell_rect(cell, origin, tile).grow(-tile * 0.14)
+        draw_rect(rect, Color(0.78, 0.70, 0.45, 0.04))
+        draw_rect(rect, Color(0.82, 0.74, 0.48, 0.32), false, maxf(1.0, tile * 0.025))
+        draw_line(rect.position + Vector2(rect.size.x * 0.34, rect.size.y * 0.50), rect.position + Vector2(rect.size.x * 0.66, rect.size.y * 0.50), Color(0.93, 0.84, 0.58, 0.58), maxf(1.0, tile * 0.04))
+        draw_line(rect.position + Vector2(rect.size.x * 0.50, rect.size.y * 0.34), rect.position + Vector2(rect.size.x * 0.50, rect.size.y * 0.66), Color(0.93, 0.84, 0.58, 0.58), maxf(1.0, tile * 0.04))
 
 func _draw_communal_chest(origin: Vector2, tile: float) -> void:
     var rect := _cell_rect(CAMP_CHEST_CELL, origin, tile).grow(-tile * 0.14)
@@ -91,36 +122,90 @@ func _draw_work_board(origin: Vector2, tile: float) -> void:
     draw_line(rect.position + Vector2(tile * 0.12, tile * 0.42), rect.position + Vector2(rect.size.x * 0.68, tile * 0.42), Color("d8cfaa"), maxf(1.0, tile * 0.035))
 
 func _draw_menu_affordances(origin: Vector2, tile: float) -> void:
-    var font: Font = get_theme_default_font()
-    var label_size := maxi(7, int(tile * 0.27))
-    _draw_action_label(font, _cell_center(CAMP_CHEST_CELL, origin, tile) + Vector2(0, -tile * 0.58), "STASH", tile, label_size)
-    _draw_action_label(font, _cell_center(FIRE_CELL, origin, tile) + Vector2(0, tile * 0.72), "CRAFT", tile, label_size)
-    _draw_action_label(font, _cell_center(WORK_BOARD_CELL, origin, tile) + Vector2(0, -tile * 0.58), "WORK", tile, label_size)
+    _draw_interaction_ring(_cell_center(CAMP_CHEST_CELL, origin, tile), tile * 0.42)
+    _draw_interaction_ring(_cell_center(FIRE_CELL, origin, tile), tile * 0.48)
+    _draw_interaction_ring(_cell_center(WORK_BOARD_CELL, origin, tile), tile * 0.42)
     if bool(Game.buildings.get("Workbench", false)):
-        _draw_action_label(font, _cell_center(building_cell("Workbench"), origin, tile) + Vector2(0, -tile * 0.58), "CRAFT", tile, label_size)
+        _draw_interaction_ring(_cell_center(building_cell("Workbench"), origin, tile), tile * 0.42)
     if bool(Game.buildings.get("Sewing Table", false)):
-        _draw_action_label(font, _cell_center(building_cell("Sewing Table"), origin, tile) + Vector2(0, -tile * 0.58), "CRAFT", tile, label_size)
+        _draw_interaction_ring(_cell_center(building_cell("Sewing Table"), origin, tile), tile * 0.42)
     var gate_center := (_cell_center(Vector2i(7, GRID_H - 1), origin, tile) + _cell_center(Vector2i(8, GRID_H - 1), origin, tile)) * 0.5
-    _draw_action_label(font, gate_center + Vector2(0, -tile * 0.45), "SEND OUT", tile * 1.4, label_size)
+    _draw_interaction_ring(gate_center, tile * 0.55)
 
-func _draw_action_label(font: Font, center: Vector2, text: String, width_scale: float, font_size: int) -> void:
-    var width := maxf(width_scale, float(text.length()) * float(font_size) * 0.58 + 8.0)
-    var height := float(font_size) + 7.0
-    var box := Rect2(center - Vector2(width * 0.5, height * 0.5), Vector2(width, height))
-    draw_rect(box, Color(0.02, 0.03, 0.025, 0.82))
-    draw_rect(box, Color(0.76, 0.66, 0.38, 0.76), false, 1.0)
-    draw_string(font, box.position + Vector2(3.0, height - 4.0), text, HORIZONTAL_ALIGNMENT_CENTER, box.size.x - 6.0, font_size, Color(0.96, 0.91, 0.72, 0.96))
+    if Game.camp_chore_needed("stoke_fire"):
+        _draw_alert_badge(_cell_center(FIRE_CELL, origin, tile) + Vector2(tile * 0.42, -tile * 0.38), tile)
+    var clean_needed := Game.camp_chore_needed("clean_camp")
+    var repair_needed := Game.camp_chore_needed("repair_perimeter")
+    if clean_needed or repair_needed:
+        _draw_alert_badge(_cell_center(WORK_BOARD_CELL, origin, tile) + Vector2(tile * 0.38, -tile * 0.38), tile)
+    if clean_needed:
+        for dirt_cell in [Vector2i(6, 8), Vector2i(9, 9), Vector2i(11, 8)]:
+            var dirt_center := _cell_center(dirt_cell, origin, tile)
+            draw_circle(dirt_center, tile * 0.09, Color(0.33, 0.24, 0.14, 0.48))
+            draw_circle(dirt_center + Vector2(tile * 0.12, tile * 0.05), tile * 0.05, Color(0.25, 0.19, 0.12, 0.42))
+    if repair_needed:
+        var fence_rect := _cell_rect(Vector2i(16, 5), origin, tile).grow(-tile * 0.10)
+        draw_line(fence_rect.position + Vector2(0, fence_rect.size.y * 0.25), fence_rect.end - Vector2(0, fence_rect.size.y * 0.25), Color(0.92, 0.56, 0.34, 0.92), maxf(2.0, tile * 0.06))
+        draw_line(fence_rect.position + Vector2(fence_rect.size.x, fence_rect.size.y * 0.25), fence_rect.position + Vector2(0, fence_rect.size.y * 0.75), Color(0.92, 0.56, 0.34, 0.92), maxf(2.0, tile * 0.06))
+
+func _draw_interaction_ring(center: Vector2, radius: float) -> void:
+    draw_arc(center, radius, 0.0, TAU, 22, Color(0.83, 0.73, 0.46, 0.42), maxf(1.0, radius * 0.05))
+
+func _draw_alert_badge(center: Vector2, tile: float) -> void:
+    var radius := maxf(8.0, tile * 0.18)
+    draw_circle(center, radius, Color(0.70, 0.24, 0.18, 0.94))
+    draw_arc(center, radius, 0.0, TAU, 18, Color(0.98, 0.82, 0.45, 0.95), 1.0)
+    var font := get_theme_default_font()
+    var font_size := maxi(9, int(tile * 0.26))
+    draw_string(font, center + Vector2(-radius, float(font_size) * 0.36), "!", HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, font_size, Color.WHITE)
 
 func _gui_input(event: InputEvent) -> void:
     if not menu_mode:
         return
-    if event is InputEventScreenTouch and event.pressed:
-        _handle_camp_press(event.position)
+    if event is InputEventScreenTouch:
+        if event.pressed:
+            _begin_pan_drag(event.position)
+        else:
+            _finish_pan_drag(event.position)
         accept_event()
         return
-    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-        _handle_camp_press(event.position)
+    if event is InputEventScreenDrag and drag_active:
+        _continue_pan_drag(event.position)
         accept_event()
+        return
+    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+        if event.pressed:
+            _begin_pan_drag(event.position)
+        else:
+            _finish_pan_drag(event.position)
+        accept_event()
+        return
+    if event is InputEventMouseMotion and drag_active:
+        _continue_pan_drag(event.position)
+        accept_event()
+
+func _begin_pan_drag(position: Vector2) -> void:
+    drag_active = true
+    drag_start = position
+    drag_pan_start = menu_pan
+    drag_moved = false
+
+func _continue_pan_drag(position: Vector2) -> void:
+    if not drag_active:
+        return
+    var delta := position - drag_start
+    if not drag_moved and delta.length() >= PAN_DRAG_THRESHOLD:
+        drag_moved = true
+    if drag_moved:
+        _set_menu_pan(drag_pan_start + delta)
+
+func _finish_pan_drag(position: Vector2) -> void:
+    if not drag_active:
+        return
+    if not drag_moved:
+        _handle_camp_press(position)
+    drag_active = false
+    drag_moved = false
 
 func _handle_camp_press(local_pos: Vector2) -> void:
     var geometry := _camp_geometry()

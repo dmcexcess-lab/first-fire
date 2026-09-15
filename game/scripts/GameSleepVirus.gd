@@ -73,6 +73,19 @@ func virus_state(survivor) -> Dictionary:
 func virus_stage(survivor) -> String:
     return str(virus_state(survivor).get("stage", VirusRules.STAGE_CLEAR))
 
+func camp_chore_needed(chore: String) -> bool:
+    match chore:
+        "stoke_fire": return fire_level <= 48.0
+        "clean_camp": return camp_maintenance <= 68.0
+        "repair_perimeter": return camp_maintenance <= 42.0
+    return false
+
+func start_camp_chore(sid: int, chore: String) -> bool:
+    if not camp_chore_needed(chore):
+        toast_requested.emit("That part of camp does not need attention yet.")
+        return false
+    return super.start_camp_chore(sid, chore)
+
 func survivor_can_assign(survivor) -> bool:
     if survivor == null or str(survivor.get("condition", "Dead")) == "Dead":
         return false
