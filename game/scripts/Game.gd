@@ -1278,7 +1278,7 @@ func resolve_combat(result):
     if ids.size() > 1:
         var companion: Variant = get_survivor(int(ids[1]))
         if companion != null:
-            var fallback_companion_hp := 0 if companion.get("condition", "Dead") == "Dead" else _combat_condition_hp(companion)
+            var fallback_companion_hp: int = 0 if companion.get("condition", "Dead") == "Dead" else int(_combat_condition_hp(companion))
             _commit_tactical_health(companion, result.get("companion_hp", fallback_companion_hp), result.get("companion_max_hp", maxi(1, fallback_companion_hp)), "was killed while accompanying an expedition")
             companion["fatigue"] = min(100.0, float(companion.get("fatigue", 0.0)) + CampLifeRules.fatigue_gain(4.0))
             companion["stress"] = min(100.0, float(companion.get("stress", 0.0)) + 4.0)
