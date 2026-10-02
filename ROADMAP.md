@@ -4,7 +4,7 @@ First Fire is now in **feature freeze** and shelved for Beta testing/release wor
 
 ## Final game loop
 
-**Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare one survivor → choose a route → pay its travel time → tactical field situation → escape with physically recovered resources/rescues → return to a visibly changing camp → repeat.**
+**Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare a one- or two-survivor expedition → choose a distance → pay its travel time and any party-scaled supplies → tactical field situation → escape with physically recovered resources/rescues → return to a visibly changing camp → repeat.**
 
 The living camp is the primary home/menu surface. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. On phones the camp is zoomed and pannable so structures and people remain readable instead of shrinking the full 18×11 settlement into one strip. Normal management starts by touching the camp itself: survivors open inspection and deliberate assignments, the communal stash opens inventory/resources, the First Fire and starter Workbench provide physical crafting, built structures expose contextual interactions, and the camp edge/gate owns expedition dispatch. The starter scene is mostly wilderness; future construction locations are not shown as empty placeholders. Contextual sheets may reuse mature underlying UI logic, but they are entered from physical camp objects and return to the camp.
 
@@ -17,9 +17,8 @@ The hard population ceiling is **18 survivors**.
 These are no longer planned for First Fire:
 
 - 3D camp rendering—the living 2D tactical-style camp is the final camp presentation and home/menu surface;
-- vehicles or vehicle logistics;
-- multi-survivor expeditions;
-- tactical companion AI;
+- full vehicle driving/fuel/maintenance logistics beyond the single Expedition Vehicle unlock used to gate Very Far travel;
+- expedition parties larger than two survivors;
 - additional foundational game modes or feature pillars.
 
 Removing these is intentional scope control, not deferred work.
@@ -110,7 +109,7 @@ First Fire does **not** become 1.0 because a calendar date or feature count says
 
 1. **No known release-blocking bugs.** Normal play, save/load, browser lifecycle, living-camp interaction, tactical encounters, camp simulation, crafting/building, and long-run play must survive Beta testing without known blockers.
 2. **All systems and timers are balanced.** Economy, resource use, construction, crafting, recovery, expedition cadence, camp events, politics, recruitment, and progression must feel coherent across early, middle, and mature settlement play.
-3. **Final game speed is decided.** The current direct 120-real-second / two-minute game day is test tuning, not automatically the shipping answer. There is no secondary 0.5× simulation multiplier; Beta may still tune authored durations if playtesting requires it.
+3. **Final game speed is decided.** The current direct **300-real-second / five-minute game day** is the active Beta tuning. There is no secondary simulation-speed multiplier; remaining Beta work may tune individual authored durations without reintroducing a hidden global speed layer.
 4. **Combat and tactical systems are balanced and reliable.** Action timing, movement, vision, lighting, sound, stealth, melee, firearms, infected behavior, hazards, objectives, loot, exits, and encounter frequency must all work consistently and produce the intended survival/extraction feel.
 5. **Ads work under the existing non-exploitative policy.** Advertising/ad-free purchase behavior must function without influencing gameplay systems or progression.
 6. **Android APK release build is complete and tested.** The Android package is the release target for 1.0; packaging/device testing is part of the release gate, not an afterthought.

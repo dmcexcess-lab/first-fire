@@ -1,7 +1,9 @@
 extends RefCounted
 class_name FFExpeditionRules
 
-const STARTING_ROUTES := ["Camp Perimeter", "Nearby Streets"]
+const MAX_PARTY_SIZE := 2
+const VEHICLE_UNLOCK_FLAG := "expedition_vehicle_unlocked"
+const STARTING_ROUTES := ["Camp Perimeter", "Nearby Streets", "Residential Blocks", "Commercial Fringe"]
 const ROUTE_HOURS := {
     "Camp Perimeter": 3.0,
     "Nearby Streets": 5.0,
@@ -9,10 +11,19 @@ const ROUTE_HOURS := {
     "Commercial Fringe": 12.0,
     "Industrial Edge": 18.0,
 }
-const ROUTE_UNLOCK_KEYS := {
-    "Residential Blocks": "long_range_residential",
-    "Commercial Fringe": "long_range_commercial",
-    "Industrial Edge": "long_range_industrial",
+const ROUTE_BANDS := {
+    "Camp Perimeter": "VERY SHORT",
+    "Nearby Streets": "SHORT",
+    "Residential Blocks": "MEDIUM",
+    "Commercial Fringe": "FAR",
+    "Industrial Edge": "VERY FAR",
+}
+const ROUTE_COST_PER_SURVIVOR := {
+    "Camp Perimeter": {"Cooked Food":0, "Clean Water":0},
+    "Nearby Streets": {"Cooked Food":0, "Clean Water":0},
+    "Residential Blocks": {"Cooked Food":1, "Clean Water":1},
+    "Commercial Fringe": {"Cooked Food":2, "Clean Water":2},
+    "Industrial Edge": {"Cooked Food":3, "Clean Water":3},
 }
 const ZONE_CAPS := {
     "Camp Perimeter": 3,
@@ -25,27 +36,49 @@ const ZONE_CAPS := {
 static func starting_routes() -> Array:
     return STARTING_ROUTES.duplicate()
 
+static func route_band(zone: String) -> String:
+    return str(ROUTE_BANDS.get(zone, "UNKNOWN"))
+
 static func route_hours(zone: String) -> float:
     return float(ROUTE_HOURS.get(zone, 0.0))
 
-static func route_duration_seconds(zone: String, day_seconds: float = 120.0) -> float:
+static func route_duration_seconds(zone: String, day_seconds: float = 300.0) -> float:
     return route_hours(zone) * maxf(1.0, day_seconds) / 24.0
 
-static func route_unlock_key(zone: String) -> String:
-    return str(ROUTE_UNLOCK_KEYS.get(zone, ""))
+static func vehicle_unlocked(flags: Dictionary) -> bool:
+    return bool(flags.get(VEHICLE_UNLOCK_FLAG, false))
 
-static func route_is_unlocked(zone: String, unlocks: Dictionary) -> bool:
-    if STARTING_ROUTES.has(zone):
-        return true
-    var key := route_unlock_key(zone)
-    return key != "" and bool(unlocks.get(key, false))
+static func route_is_unlocked(zone: String, flags: Dictionary) -> bool:
+    if zone == "Industrial Edge":
+        return vehicle_unlocked(flags)
+    return STARTING_ROUTES.has(zone)
 
 static func route_lock_text(zone: String) -> String:
-    return "" if STARTING_ROUTES.has(zone) else "Requires long-range travel"
+    return "Requires Expedition Vehicle" if zone == "Industrial Edge" else ""
+
+static func route_supply_cost(zone: String, party_size: int) -> Dictionary:
+    var size := clampi(party_size, 1, MAX_PARTY_SIZE)
+    var per_survivor: Dictionary = ROUTE_COST_PER_SURVIVOR.get(zone, {})
+    return {
+        "Cooked Food": maxi(0, int(per_survivor.get("Cooked Food", 0))) * size,
+        "Clean Water": maxi(0, int(per_survivor.get("Clean Water", 0))) * size,
+    }
+
+static func route_is_free(zone: String) -> bool:
+    var cost := route_supply_cost(zone, 1)
+    return int(cost.get("Cooked Food", 0)) == 0 and int(cost.get("Clean Water", 0)) == 0
+
+static func route_cost_text(zone: String, party_size: int) -> String:
+    var cost := route_supply_cost(zone, party_size)
+    var food := int(cost.get("Cooked Food", 0))
+    var water := int(cost.get("Clean Water", 0))
+    if food <= 0 and water <= 0:
+        return "FREE"
+    return "%d Food + %d Water" % [food, water]
 
 static func travel_duration(base_duration: float, unused_agility: float = 0.0) -> float:
-    # Compatibility helper for special-site callers. Normal Send Out routes use
-    # fixed authored route hours and are not shortened by survivor stats.
+    # Compatibility helper for remaining special callers. Standard expedition
+    # routes use fixed authored hours and are never shortened by stats.
     return base_duration
 
 static func should_force_recruit(population: int, shelter_capacity: int, max_population: int, eligible_count: int, recruit_eligible: bool) -> bool:

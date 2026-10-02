@@ -3,18 +3,20 @@ class_name FFCampLifeRules
 
 # Final feature-freeze camp cadence/tuning. Social selection lives in
 # FFCampSocial; presentation lives in FFCampView.
-const CAMP_EVENT_INTERVAL := 45.0
-const NEW_GAME_EVENT_COOLDOWN := 20.0
+# Camp day is 300 real active seconds. Rates below preserve the previous
+# per-in-game-hour balance while the day is stretched from 120s to 300s.
+const CAMP_EVENT_INTERVAL := 112.5
+const NEW_GAME_EVENT_COOLDOWN := 50.0
 const FATIGUE_GAIN_MULTIPLIER := 2.0
-const CAMP_CHATTER_MIN_SECONDS := 7.0
-const CAMP_CHATTER_MAX_SECONDS := 14.0
+const CAMP_CHATTER_MIN_SECONDS := 17.5
+const CAMP_CHATTER_MAX_SECONDS := 35.0
 const FIRE_START_LEVEL := 72.0
-const FIRE_DECAY_PER_SECOND := 0.24
+const FIRE_DECAY_PER_SECOND := 0.096
 const FIRE_MAINTAIN_THRESHOLD := 36.0
 const FIRE_MAINTAIN_GAIN := 58.0
-const FIRE_MAINTAIN_SECONDS := 5.0
+const FIRE_MAINTAIN_SECONDS := 12.5
 const CAMP_MAINTENANCE_START := 82.0
-const CAMP_MAINTENANCE_DECAY_PER_SECOND := 0.035
+const CAMP_MAINTENANCE_DECAY_PER_SECOND := 0.014
 const CAMP_CONDITION_WELL_KEPT := 85.0
 const CAMP_CONDITION_ACCEPTABLE := 60.0
 const CAMP_CONDITION_NEGLECTED := 40.0
@@ -26,13 +28,13 @@ const DAILY_MEAL_WINDOW_END := 21.0
 const DAILY_SLEEP_WINDOW_START := 22.0
 const DAILY_SLEEP_WINDOW_END := 6.0
 const DAILY_WINDOW_MISS_RATIO := 0.60
-const DAILY_AUTONOMOUS_SECONDS := 4.0
-const AWAKE_FATIGUE_PER_SECOND := 0.70
+const DAILY_AUTONOMOUS_SECONDS := 10.0
+const AWAKE_FATIGUE_PER_SECOND := 0.28
 const SLEEP_START_FATIGUE := 35.0
-const SLEEP_DURATION := 35.0
+const SLEEP_DURATION := 87.5
 const SLEEP_RECOVERY_AMOUNT := 72.0
-const MEAL_ACTIVITY_SECONDS := 5.0
-const DRINK_ACTIVITY_SECONDS := 3.0
+const MEAL_ACTIVITY_SECONDS := 12.5
+const DRINK_ACTIVITY_SECONDS := 7.5
 const MEAL_HUNGER_GAIN := 55.0
 const DRINK_THIRST_GAIN := 65.0
 const MISSED_MEAL_HUNGER_PENALTY := 24.0
@@ -43,10 +45,10 @@ const DAILY_CHORE_NEGLECT_LOSS := 4.0
 const DUTY_ROTATION_DAYS := 5
 const CHORE_TARGET_COUNT := 6
 const DAILY_CHORE_CATALOG := {
-    "poke_fire": {"label":"Poke Fire","duration":5.0,"goal_min":4,"goal_max":5,"instruction":"Tap the hot spot to settle the logs and wake the coals."},
-    "chop_wood": {"label":"Chop Wood","duration":7.5,"goal_min":4,"goal_max":6,"instruction":"Tap CHOP as the target shifts across the log."},
-    "clear_area": {"label":"Clear Area","duration":10.0,"goal_min":4,"goal_max":6,"instruction":"Tap the marked debris until the work area is clear."},
-    "stack_supplies": {"label":"Stack Supplies","duration":7.5,"goal_min":4,"goal_max":5,"instruction":"Tap the marked crate to build a stable supply stack."},
+    "poke_fire": {"label":"Poke Fire","duration":12.5,"goal_min":4,"goal_max":5,"instruction":"Tap the hot spot to settle the logs and wake the coals."},
+    "chop_wood": {"label":"Chop Wood","duration":18.75,"goal_min":4,"goal_max":6,"instruction":"Tap CHOP as the target shifts across the log."},
+    "clear_area": {"label":"Clear Area","duration":25.0,"goal_min":4,"goal_max":6,"instruction":"Tap the marked debris until the work area is clear."},
+    "stack_supplies": {"label":"Stack Supplies","duration":18.75,"goal_min":4,"goal_max":5,"instruction":"Tap the marked crate to build a stable supply stack."},
 }
 const MAX_PETS := 3
 const PET_LEAVE_AFFECTION := 14.0
@@ -77,7 +79,7 @@ static func camp_condition_mood_modifier(value: float) -> int:
     return 0
 
 static func camp_condition_stress_rate(value: float) -> float:
-    return -0.012 * float(camp_condition_mood_modifier(value))
+    return -0.0048 * float(camp_condition_mood_modifier(value))
 
 static func camp_condition_recovery(chore: String) -> float:
     match chore:
@@ -287,12 +289,12 @@ static func normalize_needs(value) -> Dictionary:
 
 static func update_needs(needs:Dictionary,fatigue:float,delta:float,safety_target_value:float,hygiene_support:bool,away:bool)->Dictionary:
     var n:=normalize_needs(needs)
-    n["hunger"]=clampf(float(n["hunger"])-delta*(0.12 if away else 0.09),0.0,100.0)
-    n["thirst"]=clampf(float(n["thirst"])-delta*(0.16 if away else 0.12),0.0,100.0)
+    n["hunger"]=clampf(float(n["hunger"])-delta*(0.048 if away else 0.036),0.0,100.0)
+    n["thirst"]=clampf(float(n["thirst"])-delta*(0.064 if away else 0.048),0.0,100.0)
     n["sleep"]=clampf(100.0-fatigue,0.0,100.0)
-    n["fun"]=clampf(float(n["fun"])-delta*(0.11 if away else 0.075),0.0,100.0)
-    n["hygiene"]=clampf(float(n["hygiene"])-delta*(0.12 if away else (0.045 if hygiene_support else 0.07)),0.0,100.0)
-    n["safety"]=move_toward(float(n["safety"]),clampf(safety_target_value,0.0,100.0),delta*(0.75 if away else 0.50))
+    n["fun"]=clampf(float(n["fun"])-delta*(0.044 if away else 0.030),0.0,100.0)
+    n["hygiene"]=clampf(float(n["hygiene"])-delta*(0.048 if away else (0.018 if hygiene_support else 0.028)),0.0,100.0)
+    n["safety"]=move_toward(float(n["safety"]),clampf(safety_target_value,0.0,100.0),delta*(0.30 if away else 0.20))
     return n
 
 static func apply_daily_rations(needs:Dictionary,fed:bool,watered:bool)->Dictionary:
@@ -322,12 +324,12 @@ static func need_stress_rate(needs:Dictionary,camp_condition_value:float=70.0)->
         var v:=float(n[k])
         if v<25.0: pressure+=(25.0-v)/25.0
     var rate:=0.0
-    if pressure>0.0: rate=pressure*0.035
+    if pressure>0.0: rate=pressure*0.014
     else:
         var all_good:=true
         for k in NEED_KEYS:
             if float(n[k])<62.0: all_good=false; break
-        if all_good: rate=-0.018
+        if all_good: rate=-0.0072
     return rate+camp_condition_stress_rate(camp_condition_value)
 
 static func moodlets(needs:Dictionary)->Array:
@@ -367,10 +369,10 @@ static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int
         return {"kind":"eat_meal","label":"Eating Meal" if food>0 else "Checking Rations","remaining":MEAL_ACTIVITY_SECONDS,"duration":MEAL_ACTIVITY_SECONDS}
     if hour>=0.0 and _hour_in_window(hour,DAILY_SLEEP_WINDOW_START,DAILY_SLEEP_WINDOW_END) and (100.0-float(n["sleep"]))>=SLEEP_START_FATIGUE:
         return {"kind":"rest","label":"Sleeping","remaining":SLEEP_DURATION,"duration":SLEEP_DURATION}
-    if float(n["hygiene"])<44.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":5.0,"duration":5.0}
-    if float(n["safety"])<44.0: return {"kind":"keep_watch","label":"Watching the Treeline","remaining":6.0,"duration":6.0}
-    if float(n["fun"])<58.0: return {"kind":"watch_fire","label":"Watching Fire","remaining":7.0,"duration":7.0}
-    if rng.randf()<0.18: return {"kind":"wander","label":"Walking Camp","remaining":5.0,"duration":5.0}
+    if float(n["hygiene"])<44.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":12.5,"duration":12.5}
+    if float(n["safety"])<44.0: return {"kind":"keep_watch","label":"Watching the Treeline","remaining":15.0,"duration":15.0}
+    if float(n["fun"])<58.0: return {"kind":"watch_fire","label":"Watching Fire","remaining":17.5,"duration":17.5}
+    if rng.randf()<0.18: return {"kind":"wander","label":"Walking Camp","remaining":12.5,"duration":12.5}
     return {}
 
 static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dictionary:

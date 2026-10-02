@@ -80,7 +80,7 @@ const LAST_NAMES := [
 
 const ZONES := {
     "Camp Perimeter": {
-        "duration": 15.0, "danger": "Minimal", "fatigue": 4, "loot_rolls": 1,
+        "duration": 37.5, "danger": "Minimal", "fatigue": 4, "loot_rolls": 1,
         "pressure": 10, "event_chance": 0.02,
         "loot": {
             "Dirty Water": 30, "Raw Food": 24,
@@ -89,7 +89,7 @@ const ZONES := {
         }
     },
     "Nearby Streets": {
-        "duration": 25.0, "danger": "Low", "fatigue": 6, "loot_rolls": 1,
+        "duration": 62.5, "danger": "Low", "fatigue": 6, "loot_rolls": 1,
         "pressure": 8, "event_chance": 0.08,
         "loot": {
             "Dirty Water": 28, "Raw Food": 22,
@@ -98,7 +98,7 @@ const ZONES := {
         }
     },
     "Residential Blocks": {
-        "duration": 40.0, "danger": "Moderate", "fatigue": 10, "loot_rolls": 1,
+        "duration": 100.0, "danger": "Moderate", "fatigue": 10, "loot_rolls": 1,
         "pressure": 6, "event_chance": 0.18,
         "loot": {
             "Dirty Water": 25, "Raw Food": 20,
@@ -107,7 +107,7 @@ const ZONES := {
         }
     },
     "Commercial Fringe": {
-        "duration": 60.0, "danger": "High", "fatigue": 16, "loot_rolls": 1,
+        "duration": 150.0, "danger": "High", "fatigue": 16, "loot_rolls": 1,
         "pressure": 5, "event_chance": 0.28,
         "loot": {
             "Dirty Water": 22, "Raw Food": 18,
@@ -116,7 +116,7 @@ const ZONES := {
         }
     },
     "Industrial Edge": {
-        "duration": 90.0, "danger": "Severe", "fatigue": 22, "loot_rolls": 1,
+        "duration": 225.0, "danger": "Severe", "fatigue": 22, "loot_rolls": 1,
         "pressure": 4, "event_chance": 0.35,
         "loot": {
             "Dirty Water": 20, "Raw Food": 16,
@@ -267,9 +267,9 @@ const LEADER_ABILITIES := {
 }
 
 const SPECIAL_SITES := {
-    "Miller Street Market": {"zone": "Commercial Fringe", "duration": 30.0},
-    "Neighborhood Clinic": {"zone": "Commercial Fringe", "duration": 30.0},
-    "Hardware Cage": {"zone": "Commercial Fringe", "duration": 30.0},
-    "Construction Trailer": {"zone": "Industrial Edge", "duration": 40.0},
-    "Locked Industrial Office": {"zone": "Industrial Edge", "duration": 40.0},
+    "Miller Street Market": {"zone": "Commercial Fringe", "duration": 150.0},
+    "Neighborhood Clinic": {"zone": "Commercial Fringe", "duration": 150.0},
+    "Hardware Cage": {"zone": "Commercial Fringe", "duration": 150.0},
+    "Construction Trailer": {"zone": "Industrial Edge", "duration": 225.0},
+    "Locked Industrial Office": {"zone": "Industrial Edge", "duration": 225.0},
 }

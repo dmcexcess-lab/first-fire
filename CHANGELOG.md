@@ -1,3 +1,15 @@
+## Beta Candidate — Five-Minute Days & Proper Expeditions — 2026-10-01
+
+- Extended the single authoritative camp day from **120 real active seconds to 300 seconds / 5 minutes** with no hidden simulation-speed multiplier. One in-game hour is now **12.5 real active seconds**.
+- Retuned camp-life cadence for the longer day so hunger/thirst/fun/hygiene decay, awake fatigue, sleep length, fire decay, camp-condition decay, chatter/event cadence, and autonomous meal/drink/sleep actions keep roughly the same per-in-game-hour behavior rather than running 2.5× too fast.
+- Recast the five existing expedition zones as explicit distance bands: **Very Short (Camp Perimeter, 3h)**, **Short (Nearby Streets, 5h)**, **Medium (Residential Blocks, 8h)**, **Far (Commercial Fringe, 12h)**, and **Very Far (Industrial Edge, 18h)**.
+- Very Short and Short expeditions have **no travel-supply cost**. Medium costs **1 Cooked Food + 1 Clean Water per survivor**; Far costs **2 + 2 per survivor**; Very Far costs **3 + 3 per survivor**.
+- Medium and Far are available without a vehicle. Very Far is the only route gated by the additive **Expedition Vehicle** unlock seam; no full driving/fuel/vehicle-maintenance system was added.
+- Expedition parties now support **one or two survivors**. The gate lets the player choose a lead plus an optional companion and previews the total Food/Water cost before launch. Costs multiply directly with party size.
+- Reactivated the tactical runtime's existing companion actor for the second expedition survivor: the companion follows the lead, fights infected, can be targeted/injured/killed, persists across tactical saves, and must catch up to extraction before the party can leave.
+- Companion tactical HP now returns to persistent survivor condition. Special-site outings use the same party, route-time, supply-cost, and Very Far vehicle rules as normal expeditions.
+- Save schema remains **7**. The Expedition Vehicle flag is additive; current saves normalize Medium/Far as reachable and Very Far as locked until that explicit vehicle flag is earned.
+
 ## Beta Candidate — Always-Tactical Send Out & Unified Camp Time — 2026-10-01
 
 - Reworked the camp gate so every normal Send Out launches a tactical map after paying its authored travel time once. Previously discovered special sites now also route through tactical play instead of a passive travel-only branch.

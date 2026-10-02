@@ -69,7 +69,7 @@ Important current owners:
 - `FFTacticalTime.gd` — pure derived tactical action timing from gear load, survivor state, and infected pace/mass.
 - `FFTacticalSound.gd` — pure tactical sound labeling/localization helpers; combat owns propagation and reactions.
 - `FFTacticalScenarios.gd` — tactical scenario/location/layout selection and future physical field-event definitions.
-- `FFExpeditionRules.gd` — single-survivor travel/logistics/recruit protection/haul rules.
+- `FFExpeditionRules.gd` — expedition distance bands, authored route hours, party-size logistics, supply costs, vehicle-gated reach, zone caps, and haul rules.
 - `FFCampLifeRules.gd` — camp-life cadence/recovery/general camp-state tuning.
 - `FFCampSocial.gd` — relationships, political standing, and autonomous survivor chatter.
 - `FFSaveCodec.gd` — persistence file/JSON mechanics.
@@ -93,11 +93,11 @@ A small forwarding method in `Game.gd` may remain if deleting it would require u
 ## 4. Frozen-scope ownership
 
 - Remaining outside-world tactical conversion/variety → `FFTacticalScenarios` + `FFTacticalEnvironments` + `FFCombat`.
-- Single-survivor expedition/logistics rules → `FFExpeditionRules`.
+- Expedition distance/party/logistics rules → `FFExpeditionRules`.
 - Camp relationships, political standing, and autonomous chatter → `FFCampSocial`.
 - Camp recovery/cadence/building effects → `FFCampLifeRules`.
 - Living 2D camp/menu visualization → `FFCampView`, reading `Game` state only.
-- Pets and active camp duties are explicitly approved. Vehicles, companion expeditions, and 3D camp remain cut.
+- Pets, active camp duties, and 1–2 survivor tactical expeditions are explicitly approved. Only the single Expedition Vehicle unlock seam is in scope for vehicles; full vehicle simulation and 3D camp remain cut.
 
 The remaining field text-event selector is deliberately legacy. Do not deepen that path; convert events into tactical scenarios instead.
 
@@ -236,8 +236,8 @@ Important bugs should leave behind a cheaper future check when practical.
 - camp story/politics events remain narrative/dialogue;
 - tactical encounters pause settlement simulation;
 - survivor social behavior is autonomous rather than conversation micromanagement;
-- expeditions are single-survivor only; no tactical companion AI;
-- living 2D camp is final; pets and active camp duties are in scope; vehicles and 3D camp remain cut;
+- standard expeditions support a **1–2 survivor tactical party**; the second survivor is a real on-map AI companion, not an abstract bonus;
+- a single **Expedition Vehicle** unlock may gate Very Far travel, but a broader vehicle-driving/fuel system and 3D camp remain cut;
 - hard population cap is 18; mature settlement is 15+ survivors plus all buildings and elected leadership, with endless continuation;
 - feature freeze: completion/balance/content/bugfixes only, no new foundational pillars;
 - low encounter count with deep mechanics beats many fake choices;

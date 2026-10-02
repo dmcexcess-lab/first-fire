@@ -46,7 +46,7 @@ Backgrounds seed the three current stats rather than six specialist skills. XP/p
 
 Outside-world danger is tactical/physical. Camp social life/politics remains narrative/dialogue.
 
-Tactical encounters use the actual expedition survivor. Current encounter types are **Rescue, Explore Location, and Ambush**. Rescue calls can reveal either a stranded survivor or a stranded camp pet (dog/cat); pets use the same physical reach/contact/escort/extract structure. Wounds, zombie-virus exposure, deaths, fatigue, stress, ammunition use, and Combat XP return to camp state. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
+Tactical encounters use the actual expedition party: one controlled lead plus an optional AI companion. Current encounter types are **Rescue, Explore Location, and Ambush**. Rescue calls can reveal either a stranded survivor or a stranded camp pet (dog/cat); pets use the same physical reach/contact/escort/extract structure. Wounds, deaths, fatigue, stress, ammunition use, and lead infected-contact exposure return to camp state; companion HP/condition also persists back to camp. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
 
 The active combat layer is intentionally compact:
 
@@ -75,13 +75,15 @@ Tactical scene lighting uses the actual settlement clock at encounter creation w
 
 ## Expedition logistics
 
-`FFExpeditionRules.gd` owns single-survivor route hours, starting-route availability, future long-range unlock flags, zone caps, and expedition logistics. Expeditions remain permanently single-survivor; multi-survivor dispatch and tactical companion AI are cut.
+`FFExpeditionRules.gd` owns expedition distance bands, fixed route hours, 1–2 survivor party limits, travel-supply costs, the Very Far vehicle gate, zone caps, and expedition logistics.
 
-**Every gate Send Out is now tactical.** A normal outing is most often exploration, sometimes a zombie ambush, rarely a stranded survivor, and very rarely a dog/cat rescue. Quiet exploration can contain no infected; all tactical outing families still use physical loot containers, and only loot physically recovered before extraction comes home.
+**Every gate Send Out is tactical.** A normal outing is most often exploration, sometimes a zombie ambush, rarely a stranded survivor, and very rarely a dog/cat rescue. Quiet exploration can contain no infected; all tactical outing families still use physical loot containers, and only loot physically recovered before extraction comes home.
 
-Exactly two routes start unlocked: **Camp Perimeter = 3 in-game hours** and **Nearby Streets = 5 in-game hours**. Farther routes remain visible but locked behind explicit future long-range-travel unlock flags rather than automatically opening after repeated runs. Normal route duration is fixed authored time; Agility no longer shortens Send Out travel.
+The five route bands map onto the existing zones: **Camp Perimeter = Very Short / 3h**, **Nearby Streets = Short / 5h**, **Residential Blocks = Medium / 8h**, **Commercial Fringe = Far / 12h**, and **Industrial Edge = Very Far / 18h**. Very Short and Short have no travel-supply cost. Medium costs **1 Cooked Food + 1 Clean Water per survivor**; Far costs **2 + 2 per survivor**; Very Far costs **3 + 3 per survivor** and additionally requires the additive **Expedition Vehicle** unlock. Costs scale with party size. Medium and Far are reachable from the start; Very Far is the only route band locked by travel infrastructure.
 
-The camp gate owns expedition preparation end-to-end with touch-safe PREV/NEXT controls. Route time is paid once before the tactical board opens. The tactical board then hard-pauses settlement simulation, so tactical thinking/combat consumes no additional camp time. Previously discovered special sites also launch a tactical map rather than using a passive travel-only branch.
+Expedition parties may contain **one lead plus one companion**. The second survivor is a real tactical actor using the existing companion AI: they follow, fight, can be targeted/injured/killed, persist through tactical reload state, and must reach the extraction area with the lead. The gate exposes lead, optional companion, route, total supply cost, and launch in one phone-safe surface.
+
+Route time and travel supplies are paid once before the tactical board opens. The tactical board then hard-pauses settlement simulation, so tactical thinking/combat consumes no additional camp time. Previously discovered special sites use the same party/cost/vehicle rules and also launch tactical maps rather than passive travel-only branches.
 
 ## Living camp and camp life
 
@@ -144,7 +146,7 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 
 ## Time / economy
 
-Settlement time has one direct authoritative clock with **no secondary speed multiplier**. `DAY_SECONDS := 120.0` means **5 real active seconds = 1 in-game hour** and **120 real active seconds / 2 minutes per in-game day**. Needs, work/recovery, fire/maintenance, camp events, chatter, daily transitions, and expedition travel all use that same camp-time unit. Standard Send Out pays its fixed route cost before tactical launch: Camp Perimeter consumes 15 settlement seconds / 3 in-game hours and Nearby Streets consumes 25 settlement seconds / 5 in-game hours. Tactical turns are a separate frozen time scale. UI refresh and autosave remain real-time responsiveness concerns.
+Settlement time has one direct authoritative clock with **no secondary speed multiplier**. `DAY_SECONDS := 300.0` means **12.5 real active seconds = 1 in-game hour** and **300 real active seconds / 5 minutes per in-game day**. Camp need decay, awake fatigue, sleep duration, fire decay, camp-condition decay, chatter/event cadence, and daily-life action durations are retuned so their per-in-game-hour behavior remains coherent at the longer day length. Standard expedition travel uses authored in-game hours directly: 3h = 37.5 settlement seconds, 5h = 62.5s, 8h = 100s, 12h = 150s, and 18h = 225s. Tactical turns are a separate frozen time scale. UI refresh and autosave remain real-time responsiveness concerns.
 
 New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages; scavenging still has to sustain the camp after that.
 
@@ -162,7 +164,7 @@ Current survivor-model marker is **`combat-agility-leadership-v1`**. The zombie-
 
 The filename remains `user://first_fire_alpha01.json` intentionally.
 
-`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with the direct five-real-seconds-per-hour camp clock, fixed expedition departure-time advancement, authoritative sleep/work availability, survivor training, zombie-virus state/treatment/quarantine, and tactical exposure integration.
+`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with the direct five-minute camp day, fixed expedition departure-time advancement, authoritative sleep/work availability, survivor training, zombie-virus state/treatment/quarantine, and tactical exposure integration.
 
 ## Canonical technical reality
 
@@ -182,7 +184,7 @@ These wrappers keep the blast radius small while preserving the mature three-sta
 
 ## Frozen scope
 
-Pets, active camp work, authoritative sleep, zombie-virus consequences/treatment, and the living camp as the primary menu surface are part of the approved final-system depth. Vehicles, tactical companion expeditions, multi-survivor dispatch, and 3D camp remain cut. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which play continues indefinitely.
+Pets, active camp work, authoritative sleep, zombie-virus consequences/treatment, **1–2 survivor tactical expeditions**, and the living camp as the primary menu surface are part of the approved final-system depth. A single Expedition Vehicle unlock exists only to gate Very Far travel; full vehicle driving/fuel simulation, parties larger than two, and 3D camp remain cut. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which play continues indefinitely.
 
 ## Source-of-truth order
 

@@ -24,7 +24,7 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 
 `GameThreeStat.gd` remains the three-stat compatibility/specialization layer over `Game.gd`. It owns survivor generation, progression, three-stat expedition checks, treatment specialization, abstract danger, loot hooks, politics specialization, and the `combat-agility-leadership-v1` compatibility marker.
 
-`GameSleepVirus.gd` is the **active Game autoload**. It extends `GameThreeStat.gd` with the direct five-real-seconds-per-game-hour settlement clock, fixed expedition departure-time advancement, authoritative sleep/work availability, timed survivor training/chores, a separate zombie-virus survivor axis, quarantine/treatment, camp spread, and tactical infected-contact integration. Save schema remains 7.
+`GameSleepVirus.gd` is the **active Game autoload**. It extends `GameThreeStat.gd` with the direct five-minute settlement day, fixed expedition departure-time advancement, authoritative sleep/work availability, timed survivor training/chores, a separate zombie-virus survivor axis, quarantine/treatment, camp spread, and tactical infected-contact integration. Save schema remains 7.
 
 `MainThreeStat.gd` remains the three-stat UI specialization over `Main.gd`. `MainSleepVirus.gd` is the **active main-scene script** and routes the living camp, inspector, and tactical runtime to their sleep/virus-aware wrappers.
 
@@ -100,7 +100,7 @@ Surface-aware labels, bounded fuzzy source estimates, and ambient sound profiles
 Persistent survivor appearances, infected visual families, rescued-pet rendering, weapons, corpses, impact effects, and tactical character rendering. Presentation only.
 
 ### `FFExpeditionRules.gd`
-Pure single-survivor expedition/logistics rules: fixed route hours, the two starting routes, explicit future long-range route unlock keys, zone caps, and compatibility haul helpers. Standard Send Out duration is authored and no longer shortened by Agility. Encounter-family weighting belongs to `FFTacticalScenarios.gd`.
+Pure expedition/logistics rules: five distance bands, fixed route hours, maximum two-person party size, per-survivor Cooked Food/Clean Water travel costs, the Very Far Expedition Vehicle gate, zone caps, and compatibility haul helpers. Standard Send Out duration is authored and no longer shortened by Agility. Encounter-family weighting belongs to `FFTacticalScenarios.gd`.
 
 ### `FFCampLifeRules.gd`
 Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, scheduled midday drinking/evening eating/overnight sleep, awake fatigue and sleep recovery, pet affection/retention/daily reward, authoritative camp-condition degradation/recovery/bands, daily water/meal/sleep-window accounting, recovery/treatment modifiers, defense-building effects, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
@@ -123,7 +123,7 @@ Temporary remaining outside-world text-event catalog. Outside-world content shou
 Persistence transport only: JSON/file read-write, compatibility check, invalidation. Current save schema remains 7. The three-stat layer adds the stat-model compatibility marker; virus state is additive and normalized by the active runtime.
 
 ### `scripts/ci/FFArchitectureSmoke.gd`
-Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts are compiled by import/startup gates in their real project context; smoke asserts the active wrapper chain plus durable rules such as scheduled eating/drinking/sleep, the single five-real-seconds-per-hour clock, always-tactical Send Out routing, 3h/5h starting routes, survivor training, sparse camp interaction, infected-contact tracking, and virus treatment requirements.
+Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts are compiled by import/startup gates in their real project context; smoke asserts the active wrapper chain plus durable rules such as scheduled eating/drinking/sleep, the five-minute camp day, always-tactical Send Out routing, five expedition distance bands, party-scaled travel supplies, real tactical companion activation, survivor training, sparse camp interaction, infected-contact tracking, and virus treatment requirements.
 
 ## Camp interaction boundary
 
@@ -147,11 +147,11 @@ Detailed survivor/item inspection also pauses settlement simulation while open a
 
 ## Settlement time scale
 
-`Game.gd` retains `DAY_SECONDS := 120.0`. Active `GameSleepVirus.gd` has **no simulation-speed multiplier**: real active delta is settlement delta, giving **5 real active seconds = 1 in-game hour** and 120 real active seconds per full in-game day. Needs, fire/maintenance decay, survivor tasks/recovery, camp events, chatter timing, daily transitions, and expedition departure travel all use that same unit. Tactical action ticks remain separate and freeze settlement simulation completely. UI refresh/autosave remain real-time concerns.
+`Game.gd` retains the single direct clock but now uses `DAY_SECONDS := 300.0`: real active delta is settlement delta, giving **12.5 real active seconds = 1 in-game hour** and 300 real active seconds / five minutes per full in-game day. Camp-life rates and autonomous-life durations are retuned to preserve their previous per-in-game-hour behavior at the longer day. Expedition route time is calculated directly from authored hours against the 300-second day. Tactical action ticks remain separate and freeze settlement simulation completely. UI refresh/autosave remain real-time concerns.
 
 ## Frozen scope
 
-The living 2D camp is the final presentation and primary home/menu surface. Pets, active camp duties, authoritative sleep, and zombie-virus consequence/treatment depth are approved gameplay. Vehicles, 3D camp rendering, multi-survivor expeditions, and tactical companion AI remain cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
+The living 2D camp is the final presentation and primary home/menu surface. Pets, active camp duties, authoritative sleep, zombie-virus consequence/treatment depth, and **1–2 survivor tactical expeditions** are approved gameplay. The second expedition survivor uses the existing on-map companion AI. A single Expedition Vehicle unlock gates Very Far travel, but full vehicle driving/fuel logistics, parties larger than two, and 3D camp rendering remain cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
 
 ## Save boundary
 

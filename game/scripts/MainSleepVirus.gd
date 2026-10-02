@@ -21,7 +21,7 @@ const CAMP_TUTORIAL_STEPS := [
     },
     {
         "title": "LEAVE THROUGH THE GATE",
-        "body": "Tap the gate to choose a survivor and destination in one place, then LEAVE CAMP. Outside, tactical movement, darkness, sound, wounds, infection, loot, rescue and extraction determine what comes home."
+        "body": "Tap the gate to build a one- or two-survivor expedition, choose the distance, review travel supplies, then leave. Outside, tactical movement, darkness, sound, wounds, infection, loot, rescue and extraction determine what comes home."
     },
 ]
 
@@ -29,6 +29,7 @@ var camp_context_kind := ""
 var camp_context_target := ""
 var gate_survivor_ids: Array = []
 var gate_survivor_index := 0
+var gate_companion_id := -1
 var gate_zone_names: Array = []
 var gate_zone_index := 0
 var expedition_return_notice: Button
@@ -367,13 +368,14 @@ func _prepare_gate_context(preferred_id: int = -1) -> void:
     gate_survivor_index = 0
     if preferred_id >= 0 and gate_survivor_ids.has(preferred_id):
         gate_survivor_index = gate_survivor_ids.find(preferred_id)
+    gate_companion_id = -1
     gate_zone_names.clear()
     for zone_value in CampData.ZONE_ORDER:
         gate_zone_names.append(str(zone_value))
     gate_zone_index = 0
 
 func _draw_gate_context() -> void:
-    _draw_context_header("CAMP GATE", "Every Send Out is a playable tactical outing. Route time passes before departure; camp time freezes completely on the tactical map.")
+    _draw_context_header("CAMP GATE", "Build a 1–2 survivor expedition. Travel time and supplies are paid before departure; camp time freezes completely on the tactical map.")
     if gate_survivor_ids.is_empty():
         content_box.add_child(_make_label("No survivor is currently free to leave camp.", 13))
         return
@@ -410,6 +412,33 @@ func _draw_gate_context() -> void:
     inspect.pressed.connect(_open_survivor_inspector.bind(survivor_id))
     content_box.add_child(inspect)
 
+    _normalize_gate_companion()
+    var companion_candidates := _gate_companion_candidates()
+    var companion_row := HBoxContainer.new()
+    if companion_candidates.size() > 1:
+        var companion_prev := Button.new()
+        companion_prev.text = "PREV"
+        companion_prev.custom_minimum_size = Vector2(64, 44)
+        companion_prev.pressed.connect(_cycle_gate_companion.bind(-1))
+        companion_row.add_child(companion_prev)
+    var companion_text := "COMPANION — SOLO"
+    if gate_companion_id >= 0:
+        var companion: Variant = Game.get_survivor(gate_companion_id)
+        if companion != null:
+            companion_text = "COMPANION — %s" % str(companion.get("name", "Survivor"))
+    var companion_label := _make_label(companion_text, 12)
+    companion_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    companion_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    companion_row.add_child(companion_label)
+    if companion_candidates.size() > 1:
+        var companion_next := Button.new()
+        companion_next.text = "NEXT"
+        companion_next.custom_minimum_size = Vector2(64, 44)
+        companion_next.pressed.connect(_cycle_gate_companion.bind(1))
+        companion_row.add_child(companion_next)
+    content_box.add_child(companion_row)
+    content_box.add_child(_make_label("Party %d / 2 • The companion follows and fights on the tactical map." % (2 if gate_companion_id >= 0 else 1), 11))
+
     content_box.add_child(_separator())
     if gate_zone_names.is_empty():
         content_box.add_child(_make_label("No expedition zone is currently unlocked.", 13))
@@ -438,19 +467,29 @@ func _draw_gate_context() -> void:
     content_box.add_child(zone_row)
     var unlocked := Game.expedition_route_unlocked(zone)
     var hours := Game.expedition_route_hours(zone)
-    var route_line := "%.0fh • %s • %s" % [hours, str(zone_data.get("danger", "?")), Game.zone_loot_state(zone)]
+    var band := Game.expedition_route_band(zone)
+    var party_size := 2 if gate_companion_id >= 0 else 1
+    var can_pay := Game.can_pay_expedition_cost(zone, party_size)
+    var route_line := "%s • %.0fh • %s • %s" % [band, hours, str(zone_data.get("danger", "?")), Game.zone_loot_state(zone)]
     if not unlocked:
         route_line += " • LOCKED"
     content_box.add_child(_make_label(route_line, 12))
     content_box.add_child(_make_label("Likely finds: %s" % _zone_focus_text(zone), 12))
+    var unit_cost := Game.expedition_supply_cost(zone, 1)
+    if int(unit_cost.get("Cooked Food", 0)) == 0 and int(unit_cost.get("Clean Water", 0)) == 0:
+        content_box.add_child(_make_label("Travel supplies: FREE", 12))
+    else:
+        content_box.add_child(_make_label("Travel supplies: %s for this party • %d Food + %d Water per survivor" % [Game.expedition_cost_text(zone, party_size), int(unit_cost.get("Cooked Food", 0)), int(unit_cost.get("Clean Water", 0))], 12))
     if not unlocked:
         content_box.add_child(_make_label(Game.expedition_route_lock_text(zone), 12))
+    elif not can_pay:
+        content_box.add_child(_make_label("Not enough Cooked Food / Clean Water for this party.", 12))
     else:
         content_box.add_child(_make_label("Launches directly into an Explore, Ambush, or rare Rescue tactical map.", 11))
     var leave := Button.new()
-    leave.text = "PLAY TACTICAL OUTING" if unlocked else "ROUTE LOCKED"
+    leave.text = "ROUTE LOCKED" if not unlocked else ("NEED TRAVEL SUPPLIES" if not can_pay else "PLAY EXPEDITION")
     leave.custom_minimum_size = Vector2(0, 48)
-    leave.disabled = not unlocked
+    leave.disabled = not unlocked or not can_pay
     leave.pressed.connect(_leave_from_gate)
     content_box.add_child(leave)
 
@@ -465,17 +504,48 @@ func _draw_gate_context() -> void:
             content_box.add_child(_make_label("Known special sites", 13))
             found_site = true
         var site_button := Button.new()
-        var site_seconds := float(CampData.SPECIAL_SITES[site].get("duration", 0.0))
-        var site_hours := site_seconds * 24.0 / maxf(1.0, float(Game.DAY_SECONDS))
-        site_button.text = "%s — %.0fh • TACTICAL" % [site, site_hours]
+        var site_zone := str(CampData.SPECIAL_SITES[site].get("zone", "Commercial Fringe"))
+        var site_party_size := 2 if gate_companion_id >= 0 else 1
+        var site_unlocked := Game.expedition_route_unlocked(site_zone)
+        var site_can_pay := Game.can_pay_expedition_cost(site_zone, site_party_size)
+        site_button.text = "%s — %.0fh • %s" % [site, Game.expedition_route_hours(site_zone), Game.expedition_cost_text(site_zone, site_party_size)]
         site_button.custom_minimum_size = Vector2(0, 42)
+        site_button.disabled = not site_unlocked or not site_can_pay
         site_button.pressed.connect(_leave_special_from_gate.bind(site))
         content_box.add_child(site_button)
+
+func _gate_companion_candidates() -> Array:
+    var result: Array = [-1]
+    if gate_survivor_ids.is_empty():
+        return result
+    var lead_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
+    for sid_value in gate_survivor_ids:
+        var sid := int(sid_value)
+        if sid != lead_id:
+            result.append(sid)
+    return result
+
+func _normalize_gate_companion() -> void:
+    var candidates := _gate_companion_candidates()
+    if not candidates.has(gate_companion_id):
+        gate_companion_id = -1
 
 func _cycle_gate_survivor(direction: int) -> void:
     if gate_survivor_ids.size() <= 1:
         return
     gate_survivor_index = posmod(gate_survivor_index + direction, gate_survivor_ids.size())
+    _normalize_gate_companion()
+    call_deferred("_refresh_content")
+
+func _cycle_gate_companion(direction: int) -> void:
+    var candidates := _gate_companion_candidates()
+    if candidates.size() <= 1:
+        gate_companion_id = -1
+        return
+    var current_index := candidates.find(gate_companion_id)
+    if current_index < 0:
+        current_index = 0
+    gate_companion_id = int(candidates[posmod(current_index + direction, candidates.size())])
     call_deferred("_refresh_content")
 
 func _cycle_gate_zone(direction: int) -> void:
@@ -499,7 +569,7 @@ func _leave_from_gate() -> void:
     var survivor_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
     var zone := str(gate_zone_names[clampi(gate_zone_index, 0, gate_zone_names.size() - 1)])
     selected_survivor_id = survivor_id
-    if Game.start_expedition(survivor_id, zone):
+    if Game.start_expedition(survivor_id, zone, gate_companion_id):
         _dismiss_return_notice()
         _close_camp_context()
 
@@ -508,7 +578,7 @@ func _leave_special_from_gate(site: String) -> void:
         return
     var survivor_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
     selected_survivor_id = survivor_id
-    if Game.start_special_site(survivor_id, site):
+    if Game.start_special_site(survivor_id, site, gate_companion_id):
         _close_camp_context()
 
 func _send_survivor_from_panel(id):

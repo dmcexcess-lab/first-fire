@@ -177,6 +177,11 @@ func make_party():
     var lead = Game.get_survivor(ids[0]) if not ids.is_empty() else null
     player = make_actor(lead, player_spawn, true)
     ally = {}
+    if ids.size() > 1:
+        var companion = Game.get_survivor(int(ids[1]))
+        if companion != null and str(companion.get("condition", "Dead")) != "Dead":
+            ally = make_actor(companion, ally_spawn, false)
+            ally["next"] = 45
 
 func setup_rescuee() -> void:
     rescuee = {}
@@ -522,6 +527,7 @@ func restore_runtime():
     if not ally.is_empty():
         ally["hp"] = clamp(int(runtime.get("ally_hp", ally["max_hp"])), 0, int(ally["max_hp"]))
         ally["dead"] = int(ally["hp"]) <= 0
+        ally["next"] = int(runtime.get("ally_next", ally.get("next", 45)))
         if runtime.has("ally_pos"):
             ally["pos"] = arr_to_v2i(runtime["ally_pos"], ally["pos"])
     if not rescuee.is_empty():
@@ -601,6 +607,7 @@ func persist_runtime():
     runtime = {
         "lead_hp": int(player.get("hp", 0)),
         "ally_hp": int(ally.get("hp", 0)) if not ally.is_empty() else -1,
+        "ally_next": int(ally.get("next", 45)) if not ally.is_empty() else -1,
         "player_pos": [player.pos.x, player.pos.y],
         "ally_pos": [ally.pos.x, ally.pos.y] if not ally.is_empty() else [-1,-1],
         "facing": DIRS.find(player.facing),
@@ -802,9 +809,20 @@ func rescuee_ready_to_extract() -> bool:
         return true
     return manhattan(player.pos, rescuee.pos) <= 1
 
+func ally_ready_to_extract() -> bool:
+    if ally.is_empty() or bool(ally.get("dead", false)):
+        return true
+    if exit_cells.has(ally.pos):
+        return true
+    return manhattan(player.pos, ally.pos) <= 1
+
 func check_objective_and_exit():
     var kind := str(context.get("kind", "ambush"))
     if exit_cells.has(player.pos):
+        if not ally_ready_to_extract():
+            msg = "Hold the exit — %s is catching up." % str(ally.get("name", "your companion"))
+            queue_redraw()
+            return
         if kind == "rescue":
             var rescue_name := str(rescuee.get("name", "The survivor"))
             if rescuee_ready_to_extract():
