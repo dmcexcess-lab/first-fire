@@ -143,6 +143,7 @@ func start_encounter(data: Dictionary):
     scene_time = str(context.get("time_of_day", "day"))
     power_on = bool(context.get("power_on", false))
     build_map(environment_id, environment_variant)
+    supplement_distance_loot_containers()
     setup_explore_sites()
     make_party()
     setup_rescuee()
@@ -363,13 +364,60 @@ func choose_far_open_cell() -> Vector2i:
         return player_spawn
     return candidates[rng.randi_range(0, candidates.size() - 1)]
 
+func _container_kind_from_prop(prop_kind: String) -> String:
+    match prop_kind:
+        "dumpster": return "dumpster"
+        "trash": return "trash"
+        "car": return "car"
+        "store_shelf": return "shelf"
+        "fridge": return "fridge"
+        "ice_box": return "ice_box"
+        "washer": return "washer"
+        "crate": return "crate"
+        "vending": return "vending"
+        "shopping_cart": return "cart"
+        "culvert_debris": return "debris"
+        "kitchen", "counter", "table": return "cabinet"
+        "bed", "couch": return "cabinet"
+        "pallet", "forklift", "machine", "gas_pump", "scrub": return "debris"
+        _: return ""
+
+func supplement_distance_loot_containers() -> void:
+    var zone := str(context.get("zone", "Nearby Streets"))
+    var target := TacticalBalance.loot_container_target(zone, rng)
+    if loot_containers.size() >= target:
+        return
+    var candidates: Array = []
+    for cell_value in props.keys():
+        var cell: Vector2i = cell_value
+        if loot_containers.has(cell) or exit_cells.has(cell) or cell == player_spawn or cell == ally_spawn:
+            continue
+        if manhattan(cell, player_spawn) < 3:
+            continue
+        var container_kind := _container_kind_from_prop(str(props.get(cell, "")))
+        if container_kind != "":
+            candidates.append({"cell":cell, "kind":container_kind})
+    for barrel_value in barrels.keys():
+        var barrel_cell: Vector2i = barrel_value
+        if loot_containers.has(barrel_cell) or exit_cells.has(barrel_cell) or manhattan(barrel_cell, player_spawn) < 3:
+            continue
+        candidates.append({"cell":barrel_cell, "kind":"debris"})
+    while loot_containers.size() < target and not candidates.is_empty():
+        var pick := rng.randi_range(0, candidates.size() - 1)
+        var entry: Dictionary = candidates[pick]
+        candidates.remove_at(pick)
+        var cell: Vector2i = entry["cell"]
+        var kind := str(entry["kind"])
+        loot_containers[cell] = kind
+        container_contents[cell] = TacticalBalance.roll_container_loot(zone, kind, rng)
+
 func setup_explore_sites() -> void:
     explore_cells.clear()
     explore_searched.clear()
     explore_gear_cell = Vector2i(-1, -1)
     if str(context.get("kind", "ambush")) != "explore":
         return
-    var wanted := mini(TacticalBalance.explore_site_count(str(context.get("zone", "Nearby Streets"))), loot_containers.size())
+    var wanted := mini(TacticalBalance.explore_site_count(str(context.get("zone", "Nearby Streets")), rng), loot_containers.size())
     explore_cells = choose_explore_containers(wanted)
     if explore_cells.is_empty():
         explore_cells = loot_containers.keys().slice(0, wanted)
@@ -1244,7 +1292,8 @@ func zombie_act(i: int):
         z.target = target_actor.pos
         z.heard = target_actor.pos
         zombies[i] = z
-        alert_zombie_group(i, target_actor.pos, 4)
+        var pack_size := zombie_pack_size_around(z.pos, 4)
+        alert_zombie_group(i, target_actor.pos, TacticalBalance.mob_alert_radius(pack_size), pack_size >= 3)
     elif z.state == "CHASE":
         z.state = "INVESTIGATE"
         z.target = z.heard
@@ -1296,14 +1345,29 @@ func choose_zombie_target(z) -> Dictionary:
         if manhattan(z.pos, a.pos) < manhattan(z.pos, best.pos): best = a
     return best
 
+func zombie_mob_size(target_pos: Vector2i, radius: int = 2) -> int:
+    var count := 0
+    for z in zombies:
+        if not z.dead and manhattan(z.pos, target_pos) <= radius:
+            count += 1
+    return maxi(1, count)
+
+func zombie_pack_size_around(origin: Vector2i, radius: int = 4) -> int:
+    var count := 0
+    for z in zombies:
+        if not z.dead and manhattan(z.pos, origin) <= radius:
+            count += 1
+    return maxi(1, count)
+
 func zombie_attack(i: int, target_actor: Dictionary):
     var guarded := bool(target_actor.get("guarding", false))
-    var hit := TacticalBalance.zombie_hit_chance(target_actor)
+    var mob_size := zombie_mob_size(target_actor.pos, 2)
+    var hit := TacticalBalance.zombie_hit_chance(target_actor, mob_size)
     if target_actor.controlled and guarded:
         target_actor["guarding"] = false
     if rng.randf() <= hit:
         var damage_range := TacticalBalance.zombie_damage_range(str(zombies[i].get("mass", "MED")))
-        var dmg := rng.randi_range(damage_range.x, damage_range.y)
+        var dmg := rng.randi_range(damage_range.x, damage_range.y) + TacticalBalance.mob_damage_bonus(mob_size)
         if guarded:
             dmg = maxi(1, dmg - 1)
         var protection := clothing_protection(target_actor.clothing)
@@ -1312,14 +1376,18 @@ func zombie_attack(i: int, target_actor: Dictionary):
         _flash_hit(target_actor.pos, int(target_actor.hp) <= 0)
         if target_actor.controlled:
             stats.damage += dmg
-            msg = "The infected breaks through your guard for %d." % dmg if guarded else "The infected hits you for %d." % dmg
+            if mob_size >= 3:
+                msg = "The mob crowds you — the infected hits for %d." % dmg
+            else:
+                msg = "The infected breaks through your guard for %d." % dmg if guarded else "The infected hits you for %d." % dmg
         else:
             msg = "%s gets hit." % target_actor.name
         if target_actor.hp <= 0:
             target_actor.hp = 0; target_actor.dead = true
     elif target_actor.controlled:
         msg = "You deflect the grab." if guarded else "You avoid the grab."
-    zombies[i].next = tick + TacticalTime.zombie_attack_cost(zombies[i])
+    var base_attack_cost := TacticalTime.zombie_attack_cost(zombies[i])
+    zombies[i].next = tick + maxi(45, int(round(float(base_attack_cost) * TacticalBalance.mob_attack_cost_multiplier(mob_size))))
 func clothing_protection(name: String) -> float:
     if name != "" and D.GEAR.has(name):
         return float(D.GEAR[name].get("protect", 0.0))
@@ -1351,13 +1419,13 @@ func best_step_toward(from: Vector2i, goal: Vector2i, for_ally: bool) -> Vector2
             best_d = dist; best = d
     return best
 
-func alert_zombie_group(source_index: int, target_pos: Vector2i, radius: int) -> void:
+func alert_zombie_group(source_index: int, target_pos: Vector2i, radius: int, direct_chase: bool = false) -> void:
     if source_index < 0 or source_index >= zombies.size() or zombies[source_index].dead: return
     var origin: Vector2i = zombies[source_index].pos
     for i in range(zombies.size()):
         if i == source_index or zombies[i].dead: continue
         if manhattan(origin, zombies[i].pos) <= radius and zombies[i].state != "CHASE":
-            zombies[i].state = "INVESTIGATE"
+            zombies[i].state = "CHASE" if direct_chase else "INVESTIGATE"
             zombies[i].heard = target_pos
             zombies[i].target = target_pos
 
@@ -1366,7 +1434,8 @@ func reveal_melee_target(index: int) -> void:
     zombies[index].state = "CHASE"
     zombies[index].heard = player.pos
     zombies[index].target = player.pos
-    alert_zombie_group(index, player.pos, 3)
+    var pack_size := zombie_pack_size_around(zombies[index].pos, 4)
+    alert_zombie_group(index, player.pos, TacticalBalance.mob_alert_radius(pack_size), pack_size >= 3)
 
 func maybe_emit_ambient_sound() -> void:
     if rng.randf() >= 0.12: return

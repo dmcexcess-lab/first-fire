@@ -6,7 +6,7 @@ const STAGE_EXPOSED := "Exposed"
 const STAGE_INFECTED := "Infected"
 const STAGE_FEVERISH := "Feverish"
 const STAGES := [STAGE_CLEAR, STAGE_EXPOSED, STAGE_INFECTED, STAGE_FEVERISH]
-const EXPOSED_NATURAL_CLEAR_CHANCE := 0.30
+const EXPOSED_NATURAL_CLEAR_CHANCE := 0.50
 
 static func default_state() -> Dictionary:
     return {"stage": STAGE_CLEAR, "days": 0, "quarantined": false}
@@ -34,7 +34,9 @@ static func is_severe(value) -> bool:
 static func exposure_chance(infected_hits: int) -> float:
     if infected_hits <= 0:
         return 0.0
-    return clampf(0.18 + float(infected_hits - 1) * 0.12, 0.18, 0.54)
+    # Virus transmission should be frightening because it is uncommon, not
+    # because every scrape is a near-guaranteed infection.
+    return clampf(0.03 + float(infected_hits - 1) * 0.025, 0.03, 0.12)
 
 static func expose(value) -> Dictionary:
     var state := normalize(value)
@@ -74,8 +76,8 @@ static func spread_chance(value) -> float:
     if bool(state["quarantined"]):
         return 0.0
     match str(state["stage"]):
-        STAGE_INFECTED: return 0.06
-        STAGE_FEVERISH: return 0.18
+        STAGE_INFECTED: return 0.025
+        STAGE_FEVERISH: return 0.08
         _: return 0.0
 
 static func treatment_plan(stage_name: String, has_infirmary: bool) -> Dictionary:

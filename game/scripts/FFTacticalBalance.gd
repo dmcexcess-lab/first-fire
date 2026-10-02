@@ -5,12 +5,12 @@ const D = preload("res://scripts/FFData.gd")
 
 # Beta tuning owner for the tactical layer. Combat is intentionally built on
 # only three survivor stats: Combat, Agility, and Leadership.
-const EXPLORE_SITE_COUNTS := {
-    "Camp Perimeter": 3,
-    "Nearby Streets": 3,
-    "Residential Blocks": 3,
-    "Commercial Fringe": 3,
-    "Industrial Edge": 3,
+const EXPLORE_SITE_COUNT_RANGES := {
+    "Camp Perimeter": Vector2i(3, 5),
+    "Nearby Streets": Vector2i(4, 6),
+    "Residential Blocks": Vector2i(5, 7),
+    "Commercial Fringe": Vector2i(6, 8),
+    "Industrial Edge": Vector2i(7, 9),
 }
 
 const ZOMBIE_BASE_COUNTS := {
@@ -40,8 +40,17 @@ const CONTAINER_BIASES := {
     "debris": {"Scrap Metal": 10, "Wood": 8, "Hardware": 5},
 }
 
-static func explore_site_count(zone: String) -> int:
-    return int(EXPLORE_SITE_COUNTS.get(zone, 3))
+static func explore_site_count_range(zone: String) -> Vector2i:
+    return EXPLORE_SITE_COUNT_RANGES.get(zone, Vector2i(3, 5))
+
+static func explore_site_count(zone: String, rng: RandomNumberGenerator = null) -> int:
+    var count_range := explore_site_count_range(zone)
+    if count_range.x >= count_range.y or rng == null:
+        return count_range.x
+    return rng.randi_range(count_range.x, count_range.y)
+
+static func loot_container_target(zone: String, rng: RandomNumberGenerator = null) -> int:
+    return explore_site_count(zone, rng)
 
 static func zombie_count_range(zone: String, kind: String, rescue_is_pet: bool = false, quiet: bool = false) -> Vector2i:
     if kind == "ambush":
@@ -75,9 +84,10 @@ static func explore_reward_rolls(searches: int, unused_skill: int = 0) -> int:
     return clampi(rolls, 1, 3)
 
 static func zombie_hp_range(mass: String) -> Vector2i:
-    if mass == "LIGHT": return Vector2i(7, 10)
-    if mass == "HEAVY": return Vector2i(12, 16)
-    return Vector2i(9, 13)
+    # Individual infected are intentionally fragile. Threat comes from numbers.
+    if mass == "LIGHT": return Vector2i(4, 7)
+    if mass == "HEAVY": return Vector2i(8, 12)
+    return Vector2i(6, 9)
 
 static func container_label(container_kind: String) -> String:
     match container_kind:
@@ -174,17 +184,35 @@ static func shove_stagger_ticks(mass: String, pinned: bool) -> int:
     if pinned: stagger += 25
     return stagger
 
-static func zombie_hit_chance(actor: Dictionary) -> float:
+static func mob_hit_bonus(mob_size: int) -> float:
+    return minf(0.18, float(maxi(0, mob_size - 1)) * 0.06)
+
+static func mob_damage_bonus(mob_size: int) -> int:
+    if mob_size >= 5:
+        return 2
+    if mob_size >= 3:
+        return 1
+    return 0
+
+static func mob_attack_cost_multiplier(mob_size: int) -> float:
+    return maxf(0.82, 1.0 - float(maxi(0, mob_size - 1)) * 0.06)
+
+static func mob_alert_radius(pack_size: int) -> int:
+    return 3 + mini(3, maxi(0, pack_size - 1))
+
+static func zombie_hit_chance(actor: Dictionary, mob_size: int = 1) -> float:
     var agility := int(actor.get("skills", {}).get("Agility", 0))
     var fatigue := float(actor.get("fatigue", 0.0))
-    var chance := 0.70 - float(agility) * 0.018
+    var chance := 0.52 - float(agility) * 0.018 + mob_hit_bonus(mob_size)
     if fatigue >= 80.0: chance += 0.08
     elif fatigue >= 60.0: chance += 0.04
     if bool(actor.get("sprinting", false)):
         chance -= minf(0.22, 0.05 + float(agility) * 0.017)
-    return clampf(chance, 0.20, 0.84)
+    return clampf(chance, 0.14, 0.82)
 
 static func zombie_damage_range(mass: String) -> Vector2i:
-    if mass == "LIGHT": return Vector2i(1, 4)
-    if mass == "HEAVY": return Vector2i(3, 7)
-    return Vector2i(2, 6)
+    # A lone infected should hurt, not chunk a healthy survivor. Mob pressure
+    # adds the extra danger in FFCombat rather than inflating base damage.
+    if mass == "LIGHT": return Vector2i(1, 2)
+    if mass == "HEAVY": return Vector2i(2, 4)
+    return Vector2i(1, 3)

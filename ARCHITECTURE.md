@@ -76,7 +76,7 @@ Current combat rules: Combat/Agility attack and movement behavior, Stealth, Spri
 Thin active tactical wrapper. Counts successful direct infected attacks against the controlled survivor, persists/returns that count, and prevents a contacted living rescue from being failed merely because the player reaches the exit before the escort's next scheduled movement. It must not treat generic physical damage as virus exposure.
 
 ### `FFTacticalBalance.gd`
-Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected encounter population/HP/damage, container search/loot tuning, Shove resistance/stagger, and infected hit chance. Current population contract: Very Short exploration rolls 0–3 infected and is the only route that may produce 0–1; longer exploration floors at 2; ambushes use 5, pet rescues 3, and survivor rescues 5.
+Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected encounter population/HP/damage, **mob-pressure bonuses**, distance-scaled searchable-container targets, container search/loot tuning, Shove resistance/stagger, and infected hit chance. Individual infected are intentionally weak; nearby group size raises hit pressure, adds only a small damage bonus, accelerates repeated attacks, and expands pack alerting. Current population contract: Very Short exploration rolls 0–3 infected and is the only route that may produce 0–1; longer exploration floors at 2; ambushes use 5, pet rescues 3, and survivor rescues 5. Very Short targets 3–5 searchable containers, with higher tiers increasing from there.
 
 ### `FFTacticalTime.gd`
 Low-level tactical timeline utilities for load, fatigue, condition, stance, weapon timing, and infected pace. `FFThreeStatRules.gd` applies current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.
@@ -111,7 +111,7 @@ Shared touch-first presentation/controller for the four daily chore interactions
 ### `FFVirusRules.gd`
 Pure zombie-virus rules. Owns stage names/normalization, contact-to-exposure probability, daily progression, camp-spread probability, and treatment plans/costs. It does not mutate Game state or render UI.
 
-Current virus stages are **Clear → Exposed → Infected → Feverish**. Exposed can be decontaminated with Clean Water + Sterile Dressing; Infected uses Medicine; Feverish emergency treatment requires Infirmary + 2 Medicine. Quarantine prevents close-contact camp spread. Terminal consequence is applied by Game orchestration after an untreated Feverish daily transition.
+Current virus stages are **Clear → Exposed → Infected → Feverish**. Field transmission is deliberately rare: direct-hit exposure begins at 3%, rises gradually with repeated infected hits, and caps at 12%; Exposed has a 50% natural-clear chance on its next daily progression. Established camp-spread probabilities are also reduced. Exposed can be decontaminated with Clean Water + Sterile Dressing; Infected uses Medicine; Feverish emergency treatment requires Infirmary + 2 Medicine. Quarantine prevents close-contact camp spread. Terminal consequence is applied by Game orchestration after an untreated Feverish daily transition.
 
 ### `FFCampSocial.gd`
 Relationships, chatter, political standing, and leadership support. **Leadership** is the active progression stat for candidate standing and social/political checks. Active orchestration passes only assignable/available survivors into ordinary chatter selection.

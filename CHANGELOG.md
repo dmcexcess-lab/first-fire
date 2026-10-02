@@ -1,3 +1,13 @@
+## Beta Candidate — Weak Infected, Mob Pressure & Rare Virus — 2026-10-01
+
+- Rebalanced individual infected downward: light/medium/heavy HP bands and base damage are lower, and a lone infected now has a substantially lower grab chance than the previous Alpha tuning.
+- Added explicit **mob-pressure mechanics**. Nearby infected improve grab accuracy, add only a small damage bump at 3+ attackers, shorten repeated attack cadence, widen local alert radius, and groups of 3+ can pull nearby packmates directly into a chase instead of acting as isolated enemies.
+- Kept the distance population curve from the prior tactical patch, so farther exploration still adds infected; the threat now comes primarily from density/positioning rather than inflated single-zombie stats.
+- Added distance-scaled searchable-container targets: **Very Short 3–5**, Short 4–6, Medium 5–7, Far 6–8, Very Far 7–9. Existing authored props/obstacles are promoted into additional searchable caches where available, preserving the physical container/search loop.
+- Actual larger tactical geometry remains scheduled for the next combat/stealth/environment overhaul; this patch does not fake bigger maps with empty padding.
+- Made zombie-virus transmission much rarer: one successful direct infected hit now carries **3%** exposure risk, repeated direct hits rise gradually to a **12% maximum**, Exposed has a **50% natural-clear chance**, and unquarantined camp spread was reduced.
+- Expanded deterministic smoke/CI contracts for weak lone infected, mob bonuses, rare exposure, and distance-scaled searchable-container targets.
+
 ## Beta Candidate — Sparse Near-Field Infected Counts — 2026-10-01
 
 - Rebalanced tactical infected populations around expedition scenario type and distance.

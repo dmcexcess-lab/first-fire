@@ -58,6 +58,7 @@ The active combat layer is intentionally compact:
 - **Sprint** — Agility-driven movement with a deliberately and materially lower action cost than walking, louder noise, and improved grab avoidance.
 - **Forward** — dedicated touch movement action in the former Guard control slot.
 - **Shove** — spacing/stagger action; heavier infected resist it more.
+- **Mob pressure** — a lone infected is deliberately weak. Multiple nearby infected improve grab accuracy, add only a small damage bump, shorten their attack cadence, and can pull nearby packmates directly into the chase. The danger curve should come primarily from density/positioning rather than inflated individual HP/damage.
 
 **There is no armor mitigation.** Clothing must not cancel or reduce incoming physical damage. Clothing may remain as identity/weight/crafting/utility gear, but it is not an armor stat layer.
 
@@ -69,7 +70,7 @@ Combat and Agility are the only survivor stats that affect tactical fighting/mov
 
 `FFTacticalScenarios.gd` owns objectives/scenario selection. `FFTacticalEnvironments.gd` owns authored places/geometry/props/entries/exits. `FFTacticalLighting.gd` owns tactical lighting rules. `FFTacticalTiles.gd` owns atlas rendering. `FFTacticalTime.gd` owns low-level action-time/load/fatigue/condition timing. `FFTacticalSound.gd` owns labels/localization helpers. `FFTacticalVisuals.gd` owns survivor/infected/weapon rendering.
 
-Authored environments include back alleys, gas stations, houses, apartments, stores, warehouse yards, and drainage washes. Every map has far-side extraction rather than an exit beside the entry, plus authored physical loot containers whose contents are only retained after escape. Rescue civilians are protected from infected targeting until first contact, then become vulnerable escorts. On extraction, a contacted living rescue may catch up to a player holding the exit instead of being abandoned solely because the player reached the exit one tactical step first.
+Authored environments include back alleys, gas stations, houses, apartments, stores, warehouse yards, and drainage washes. Every map has far-side extraction rather than an exit beside the entry, plus physical loot containers whose contents are only retained after escape. Container/search density now scales by expedition distance: Very Short targets **3–5 searchable containers**, then rises through Short/Medium/Far/Very Far. Current authored geometry remains the fixed 20×18 tactical board; actual distance-scaled larger map geometry belongs to the upcoming tactical-environment overhaul rather than fake empty padding. Rescue civilians are protected from infected targeting until first contact, then become vulnerable escorts. On extraction, a contacted living rescue may catch up to a player holding the exit instead of being abandoned solely because the player reached the exit one tactical step first.
 
 Tactical scene lighting uses the actual settlement clock at encounter creation with DAWN / DAY / DUSK / NIGHT phases plus independently powered/unpowered environments. Actual per-cell light shapes the player's vision cone geometry as well as visibility thresholds: darkness contracts and narrows sight, while bright cells and portable/fixed lighting extend and widen it. Portable Secondary lights can be switched on/off and persist in tactical runtime. Off-screen audible events continue to appear as fuzzy **yellow/gold sound callouts** at approximate locations and disappear when the true source becomes directly visible.
 
@@ -132,7 +133,8 @@ Physical wound treatment:
 
 Zombie virus:
 - Only successful direct infected contact can create field exposure; generic damage does not.
-- Exposure chance rises with repeated direct infected hits during the encounter.
+- Field transmission is intentionally **rare**: one direct infected hit is about **3% exposure risk**, repeated hits raise the encounter risk gradually, and the curve caps at **12%**.
+- Exposed survivors now have a **50%** natural-clear chance at the next daily progression; established camp spread is also substantially lower than the earlier Alpha tuning.
 - **Exposed:** can be decontaminated with 1 Clean Water + 1 Sterile Dressing; untreated exposure gets one 30% natural-clear chance, otherwise becomes Infected at the next daily transition.
 - **Infected:** 1 Medicine starts a timed treatment course; untreated infection becomes Feverish at the next daily transition.
 - **Feverish:** survivor is automatically unavailable; emergency treatment requires a built Infirmary + 2 Medicine. An untreated feverish case can become terminal at the next daily transition.
