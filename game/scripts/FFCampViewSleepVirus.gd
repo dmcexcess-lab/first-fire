@@ -123,8 +123,9 @@ func _draw_wilderness(origin: Vector2, tile: float) -> void:
 
 func _draw_communal_chest(origin: Vector2, tile: float) -> void:
     var rect := _cell_rect(CAMP_CHEST_CELL, origin, tile).grow(-tile * 0.14)
-    Tiles.draw_prop(self, rect, "crate")
-    draw_rect(rect, Color(0.87, 0.72, 0.39, 0.72), false, maxf(1.0, tile * 0.035))
+    if not bool(Game.buildings.get("Storage Crate", false)):
+        Tiles.draw_prop(self, rect, "crate")
+    draw_rect(rect, Color(0.87, 0.72, 0.39, 0.52), false, maxf(1.0, tile * 0.025))
 
 func _draw_work_board(origin: Vector2, tile: float) -> void:
     var rect := _cell_rect(WORK_BOARD_CELL, origin, tile).grow(-tile * 0.16)
