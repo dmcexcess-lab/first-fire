@@ -113,7 +113,9 @@ func _advance_settlement_simulation(amount: float, include_expeditions: bool = t
 func _advance_settlement_time_for_expedition_return(seconds: float) -> void:
     # Expeditions open the tactical board immediately. When tactical play ends,
     # apply the authored route duration in one settlement jump while the party
-    # is still marked away, then return them to camp.
+    # is still marked away. Existing timed maintenance can expire during that
+    # elapsed time, but new choice-based camp events/maintenance incidents are
+    # not spawned invisibly while the player cannot respond.
     _advance_settlement_simulation(maxf(0.0, seconds), false, false)
 
 func _process(delta):

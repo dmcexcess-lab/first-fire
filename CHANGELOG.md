@@ -1,3 +1,17 @@
+## Beta Candidate — Camp Pressure Events & Physical Loot Invariant — 2026-10-02
+
+- Made the expedition haul rule literal: **nothing is added after a run unless it was physically recovered on the tactical board**. Expedition completion no longer calls abstract resource/gear rollers, old traveling text-event rewards are not queued, and a resolved tactical special site no longer opens a second text screen that can mint supplies. Containers, harvested Zombie Corpses, and explicit on-map gear pickups remain valid physical loot.
+- Removed the tactical-rescue information fallback that could hand over free Raw Food. If a rescued survivor has no new location to reveal, the result is information-only and explicitly says nothing new was added to the haul.
+- Added persistent **camp zombie breach** events through the existing narrative event queue. The event stores a hidden d100 roll when created; Hold / Fall Back / Draw Them Away choices reshape the outcome table, while Noise Line (+8) and Watch Post (+14) improve the same roll. Survivor stats and player combat skill are deliberately not consulted.
+- Zombie breaches can **ruin stored supplies, destroy a built leaf structure, Hurt/Wound/kill a present survivor, or directly expose a bitten survivor to the zombie virus**. Destroyed structures revert to unbuilt and must be rebuilt at normal cost. Only leaf structures are eligible so a broken building cannot strand already-built dependents in an impossible tech state.
+- Added **supply spoilage** RP choices with a stored hidden roll: discard questionable food/drink safely or gamble that it is still usable. A bad gamble ruins stock and worsens the affected survivor's Stress/Hunger/Safety.
+- Added **storm/building-damage** choices: spend 1 Hardware to brace the threatened structure for guaranteed protection, clear people away and accept the structural risk, or keep working through the storm at higher risk. Unbraced damage can destroy the selected leaf building or leave the camp condition worse.
+- Added a **one-survivor isolation event** (burn scarce Wood for a brighter, safer night or endure the dark) so camp narrative pressure works from the founder-only opening.
+- Added a **larger-camp morale event** at population 5+ with Quiet / Tavern / communal-food options that trade Stress, Fun, Safety, and supplies instead of merely changing text.
+- Camp event selection now works at population 1 and weights zombie pressure more heavily as the camp grows. Existing social/political events remain in the same queue; the system does not add a second event model.
+- Choice-based camp crises are still suppressed during the hidden expedition return-time settlement jump; already-visible timed maintenance can expire there, but new destructive narrative choices only surface when the player is back at camp and able to respond. The broader return-time model remains unchanged pending playtest/design confirmation.
+- Save schema remains **8**; the new event contexts fit the existing event/save structure and destroyed buildings use the existing boolean build state.
+
 ## Beta Candidate — Field Feedback, Resident Beds & Timed Maintenance — 2026-10-02
 
 - Added **floating tactical search feedback directly over the searched container**. Physical loot displays values such as `+1 Dirty Water`; genuinely stripped containers display **EMPTY**; a container blocked entirely by carry capacity displays **CARRY FULL**. Named objective gear joins the same floating result when recovered.

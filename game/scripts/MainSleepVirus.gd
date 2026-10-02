@@ -365,7 +365,7 @@ func _draw_building_context(building_name: String) -> void:
     content_box.add_child(build)
 
 func _draw_duties_context() -> void:
-    _draw_context_header("CAMP WORK BOARD", "Assign daily duties and permanent camp expansion here. Everyday eating, drinking, sleep and fun remain autonomous.")
+    _draw_context_header("CAMP WORK BOARD", "Handle timed maintenance and permanent camp expansion here. Everyday eating, drinking, sleep and fun remain autonomous.")
     _draw_camp_work_board()
 
 func _prepare_gate_context(preferred_id: int = -1) -> void:

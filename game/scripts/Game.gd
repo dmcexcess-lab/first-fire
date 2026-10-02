@@ -945,14 +945,11 @@ func _process_expeditions(delta):
                 exp["remaining"] = maxf(0.01, float(exp.get("combat_trigger_remaining", 0.01)))
             continue
         if exp.get("event_key", "") != "" and not exp.get("event_triggered", false) and float(exp["remaining"]) <= float(exp["event_trigger_remaining"]):
+            # Schema-8 compatibility: old traveling saves may still carry a
+            # legacy text-event key. Do not resolve abstract field rewards.
             exp["event_triggered"] = true
-            exp["state"] = "pending"
-            for sid in exp["survivor_ids"]:
-                var s: Variant = get_survivor(sid)
-                if s != null:
-                    s["status"] = "Pending Expedition Event"
-            _queue_event(_build_field_event(exp["event_key"], exp))
-        elif float(exp["remaining"]) <= 0.0:
+            exp["event_key"] = ""
+        if float(exp["remaining"]) <= 0.0:
             finished.append(exp["id"])
     for eid in finished:
         _finish_expedition(eid)
@@ -1525,14 +1522,11 @@ func _finish_expedition(eid):
         return
     if bool(exp.get("tactical_resolved", false)):
         _settle_expedition_time_cost(exp)
-    if exp.get("special_site", "") != "":
-        exp["state"] = "pending"
-        for sid in exp["survivor_ids"]:
-            var s0: Variant = get_survivor(sid)
-            if s0 != null:
-                s0["status"] = "Pending Expedition Event"
-        _queue_event(_build_special_site_event(exp["special_site"], exp))
-        return
+    if exp.get("special_site", "") != "" and bool(exp.get("tactical_resolved", false)):
+        var resolved_site := str(exp.get("special_site", ""))
+        if special_sites.has(resolved_site):
+            special_sites[resolved_site]["cleared"] = true
+            _add_history("Day %d — %s was cleared tactically; only physically recovered loot came home." % [day, resolved_site])
 
     var zone = exp["zone"]
     var log_bits = []
@@ -1550,17 +1544,11 @@ func _finish_expedition(eid):
         state_changed.emit()
         return
 
-    # Standard Send Out is always tactical. Once the tactical map resolved,
-    # only loot physically recovered on that board comes home.
-    var loot: Dictionary = {} if bool(exp.get("tactical_resolved", false)) else _roll_loot(exp, living_party)
-    for key in loot.keys():
-        _store_loot_item(str(key), int(loot[key]))
-    var gear_found = ""
-    if not bool(exp.get("tactical_resolved", false)):
-        gear_found = _roll_gear(exp, living_party)
-    if gear_found != "":
-        inventory_gear.append(gear_found)
-        log_bits.append("Found %s" % gear_found)
+    # Expedition return never invents a haul. Resources/components/gear must
+    # already have been physically recovered from tactical containers, corpses,
+    # or an explicit on-map pickup before this point.
+    var loot: Dictionary = {}
+    var gear_found := ""
 
     zone_pressure[zone] = int(zone_pressure.get(zone, 0)) + int(D.ZONES[zone]["pressure"])
     zone_successes[zone] = int(zone_successes.get(zone, 0)) + 1
@@ -2233,8 +2221,7 @@ func _handle_event_action(event, action):
             if revealed != "":
                 _queue_field_result(event, "Useful Information", "They sketch a route and point out a place that may still be worth searching: %s." % revealed, "The party learned the location of %s from another survivor." % revealed)
             else:
-                resources["Raw Food"] += 2
-                _queue_field_result(event, "A Small Favor", "They cannot offer a place you have not already found, but they hand over two usable food items before leaving.", "A survivor repaid the party with food.")
+                _queue_field_result(event, "Nothing New", "They cannot point to anywhere you have not already marked. You trade a little information and part ways; nothing new is added to the haul.")
         "recruit_offer_decline":
             _queue_field_result(event, "Parting Ways", "Nobody makes promises. You trade names, wish each other luck, and head in opposite directions.")
 
@@ -2721,6 +2708,32 @@ func _handle_event_action(event, action):
         "site_retreat":
             _finish_special_site_without_clear(event)
 
+        "camp_attack_hold":
+            _resolve_camp_zombie_attack(event, "hold")
+        "camp_attack_fall_back":
+            _resolve_camp_zombie_attack(event, "fall_back")
+        "camp_attack_draw_away":
+            _resolve_camp_zombie_attack(event, "draw_away")
+        "camp_spoil_discard":
+            _resolve_camp_spoil(event, false)
+        "camp_spoil_risk":
+            _resolve_camp_spoil(event, true)
+        "camp_storm_brace":
+            _resolve_camp_storm(event, "brace")
+        "camp_storm_clear":
+            _resolve_camp_storm(event, "clear")
+        "camp_storm_work":
+            _resolve_camp_storm(event, "work")
+        "camp_solo_fire":
+            _resolve_solo_night(event, true)
+        "camp_solo_dark":
+            _resolve_solo_night(event, false)
+        "camp_crowd_quiet":
+            _resolve_crowd_night(event, "quiet")
+        "camp_crowd_tavern":
+            _resolve_crowd_night(event, "tavern")
+        "camp_crowd_feast":
+            _resolve_crowd_night(event, "feast")
         "camp_sleep_newcomer":
             _resolve_sleep_event(event, "newcomer")
         "camp_sleep_existing":
@@ -2836,106 +2849,438 @@ func _finish_special_site_without_clear(event):
 # CAMP EVENTS / POLITICS
 # -----------------------------------------------------------------------------
 
-func _consider_camp_event():
-    if camp_event_cooldown > 0.0 or population() < 2 or game_over:
+func _camp_present_survivors() -> Array:
+    var result: Array = []
+    for survivor_value in survivors:
+        var survivor: Dictionary = survivor_value
+        if str(survivor.get("condition", "Dead")) == "Dead":
+            continue
+        if str(survivor.get("status", "Available")) in ["Expedition", "Pending Expedition Event", "Tactical Encounter"]:
+            continue
+        result.append(survivor)
+    return result
+
+func _breakable_camp_buildings() -> Array:
+    var result: Array = []
+    for building_value in D.BUILD_ORDER:
+        var building_name := str(building_value)
+        if not bool(buildings.get(building_name, false)):
+            continue
+        var supports_built_dependency := false
+        for other_value in D.BUILD_ORDER:
+            var other_name := str(other_value)
+            if not bool(buildings.get(other_name, false)):
+                continue
+            var other_data: Dictionary = D.BUILDINGS.get(other_name, {})
+            if Array(other_data.get("requires", [])).has(building_name):
+                supports_built_dependency = true
+                break
+        if not supports_built_dependency:
+            result.append(building_name)
+    return result
+
+func _break_camp_building(building_name: String, reason: String) -> bool:
+    if building_name == "" or not bool(buildings.get(building_name, false)):
+        return false
+    buildings[building_name] = false
+    _add_history("Day %d — %s was destroyed: %s." % [day, building_name, reason])
+    return true
+
+func _camp_event_supply_keys() -> Array:
+    var allowed := ["Raw Food", "Cooked Food", "Dirty Water", "Clean Water", "Beer", "Wood", "Scrap Metal", "Cloth", "Plastic", "Hardware", "Seeds"]
+    var result: Array = []
+    for key_value in allowed:
+        var key := str(key_value)
+        if int(resources.get(key, 0)) > 0:
+            result.append(key)
+    return result
+
+func _camp_spoilable_supply_keys() -> Array:
+    var result: Array = []
+    for key_value in ["Cooked Food", "Raw Food", "Clean Water", "Beer"]:
+        var key := str(key_value)
+        if int(resources.get(key, 0)) > 0:
+            result.append(key)
+    return result
+
+func _ruin_random_camp_supplies(amount: int) -> String:
+    var remaining := maxi(0, amount)
+    var lost: Dictionary = {}
+    while remaining > 0:
+        var keys := _camp_event_supply_keys()
+        if keys.is_empty():
+            break
+        var key := str(keys[rng.randi_range(0, keys.size() - 1)])
+        resources[key] = maxi(0, int(resources.get(key, 0)) - 1)
+        lost[key] = int(lost.get(key, 0)) + 1
+        remaining -= 1
+    if lost.is_empty():
+        return "nothing was left in the stores to lose"
+    var parts: Array = []
+    for key in lost.keys():
+        parts.append("%d %s" % [int(lost[key]), str(key)])
+    parts.sort()
+    return ", ".join(parts)
+
+func _apply_camp_event_injury(survivor, severity: String, note: String) -> void:
+    # Deliberately bypass clothing/stat mitigation: destructive camp events use
+    # their stored luck roll rather than tactical skill or equipment checks.
+    if survivor == null or str(survivor.get("condition", "Dead")) == "Dead":
         return
-    var avg_stress = 0.0
-    var living = 0
-    var tense = false
-    for s in survivors:
-        if s["condition"] == "Dead": continue
-        avg_stress += float(s["stress"])
+    match severity:
+        "Hurt":
+            if str(survivor.get("condition", "Healthy")) == "Healthy":
+                survivor["condition"] = "Hurt"
+                survivor["injury_remaining"] = 60.0
+        "Wounded":
+            if str(survivor.get("condition", "Healthy")) != "Critical":
+                survivor["condition"] = "Wounded"
+                survivor["injury_remaining"] = 180.0
+        "Critical":
+            survivor["condition"] = "Critical"
+            survivor["injury_remaining"] = 0.0
+    survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + (6.0 if severity == "Hurt" else 14.0))
+    survivor["history"].append("Day %d — %s." % [day, note])
+
+func _adjust_camp_mood(stress_delta: float, fun_delta: float, safety_delta: float) -> void:
+    for survivor_value in _camp_present_survivors():
+        var survivor: Dictionary = survivor_value
+        survivor["stress"] = clampf(float(survivor.get("stress", 0.0)) + stress_delta, 0.0, 100.0)
+        var needs := CampLifeRules.normalize_needs(survivor.get("needs", {}))
+        needs["fun"] = clampf(float(needs.get("fun", 50.0)) + fun_delta, 0.0, 100.0)
+        needs["safety"] = clampf(float(needs.get("safety", 50.0)) + safety_delta, 0.0, 100.0)
+        survivor["needs"] = needs
+
+func _build_camp_zombie_attack_event() -> Dictionary:
+    var present := _camp_present_survivors()
+    if present.is_empty():
+        return {}
+    var target: Dictionary = present[rng.randi_range(0, present.size() - 1)]
+    var breakable := _breakable_camp_buildings()
+    var building_target := str(breakable[rng.randi_range(0, breakable.size() - 1)]) if not breakable.is_empty() else ""
+    var warning := "The Noise Line starts clattering before shapes reach the perimeter." if bool(buildings.get("Noise Line", false)) else "Scraping and wet footsteps gather just beyond the firelight."
+    if bool(buildings.get("Watch Post", false)):
+        warning += " The Watch Post sees the breach forming, but nobody can know where the bodies will fall."
+    return _event_base("camp_zombie_attack", "Dead at the Perimeter", warning + " This is a camp crisis, not a tactical fight: preparation and a hidden luck roll decide the damage.", [
+        _choice("Hold the camp together and stand your ground", "camp_attack_hold"),
+        _choice("Give ground and abandon the stores", "camp_attack_fall_back"),
+        _choice("Have one person draw them away", "camp_attack_draw_away"),
+    ], {
+        "survivor_ids":[int(target.get("id", -1))],
+        "attack_roll":rng.randi_range(1, 100),
+        "supply_loss":rng.randi_range(2, 4),
+        "building_target":building_target,
+    })
+
+func _resolve_camp_zombie_attack(event: Dictionary, approach: String) -> void:
+    var context: Dictionary = event.get("context", {})
+    var target: Variant = _lead_from_event(event)
+    var raw_roll := int(context.get("attack_roll", 50))
+    var outcome := CampLifeRules.camp_attack_outcome(raw_roll, approach, bool(buildings.get("Noise Line", false)), bool(buildings.get("Watch Post", false)))
+    var body := ""
+    _adjust_camp_mood(6.0, -4.0, -10.0)
+
+    if approach == "fall_back":
+        var abandoned := _ruin_random_camp_supplies(int(context.get("supply_loss", 2)))
+        body = "The camp gives ground instead of meeting the dead at the edge. The stores take the first hit: %s." % abandoned
+    elif approach == "draw_away":
+        body = "%s runs the noise away from the sleeping area while everyone else stays low." % (str(target.get("name", "One survivor")) if target != null else "One survivor")
+    else:
+        body = "Everyone stays inside the camp line and lets the breach hit whatever it hits."
+
+    match outcome:
+        "killed":
+            if target != null:
+                var name := str(target.get("name", "A survivor"))
+                _kill_survivor(target, "was killed during a random zombie breach at First Fire")
+                body += " The luck is awful. %s does not make it through the breach." % name
+        "exposed":
+            if target != null:
+                _apply_camp_event_injury(target, "Wounded", "Was badly bitten during a zombie breach at First Fire")
+                var exposed := false
+                if has_method("_expose_survivor"):
+                    exposed = bool(call("_expose_survivor", target, "a random zombie breach at First Fire"))
+                body += " %s is dragged clear with a serious bite%s." % [str(target.get("name", "A survivor")), " and zombie-virus exposure" if exposed else ""]
+        "wounded":
+            if target != null:
+                _apply_camp_event_injury(target, "Wounded", "Was wounded during a zombie breach at First Fire")
+                body += " %s is seriously wounded in the scramble." % str(target.get("name", "A survivor"))
+        "hurt":
+            if target != null:
+                _apply_camp_event_injury(target, "Hurt", "Was hurt drawing infected away from First Fire")
+                body += " %s comes back bloodied but alive." % str(target.get("name", "A survivor"))
+        "building":
+            var building_name := str(context.get("building_target", ""))
+            if _break_camp_building(building_name, "zombies tore through it during a perimeter breach"):
+                body += " The dead tear down the %s. It will have to be rebuilt." % building_name
+            else:
+                body += " They hit the stores instead. Lost: %s." % _ruin_random_camp_supplies(int(context.get("supply_loss", 2)))
+        "supplies":
+            body += " They get into the stores before the camp drives them off. Lost: %s." % _ruin_random_camp_supplies(int(context.get("supply_loss", 2)))
+        _:
+            _adjust_camp_mood(-3.0, 2.0, 6.0)
+            body += " Somehow the line holds. The dead peel away without taking anything permanent."
+
+    _queue_closed_result(event, "After the Breach", body, "First Fire survived a luck-driven zombie breach (%s)." % outcome)
+
+func _build_camp_spoil_event() -> Dictionary:
+    var candidates := _camp_spoilable_supply_keys()
+    if candidates.is_empty():
+        return {}
+    var key := str(candidates[rng.randi_range(0, candidates.size() - 1)])
+    var loss := mini(int(resources.get(key, 0)), rng.randi_range(1, 3))
+    var present := _camp_present_survivors()
+    var target_id := int(present[rng.randi_range(0, present.size() - 1)].get("id", -1)) if not present.is_empty() else -1
+    return _event_base("camp_spoil", "Something Is Wrong With the Stores", "A sour smell comes from the %s stock. It might be one bad container. It might be more." % key, [
+        _choice("Throw out anything questionable", "camp_spoil_discard"),
+        _choice("Keep it and hope it is fine", "camp_spoil_risk"),
+    ], {"supply":key, "loss":loss, "spoil_roll":rng.randi_range(1, 100), "survivor_ids":[target_id] if target_id >= 0 else []})
+
+func _resolve_camp_spoil(event: Dictionary, take_risk: bool) -> void:
+    var context: Dictionary = event.get("context", {})
+    var key := str(context.get("supply", "Raw Food"))
+    var loss := mini(int(resources.get(key, 0)), int(context.get("loss", 1)))
+    if not take_risk:
+        resources[key] = maxi(0, int(resources.get(key, 0)) - loss)
+        _adjust_camp_mood(1.0, -1.0, 3.0)
+        _queue_closed_result(event, "Thrown Out", "You dump %d %s before anyone can argue themselves into eating or drinking it." % [loss, key], "Questionable stores were discarded.")
+        return
+    if CampLifeRules.camp_spoil_goes_bad(int(context.get("spoil_roll", 50))):
+        resources[key] = maxi(0, int(resources.get(key, 0)) - loss)
+        var target: Variant = _lead_from_event(event)
+        if target != null:
+            target["stress"] = minf(100.0, float(target.get("stress", 0.0)) + 10.0)
+            var needs := CampLifeRules.normalize_needs(target.get("needs", {}))
+            needs["hunger"] = maxf(0.0, float(needs.get("hunger", 50.0)) - 16.0)
+            needs["safety"] = maxf(0.0, float(needs.get("safety", 50.0)) - 10.0)
+            target["needs"] = needs
+        _queue_closed_result(event, "Bad Call", "The smell was a warning. %d %s is ruined, and somebody spends the rest of the day regretting the gamble." % [loss, key], "The camp kept questionable stores and paid for it.")
+    else:
+        _adjust_camp_mood(-2.0, 2.0, 1.0)
+        _queue_closed_result(event, "False Alarm", "It was ugly, but still usable. Nothing is lost this time.", "Questionable stores turned out to be usable.")
+
+func _build_camp_storm_event() -> Dictionary:
+    var breakable := _breakable_camp_buildings()
+    if breakable.is_empty():
+        return {}
+    var building_name := str(breakable[rng.randi_range(0, breakable.size() - 1)])
+    return _event_base("camp_storm", "Wind Against the Camp", "A hard burst of wind and rain starts pulling at the %s. There is time to make one decision before it gets worse." % building_name, [
+        _choice("Spend 1 Hardware and brace it", "camp_storm_brace", int(resources.get("Hardware", 0)) < 1, "NEEDS 1 HARDWARE"),
+        _choice("Move everyone clear and let the structure take it", "camp_storm_clear"),
+        _choice("Keep the camp running through the storm", "camp_storm_work"),
+    ], {"building_target":building_name, "weather_roll":rng.randi_range(1, 100)})
+
+func _resolve_camp_storm(event: Dictionary, approach: String) -> void:
+    var context: Dictionary = event.get("context", {})
+    var building_name := str(context.get("building_target", ""))
+    var roll := int(context.get("weather_roll", 50))
+    if approach == "brace":
+        if int(resources.get("Hardware", 0)) > 0:
+            resources["Hardware"] = int(resources.get("Hardware", 0)) - 1
+        _adjust_camp_mood(1.0, 0.0, 3.0)
+        _queue_closed_result(event, "Braced in Time", "A piece of Hardware and a miserable hour in the rain keep the %s standing." % building_name, "The camp spent Hardware to brace %s." % building_name)
+        return
+    var adjusted_roll := roll - (20 if approach == "work" else 0)
+    if CampLifeRules.camp_weather_breaks(adjusted_roll, false):
+        _break_camp_building(building_name, "weather damage")
+        _adjust_camp_mood(7.0, -3.0, -8.0)
+        _queue_closed_result(event, "Something Gives", "The %s comes apart under the weather. Nobody is killed, but the structure is gone and must be rebuilt." % building_name, "%s was destroyed by a camp storm." % building_name)
+    else:
+        camp_maintenance = maxf(0.0, camp_maintenance - (4.0 if approach == "clear" else 8.0))
+        _adjust_camp_mood(2.0, -1.0, -2.0)
+        _queue_closed_result(event, "Still Standing", "The %s survives, though the camp is left muddy, scattered and harder to live in." % building_name, "A storm battered First Fire without destroying a building.")
+
+func _build_solo_night_event() -> Dictionary:
+    var present := _camp_present_survivors()
+    if present.size() != 1:
+        return {}
+    var survivor: Dictionary = present[0]
+    return _event_base("camp_solo_night", "Only One Set of Footsteps", "%s notices how loud an empty camp can feel once the fire settles down." % str(survivor.get("name", "The survivor")), [
+        _choice("Burn 1 Wood and keep First Fire bright", "camp_solo_fire", int(resources.get("Wood", 0)) < 1, "NEEDS 1 WOOD"),
+        _choice("Save the Wood and sit through the dark", "camp_solo_dark"),
+    ], {"survivor_ids":[int(survivor.get("id", -1))]})
+
+func _resolve_solo_night(event: Dictionary, feed_fire: bool) -> void:
+    var target: Variant = _lead_from_event(event)
+    if target == null:
+        return
+    if feed_fire and int(resources.get("Wood", 0)) > 0:
+        resources["Wood"] = int(resources.get("Wood", 0)) - 1
+        fire_level = minf(100.0, fire_level + 24.0)
+        target["stress"] = maxf(0.0, float(target.get("stress", 0.0)) - 8.0)
+        var needs := CampLifeRules.normalize_needs(target.get("needs", {}))
+        needs["safety"] = minf(100.0, float(needs.get("safety", 50.0)) + 12.0)
+        needs["fun"] = minf(100.0, float(needs.get("fun", 50.0)) + 3.0)
+        target["needs"] = needs
+        _queue_closed_result(event, "A Brighter Circle", "The extra Wood is expensive, but the fire makes the camp feel occupied instead of abandoned.", "The lone survivor spent Wood for comfort and safety.")
+    else:
+        target["stress"] = minf(100.0, float(target.get("stress", 0.0)) + 6.0)
+        var needs2 := CampLifeRules.normalize_needs(target.get("needs", {}))
+        needs2["safety"] = maxf(0.0, float(needs2.get("safety", 50.0)) - 9.0)
+        target["needs"] = needs2
+        _queue_closed_result(event, "Long Dark", "The Wood stays stacked. Every sound beyond the fire feels closer than it probably is.", "The lone survivor endured a dark night to conserve Wood.")
+
+func _build_crowd_night_event() -> Dictionary:
+    if population() < 5:
+        return {}
+    var tavern_ready := bool(buildings.get("Tavern", false))
+    return _event_base("camp_crowd_night", "Too Many Voices", "First Fire is no longer a quiet camp. Some people want another hour together; others want everyone to shut up and sleep.", [
+        _choice("Call for quiet", "camp_crowd_quiet"),
+        _choice("Let the Tavern carry the night", "camp_crowd_tavern", not tavern_ready, "NEEDS TAVERN"),
+        _choice("Put out 2 Cooked Food and make a night of it", "camp_crowd_feast", int(resources.get("Cooked Food", 0)) < 2, "NEEDS 2 COOKED FOOD"),
+    ])
+
+func _resolve_crowd_night(event: Dictionary, approach: String) -> void:
+    match approach:
+        "quiet":
+            _adjust_camp_mood(2.0, -7.0, 8.0)
+            _queue_closed_result(event, "Quiet Wins", "The camp settles down. Some people are annoyed, but the perimeter feels orderly again.", "The camp chose quiet over morale.")
+        "tavern":
+            _adjust_camp_mood(-4.0, 10.0, -3.0)
+            _queue_closed_result(event, "One More Hour", "The Tavern stays loud. People laugh more than they sleep, and for tonight that feels worth it.", "The camp chose Tavern social time over quiet.")
+        "feast":
+            if int(resources.get("Cooked Food", 0)) >= 2:
+                resources["Cooked Food"] = int(resources.get("Cooked Food", 0)) - 2
+            _adjust_camp_mood(-7.0, 15.0, 3.0)
+            _queue_closed_result(event, "A Real Evening", "Two meals disappear quickly, but the camp feels like a community instead of a collection of beds.", "The camp spent food on a communal morale night.")
+
+func _consider_camp_event():
+    if camp_event_cooldown > 0.0 or population() < 1 or game_over or not current_event.is_empty() or not event_queue.is_empty():
+        return
+    var avg_stress := 0.0
+    var living := 0
+    var tense := false
+    for survivor_value in survivors:
+        var survivor: Dictionary = survivor_value
+        if str(survivor.get("condition", "Dead")) == "Dead":
+            continue
+        avg_stress += float(survivor.get("stress", 0.0))
         living += 1
-        for v in s["relationships"].values():
-            if int(v) <= -25: tense = true
-    if living > 0: avg_stress /= living
-    var chance = 0.12 + (avg_stress / 7.0) * 0.01
-    if population() > shelter_capacity(): chance += 0.05
-    if food_shortage_days > 0 or water_shortage_days > 0: chance += 0.05
-    if tense: chance += 0.05
-    chance = min(0.40, chance)
+        for relationship_value in survivor.get("relationships", {}).values():
+            if int(relationship_value) <= -25:
+                tense = true
+    if living > 0:
+        avg_stress /= float(living)
+    var chance := 0.18 + (avg_stress / 800.0)
+    if population() > shelter_capacity():
+        chance += 0.06
+    if food_shortage_days > 0 or water_shortage_days > 0:
+        chance += 0.05
+    if camp_maintenance < CampLifeRules.CAMP_CONDITION_NEGLECTED:
+        chance += 0.05
+    if population() >= 5:
+        chance += 0.04
+    if tense:
+        chance += 0.04
+    chance = minf(0.52, chance)
     if rng.randf() > chance:
         return
-    var ev = _select_camp_event()
-    if not ev.is_empty():
-        _queue_event(ev)
+    var event := _select_camp_event()
+    if not event.is_empty():
+        _queue_event(event)
         camp_event_cooldown = 60.0
 
-func _select_camp_event():
-    var candidates = []
-    if population() > shelter_capacity(): candidates.append("sleep")
-    if _repeated_runner() != null: candidates.append("run")
-    if int(resources.get("Cooked Food", 0)) > 0: candidates.append("extra_food")
-    if population() >= 3 and int(resources.get("Cooked Food", 0)) > 0: candidates.append("missing")
-    if _tense_pair().size() == 2: candidates.append("fight")
-    if _high_stress_survivor() != null: candidates.append("refuse")
-    candidates.append("outside")
-    if int(resources.get("Cloth", 0)) > 0: candidates.append("request")
-    if buildings.get("Tavern", false) and population() >= 3 and int(resources.get("Cooked Food", 0)) >= population() + 2: candidates.append("meal")
-    if (food_shortage_days > 0 or water_shortage_days > 0) and (leader_id != -1 or coordinator_id != -1): candidates.append("shortage_meeting")
-    if candidates.is_empty(): return {}
-    var key = candidates[rng.randi_range(0, candidates.size() - 1)]
-    if key == "sleep":
-        return _event_base("camp_sleep", "Where Am I Sleeping?", "There are more people than proper sleeping spaces. Someone is going to have a miserable night unless the camp changes its priorities.", [
-            {"text": "Give the newcomer the best spot", "action": "camp_sleep_newcomer"},
-            {"text": "Ask an established survivor to give up theirs", "action": "camp_sleep_existing"},
-            {"text": "The newcomer sleeps rough", "action": "camp_sleep_rough"},
-        ])
-    if key == "run":
-        var s: Variant = _repeated_runner()
-        return _event_base("camp_run", "Another Run?", "%s asks why they are always the one being sent outside while others stay at camp." % s["name"], [
-            {"text": "You're the best at it", "action": "camp_run_best"},
-            {"text": "Promise to rotate expedition duty", "action": "camp_run_rotate"},
-        ], {"survivor_ids": [s["id"]]})
-    if key == "extra_food":
-        var target: Variant = _highest_stress_survivor()
-        return _event_base("camp_extra_food", "Extra Food", "%s quietly asks for another ration." % target["name"], [
-            {"text": "Give them one", "action": "camp_extra_food_give"},
-            {"text": "Refuse", "action": "camp_extra_food_refuse"},
-        ], {"survivor_ids": [target["id"]]})
-    if key == "missing":
-        resources["Cooked Food"] = max(0, int(resources["Cooked Food"]) - 1)
-        return _event_base("camp_missing", "The Missing Can", "A ration is missing from the camp's food stores. Nobody admits taking it.", [
-            {"text": "Search for what happened", "action": "camp_missing_search"},
-            {"text": "Let it go", "action": "camp_missing_ignore"},
-        ])
-    if key == "fight":
-        var pair = _tense_pair()
-        return _event_base("camp_fight", "Fight at the Fire", "%s and %s finally come to blows beside the fire." % [pair[0]["name"], pair[1]["name"]], [
-            {"text": "Separate them", "action": "camp_fight_separate"},
-            {"text": "Have someone mediate", "action": "camp_fight_mediated"},
-            {"text": "Let them settle it", "action": "camp_fight_settle"},
-        ], {"pair": [pair[0]["id"], pair[1]["id"]]})
-    if key == "refuse":
-        var target2: Variant = _high_stress_survivor()
-        return _event_base("camp_refuse", "Refusing Duty", "%s says they are done working for now." % target2["name"], [
-            {"text": "Give them time to rest", "action": "camp_refuse_rest"},
-            {"text": "Tell them everyone has to contribute", "action": "camp_refuse_force"},
-        ], {"survivor_ids": [target2["id"]]})
-    if key == "outside":
-        var warning = "The Noise Line starts rattling before anything reaches camp." if buildings.get("Noise Line", false) else "Something moves just outside the sleeping area in the dark."
-        var guard: Variant = _highest_skill_survivor("Survival")
-        return _event_base("camp_outside", "Something Outside", warning, [
-            {"text": "Investigate", "action": "camp_outside_investigate"},
-            {"text": "Stay quiet and wait", "action": "camp_outside_wait"},
-        ], {"survivor_ids": [guard["id"]] if guard != null else []})
-    if key == "request":
-        var requester: Variant = _highest_stress_survivor()
-        return _event_base("camp_request", "A Personal Request", "%s asks for some cloth to repair a personal keepsake. It will not help the camp." % requester["name"], [
-            {"text": "Give them the cloth", "action": "camp_request_give"},
-            {"text": "We need it for the camp", "action": "camp_request_refuse"},
-        ], {"survivor_ids": [requester["id"]]})
-    if key == "meal":
-        return _event_base("camp_meal", "Eat Together", "There is enough food for once. Someone suggests putting two extra rations on the communal table and eating like people instead of inventory slots.", [
-            {"text": "Use two extra rations and eat together", "action": "camp_meal_share"},
-            {"text": "Save the food", "action": "camp_meal_save"},
-        ])
-    if key == "shortage_meeting":
-        var active_leader: Variant = get_survivor(leader_id if leader_id != -1 else coordinator_id)
-        return _event_base("camp_shortage_meeting", "Rations and Blame", "Short supplies turn into a political argument. People want to know whether %s actually has a plan." % (active_leader["name"] if active_leader != null else "anyone"), [
-            {"text": "Back the current ration plan", "action": "camp_shortage_back_leader"},
-            {"text": "Let everyone say what they think", "action": "camp_shortage_open_floor"},
-        ])
+func _select_camp_event() -> Dictionary:
+    var pop := population()
+    var candidates: Array = ["attack"]
+    if pop == 1:
+        candidates.append("solo_night")
+    else:
+        if pop > shelter_capacity():
+            candidates.append("sleep")
+        if _repeated_runner() != null:
+            candidates.append("run")
+        if int(resources.get("Cooked Food", 0)) > 0:
+            candidates.append("extra_food")
+        if pop >= 3 and int(resources.get("Cooked Food", 0)) > 0:
+            candidates.append("missing")
+        if _tense_pair().size() == 2:
+            candidates.append("fight")
+        if _high_stress_survivor() != null:
+            candidates.append("refuse")
+        if int(resources.get("Cloth", 0)) > 0:
+            candidates.append("request")
+        if bool(buildings.get("Tavern", false)) and pop >= 3 and int(resources.get("Cooked Food", 0)) >= pop + 2:
+            candidates.append("meal")
+        if (food_shortage_days > 0 or water_shortage_days > 0) and (leader_id != -1 or coordinator_id != -1):
+            candidates.append("shortage_meeting")
+    if not _breakable_camp_buildings().is_empty():
+        candidates.append("storm")
+    if not _camp_spoilable_supply_keys().is_empty():
+        candidates.append("spoil")
+    if pop >= 4:
+        candidates.append("attack")
+    if pop >= 5:
+        candidates.append("crowd")
+    if pop >= 8:
+        candidates.append("attack")
+
+    var key := str(candidates[rng.randi_range(0, candidates.size() - 1)])
+    match key:
+        "attack":
+            return _build_camp_zombie_attack_event()
+        "solo_night":
+            return _build_solo_night_event()
+        "spoil":
+            return _build_camp_spoil_event()
+        "storm":
+            return _build_camp_storm_event()
+        "crowd":
+            return _build_crowd_night_event()
+        "sleep":
+            return _event_base("camp_sleep", "Where Am I Sleeping?", "There are more people than proper sleeping spaces. Someone is going to have a miserable night unless the camp changes its priorities.", [
+                {"text":"Give the newcomer the best spot","action":"camp_sleep_newcomer"},
+                {"text":"Ask an established survivor to give up theirs","action":"camp_sleep_existing"},
+                {"text":"The newcomer sleeps rough","action":"camp_sleep_rough"},
+            ])
+        "run":
+            var repeated: Variant = _repeated_runner()
+            return _event_base("camp_run", "Another Run?", "%s asks why they are always the one being sent outside while others stay at camp." % repeated["name"], [
+                {"text":"You're the best at it","action":"camp_run_best"},
+                {"text":"Promise to rotate expedition duty","action":"camp_run_rotate"},
+            ], {"survivor_ids":[repeated["id"]]})
+        "extra_food":
+            var target: Variant = _highest_stress_survivor()
+            return _event_base("camp_extra_food", "Extra Food", "%s quietly asks for another ration." % target["name"], [
+                {"text":"Give them one","action":"camp_extra_food_give"},
+                {"text":"Refuse","action":"camp_extra_food_refuse"},
+            ], {"survivor_ids":[target["id"]]})
+        "missing":
+            resources["Cooked Food"] = maxi(0, int(resources["Cooked Food"]) - 1)
+            return _event_base("camp_missing", "The Missing Can", "A ration is missing from the camp's food stores. Nobody admits taking it.", [
+                {"text":"Search for what happened","action":"camp_missing_search"},
+                {"text":"Let it go","action":"camp_missing_ignore"},
+            ])
+        "fight":
+            var pair := _tense_pair()
+            return _event_base("camp_fight", "Fight at the Fire", "%s and %s finally come to blows beside the fire." % [pair[0]["name"], pair[1]["name"]], [
+                {"text":"Separate them","action":"camp_fight_separate"},
+                {"text":"Have someone mediate","action":"camp_fight_mediated"},
+                {"text":"Let them settle it","action":"camp_fight_settle"},
+            ], {"pair":[pair[0]["id"], pair[1]["id"]]})
+        "refuse":
+            var stressed: Variant = _high_stress_survivor()
+            return _event_base("camp_refuse", "Refusing Duty", "%s says they are done working for now." % stressed["name"], [
+                {"text":"Give them time to rest","action":"camp_refuse_rest"},
+                {"text":"Tell them everyone has to contribute","action":"camp_refuse_force"},
+            ], {"survivor_ids":[stressed["id"]]})
+        "request":
+            var requester: Variant = _highest_stress_survivor()
+            return _event_base("camp_request", "A Personal Request", "%s asks for some cloth to repair a personal keepsake. It will not help the camp." % requester["name"], [
+                {"text":"Give them the cloth","action":"camp_request_give"},
+                {"text":"We need it for the camp","action":"camp_request_refuse"},
+            ], {"survivor_ids":[requester["id"]]})
+        "meal":
+            return _event_base("camp_meal", "Eat Together", "There is enough food for once. Someone suggests putting two extra rations on the communal table and eating like people instead of inventory slots.", [
+                {"text":"Use two extra rations and eat together","action":"camp_meal_share"},
+                {"text":"Save the food","action":"camp_meal_save"},
+            ])
+        "shortage_meeting":
+            var active_leader: Variant = get_survivor(leader_id if leader_id != -1 else coordinator_id)
+            return _event_base("camp_shortage_meeting", "Rations and Blame", "Short supplies turn into a political argument. People want to know whether %s actually has a plan." % (active_leader["name"] if active_leader != null else "anyone"), [
+                {"text":"Back the current ration plan","action":"camp_shortage_back_leader"},
+                {"text":"Let everyone say what they think","action":"camp_shortage_open_floor"},
+            ])
     return {}
 
 func _repeated_runner() -> Variant:

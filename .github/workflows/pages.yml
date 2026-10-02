@@ -99,6 +99,11 @@ jobs:
           grep -Fq 'founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "", "Clothing": "", "Pack": "", "Tool": ""}' game/scripts/Game.gd
           grep -Fq 'func _settle_expedition_time_cost(exp)' game/scripts/Game.gd
           grep -Fq 'func _advance_settlement_time_for_expedition_return(seconds: float)' game/scripts/GameSleepVirus.gd
+          grep -Fq 'var loot: Dictionary = {}' game/scripts/Game.gd
+          if grep -Fq '_queue_event(_build_field_event(exp["event_key"], exp))' game/scripts/Game.gd; then exit 1; fi
+          if grep -Fq '_queue_event(_build_special_site_event(exp["special_site"], exp))' game/scripts/Game.gd; then exit 1; fi
+          grep -Fq 'nothing new is added to the haul' game/scripts/Game.gd
+          grep -Fq '_advance_settlement_simulation(maxf(0.0, seconds), false, false)' game/scripts/GameSleepVirus.gd
           if grep -q '_advance_settlement_time_for_departure' game/scripts/Game.gd game/scripts/GameSleepVirus.gd; then exit 1; fi
           grep -q 'TACTICAL_GEAR_UNLOCKS_BY_ZONE' game/scripts/FFData.gd
           grep -Fq '"duration": 37.5, "danger": "Minimal"' game/scripts/FFData.gd
@@ -124,6 +129,14 @@ jobs:
           grep -Fq 'CAMP MAINTENANCE' game/scripts/MainSleepVirus.gd
           grep -Fq 'TIME LEFT' game/scripts/MainSleepVirus.gd
           grep -Fq 'MISS:' game/scripts/MainSleepVirus.gd
+          grep -q 'func camp_attack_outcome' game/scripts/FFCampLifeRules.gd
+          grep -q 'func _build_camp_zombie_attack_event' game/scripts/Game.gd
+          grep -q 'func _resolve_camp_zombie_attack' game/scripts/Game.gd
+          grep -q 'func _break_camp_building' game/scripts/Game.gd
+          grep -q 'func _ruin_random_camp_supplies' game/scripts/Game.gd
+          grep -q 'func _build_solo_night_event' game/scripts/Game.gd
+          grep -q 'func _build_crowd_night_event' game/scripts/Game.gd
+          grep -Fq 'population() < 1' game/scripts/Game.gd
           grep -q 'func _draw_wilderness' game/scripts/FFCampViewSleepVirus.gd
           if grep -q 'build_plot_pressed.emit' game/scripts/FFCampViewSleepVirus.gd; then exit 1; fi
           grep -q 'func _start_training' game/scripts/FFInspectorThreeStat.gd

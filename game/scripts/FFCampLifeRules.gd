@@ -280,6 +280,47 @@ static func maintenance_incident_consequence_text(kind: String) -> String:
         return "First Fire -%.0f%%" % float(effect["fire_loss"])
     return "Camp condition -%.0f%%" % float(effect.get("condition_loss", 0.0))
 
+static func camp_attack_defense_bonus(has_noise_line: bool, has_watch_post: bool) -> int:
+    var bonus := 0
+    if has_noise_line:
+        bonus += 8
+    if has_watch_post:
+        bonus += 14
+    return bonus
+
+static func camp_attack_outcome(raw_roll: int, approach: String, has_noise_line: bool, has_watch_post: bool) -> String:
+    # Camp attacks are luck + infrastructure. Survivor stats and player combat
+    # skill never enter this roll.
+    var score := clampi(raw_roll + camp_attack_defense_bonus(has_noise_line, has_watch_post), 1, 100)
+    match approach:
+        "fall_back":
+            if score <= 3: return "killed"
+            if score <= 9: return "exposed"
+            if score <= 19: return "wounded"
+            if score <= 38: return "building"
+            return "repelled"
+        "draw_away":
+            if score <= 8: return "killed"
+            if score <= 20: return "exposed"
+            if score <= 40: return "wounded"
+            if score <= 65: return "hurt"
+            return "repelled"
+        _:
+            if score <= 7: return "killed"
+            if score <= 18: return "exposed"
+            if score <= 34: return "wounded"
+            if score <= 50: return "building"
+            if score <= 66: return "supplies"
+            return "repelled"
+
+static func camp_weather_breaks(raw_roll: int, braced: bool) -> bool:
+    if braced:
+        return false
+    return clampi(raw_roll, 1, 100) <= 42
+
+static func camp_spoil_goes_bad(raw_roll: int) -> bool:
+    return clampi(raw_roll, 1, 100) <= 45
+
 static func normalize_daily_chores(value, _day_value: int) -> Array:
     # Compatibility name retained for the work-board callers. The collection now
     # contains zero or one timed maintenance incident and may cross midnight.
