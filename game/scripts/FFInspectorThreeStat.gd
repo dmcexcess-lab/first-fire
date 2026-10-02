@@ -111,6 +111,26 @@ func _render_survivor() -> void:
                 duty.pressed.connect(_start_camp_work.bind(str(work[1])))
                 body.add_child(duty)
 
+        if not Game.pets.is_empty():
+            body.add_child(_make_label("Pets:", 12))
+            for pet_value in Game.pets:
+                var pet: Dictionary = pet_value
+                var pet_row := HBoxContainer.new()
+                var pet_label := _make_label("%s • %s" % [str(pet.get("name","Pet")), Game.pet_mood_label(pet)], 12)
+                pet_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+                pet_row.add_child(pet_label)
+                var play := Button.new()
+                play.text = "PLAY"
+                play.disabled = status != "Available"
+                play.pressed.connect(_start_pet_care.bind(int(pet.get("id",-1)), "play"))
+                pet_row.add_child(play)
+                var love := Button.new()
+                love.text = "LOVE"
+                love.disabled = status != "Available"
+                love.pressed.connect(_start_pet_care.bind(int(pet.get("id",-1)), "love"))
+                pet_row.add_child(love)
+                body.add_child(pet_row)
+
     body.add_child(_separator())
     body.add_child(_heading("RELATIONSHIPS", 18))
     var any_relationship := false
@@ -163,4 +183,8 @@ func _start_training(stat_name: String) -> void:
 
 func _start_camp_work(chore: String) -> void:
     if Game.start_camp_chore(current_survivor_id, chore):
+        _render_survivor()
+
+func _start_pet_care(pet_id: int, action: String) -> void:
+    if Game.start_pet_care(current_survivor_id, pet_id, action):
         _render_survivor()
