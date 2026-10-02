@@ -148,7 +148,17 @@ jobs:
           grep -q 'func zombie_attack_damage_range' game/scripts/FFTacticalBalance.gd
           grep -q 'zombie_attack_kind(rng)' game/scripts/FFCombatThreeStat.gd
           grep -q 'zombie_attack_hit_chance(target_actor, attack_kind, mob_size)' game/scripts/FFCombatThreeStat.gd
-          grep -Fq 'if name == "Utility Knife":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"Bare Hands":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"Sledgehammer":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"Crossbow":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"Rifle":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"Utility Knife":' game/scripts/FFThreeStatRules.gd
+          grep -q 'var max_range := ThreeStatRules.weapon_range(player.weapon)' game/scripts/FFCombatThreeStat.gd
+          grep -q 'func apply_shotgun_cone' game/scripts/FFCombatThreeStat.gd
+          grep -Fq '"Crossbow": {"slot": "Weapon"' game/scripts/FFData.gd
+          grep -Fq '"Rifle": {"slot": "Weapon"' game/scripts/FFData.gd
+          grep -Fq '"id": "Crossbow"' game/scripts/FFData.gd
+          grep -Fq '"id": "Rifle"' game/scripts/FFData.gd
           grep -q 'func supplement_distance_loot_containers' game/scripts/FFCombat.gd
           grep -q 'func zombie_mob_size' game/scripts/FFCombat.gd
           grep -Fq 'const BITE_EXPOSURE_CHANCE := 0.03' game/scripts/FFVirusRules.gd

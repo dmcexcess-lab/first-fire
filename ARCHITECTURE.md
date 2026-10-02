@@ -20,7 +20,7 @@ First Fire has exactly three survivor progression stats:
 
 The former Scavenging, Survival, Medical, Technical, and Social stats are no longer player-facing survivor stats. Crafting, treatment, searching, and other noncombat work use tools, resources, traits, infrastructure, state, and authored rules instead of hidden substitute skill trees.
 
-`FFThreeStatRules.gd` owns the canonical stat catalog, weapon-hand classes, class combat profiles, and Agility movement/stealth/sprint math. Active tactical movement preserves a strong crouch > walk > sprint action-cost separation across the full Agility range.
+`FFThreeStatRules.gd` owns the canonical stat catalog, authoritative weapon damage/range/pattern ladder, weapon-hand classes, and Agility movement/stealth/sprint math. Weapon tier owns raw damage/kill count while Combat primarily changes attack reliability. Active tactical movement preserves a strong crouch > walk > sprint action-cost separation across the full Agility range.
 
 `GameThreeStat.gd` remains the three-stat compatibility/specialization layer over `Game.gd`. It owns survivor generation, progression, three-stat expedition checks, treatment specialization, abstract danger, loot hooks, politics specialization, and the `combat-agility-leadership-v1` compatibility marker.
 
@@ -70,13 +70,13 @@ Legacy concise roster/dashboard implementation retained as an internal reusable 
 Established tactical board/runtime foundation: map state, actors, infected, vision/fog, facing, sound propagation, doors/glass/hazards, physical loot-container state, objectives, survivor/pet rescue escort state, persistence, and rendering integration.
 
 ### `FFCombatThreeStat.gd`
-Current combat rules: Combat/Agility attack and movement behavior, Stealth, Sprint, Forward, Shove, weapon-class handling, and no armor mitigation.
+Current combat rules: Combat/Agility attack and movement behavior, Stealth, Sprint, Forward, Shove, **hard ranged max-range enforcement**, **shotgun forward-cone multi-hit**, weapon-class handling, and no armor mitigation.
 
 ### `FFCombatVirus.gd`
 Thin active tactical wrapper. Counts **successful Bite hits only** for the controlled survivor and optional expedition companion, persists/returns those bite counts, and prevents a contacted living rescue from being failed merely because the player reaches the exit before the escort's next scheduled movement. Scratch and generic physical damage never enter virus exposure tracking.
 
 ### `FFTacticalBalance.gd`
-Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected encounter population/HP/damage, **Scratch/Bite attack profiles**, mob-pressure bonuses, distance-scaled searchable-container targets, container search/loot tuning, Shove resistance/stagger, and infected hit chance. Common infected are tuned around a 2–3 hit kill from the 4–5 damage starter Utility Knife. Infected attempt Scratch most of the time (higher hit chance, low damage) and Bite rarely (lower hit chance, high damage). Nearby group size still raises pressure, adds only a small damage bonus, accelerates repeated attacks, and expands pack alerting. Current population contract: Very Short exploration rolls 0–3 infected and is the only route that may produce 0–1; longer exploration floors at 2; ambushes use 5, pet rescues 3, and survivor rescues 5. Very Short targets 3–5 searchable containers, with higher tiers increasing from there.
+Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected encounter population/HP/damage, **Scratch/Bite attack profiles**, mob-pressure bonuses, distance-scaled searchable-container targets, container search/loot tuning, Shove resistance/stagger, and infected hit chance. Infected durability is intentionally compressed to roughly **7–10 HP** across LIGHT/MED/HEAVY mass classes so the authored weapon kill-count ladder remains stable; mass matters more for shove/attack behavior than sponge HP. Infected attempt Scratch most of the time (higher hit chance, low damage) and Bite rarely (lower hit chance, high damage). Nearby group size still raises pressure, adds only a small damage bonus, accelerates repeated attacks, and expands pack alerting. Current population contract: Very Short exploration rolls 0–3 infected and is the only route that may produce 0–1; longer exploration floors at 2; ambushes use 5, pet rescues 3, and survivor rescues 5. Very Short targets 3–5 searchable containers, with higher tiers increasing from there.
 
 ### `FFTacticalTime.gd`
 Low-level tactical timeline utilities for load, fatigue, condition, stance, weapon timing, and infected pace. `FFThreeStatRules.gd` applies current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.

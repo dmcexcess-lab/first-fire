@@ -1,3 +1,24 @@
+## Beta Candidate — Weapon Kill Ladder & Ranged Roles — 2026-10-01
+
+- Rebuilt tactical weapon damage around the fragile **7–10 HP infected** contract so kill counts are authored by weapon tier instead of silently collapsing from Combat damage scaling.
+- Final melee progression:
+  - **Bare Hands:** 3–5 clean hits.
+  - **Utility Knife:** 2–3 hits.
+  - **Kitchen Knife / Hammer / Crowbar:** exactly 2 hits.
+  - **Wooden Club / Baseball Bat / Improvised Spear:** 1–2 hits.
+  - **Sledgehammer:** 1 hit (new heavy 2H melee tier).
+  - **Hatchet:** 1 hit 1H melee; intentionally expensive to craft and moved to later Commercial Fringe field loot.
+- Added the **Crossbow** as a normal Workbench craft. It deals 4–5 ranged damage for a 2–3 hit kill, has a hard **7-tile medium range**, is much quieter than firearms, and consumes the existing generic Ammo resource.
+- Firearms now have explicit roles and hard max ranges:
+  - **Pistol:** 1-hit, 4-tile short range.
+  - **Shotgun:** 1-hit, 4-tile short range with a real forward cone that can hit/kill multiple infected in one shot.
+  - **Rifle:** 1-hit, 10-tile long range; new Armory-gated late weapon.
+- Rifle sighting can extend tactical vision enough to use its authored long range, while darkness/lighting rules still constrain actual visibility.
+- Combat now primarily improves attack reliability rather than adding enough raw damage to erase the authored kill-count ladder.
+- Added Crossbow, Sledgehammer, and Rifle to gear/crafting/field-loot catalogs and tactical weapon visuals. Crossbow is available without Armory; Pistol/Shotgun/Rifle remain Armory-gated.
+- Expanded deterministic smoke and CI contracts for every kill-count tier, hard ranged ranges, shotgun cone behavior, Crossbow craftability, and the Hatchet expense/rarity rule.
+- Save schema remains **7**; the new gear entries are additive.
+
 ## Beta Candidate — Scratch / Bite Infected Attacks — 2026-10-01
 
 - Split infected attacks into two explicit tactical attacks:

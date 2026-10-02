@@ -44,12 +44,12 @@ static func weapon_visual(name: String) -> Dictionary:
     match name:
         "Utility Knife", "Kitchen Knife": return {"kind": "knife", "atlas": 192}
         "Wooden Club", "Baseball Bat": return {"kind": "club", "atlas": 193}
-        "Hammer": return {"kind": "hammer", "atlas": 194}
-        "Improvised Spear": return {"kind": "spear", "atlas": 195}
+        "Hammer", "Sledgehammer": return {"kind": "hammer", "atlas": 194}
+        "Improvised Spear", "Crossbow": return {"kind": "spear", "atlas": 195}
         "Crowbar": return {"kind": "crowbar", "atlas": 196}
         "Hatchet": return {"kind": "hatchet", "atlas": 197}
         "Pistol": return {"kind": "pistol", "atlas": 198}
-        "Shotgun": return {"kind": "shotgun", "atlas": 199}
+        "Shotgun", "Rifle": return {"kind": "shotgun", "atlas": 199}
         _: return {"kind": "none", "atlas": -1}
 
 static func field_gear_visual(name: String) -> Dictionary:

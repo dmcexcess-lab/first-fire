@@ -145,9 +145,12 @@ const GEAR := {
     "Hammer": {"slot": "Weapon", "combat": 2, "size": 2, "tool": "Hammer"},
     "Improvised Spear": {"slot": "Weapon", "combat": 2, "size": 3},
     "Crowbar": {"slot": "Weapon", "combat": 2, "size": 3, "tool": "Breach"},
-    "Hatchet": {"slot": "Weapon", "combat": 3, "size": 2},
-    "Pistol": {"slot": "Weapon", "combat": 4, "size": 2, "ammo": 1},
+    "Sledgehammer": {"slot": "Weapon", "combat": 4, "size": 4},
+    "Hatchet": {"slot": "Weapon", "combat": 5, "size": 2},
+    "Crossbow": {"slot": "Weapon", "combat": 3, "size": 3, "ammo": 1},
+    "Pistol": {"slot": "Weapon", "combat": 5, "size": 2, "ammo": 1},
     "Shotgun": {"slot": "Weapon", "combat": 5, "size": 3, "ammo": 2},
+    "Rifle": {"slot": "Weapon", "combat": 5, "size": 3, "ammo": 1},
     "Flashlight": {"slot": "Secondary", "size": 2, "weight": 0.8, "light": "cone", "light_range": 8.5, "light_spread": 0.52, "light_strength": 1.0, "light_color": "edf5d6", "view_bonus": 2},
     "Headlamp": {"slot": "Secondary", "size": 1, "weight": 0.4, "light": "cone", "light_range": 7.0, "light_spread": 0.34, "light_strength": 0.88, "light_color": "f1edc5", "view_bonus": 1},
     "Lantern": {"slot": "Secondary", "size": 2, "weight": 1.4, "light": "radial", "light_range": 4.5, "light_strength": 0.88, "light_color": "ffc46f", "view_bonus": 0},
@@ -181,11 +184,11 @@ const TACTICAL_GEAR_UNLOCKS_BY_ZONE := {
         "Work Jacket", "Heavy Boots", "First Aid Kit"
     ],
     "Residential Blocks": [
-        "Crowbar", "Hatchet", "Toolbox", "Padded Jacket", "Leather Jacket",
+        "Crowbar", "Crossbow", "Toolbox", "Padded Jacket", "Leather Jacket",
         "Hiking Pack"
     ],
-    "Commercial Fringe": ["Bolt Cutters", "Reinforced Pack", "Pistol"],
-    "Industrial Edge": ["Shotgun"],
+    "Commercial Fringe": ["Bolt Cutters", "Reinforced Pack", "Sledgehammer", "Hatchet", "Pistol"],
+    "Industrial Edge": ["Shotgun", "Rifle"],
 }
 
 const RECIPES := {
@@ -202,9 +205,12 @@ const RECIPES := {
         {"id": "Hammer", "time": 8.0, "cost": {"Wood": 1, "Scrap Metal": 1}, "gives_gear": "Hammer"},
         {"id": "Improvised Spear", "time": 8.0, "cost": {"Wood": 2, "Scrap Metal": 1}, "gives_gear": "Improvised Spear"},
         {"id": "Crowbar", "time": 9.0, "cost": {"Scrap Metal": 2, "Hardware": 1}, "gives_gear": "Crowbar"},
-        {"id": "Hatchet", "time": 10.0, "cost": {"Wood": 1, "Scrap Metal": 2, "Hardware": 1}, "gives_gear": "Hatchet"},
+        {"id": "Crossbow", "time": 14.0, "cost": {"Wood": 3, "Scrap Metal": 1, "Hardware": 2, "Cloth": 1}, "gives_gear": "Crossbow"},
+        {"id": "Sledgehammer", "time": 15.0, "cost": {"Wood": 2, "Scrap Metal": 4, "Hardware": 3}, "gives_gear": "Sledgehammer"},
+        {"id": "Hatchet", "time": 18.0, "cost": {"Wood": 1, "Scrap Metal": 5, "Hardware": 4}, "gives_gear": "Hatchet"},
         {"id": "Pistol", "time": 18.0, "cost": {"Scrap Metal": 4, "Hardware": 3, "Plastic": 1}, "requires": ["Armory"], "gives_gear": "Pistol"},
         {"id": "Shotgun", "time": 24.0, "cost": {"Scrap Metal": 6, "Hardware": 4, "Wood": 2}, "requires": ["Armory"], "gives_gear": "Shotgun"},
+        {"id": "Rifle", "time": 26.0, "cost": {"Scrap Metal": 6, "Hardware": 5, "Wood": 2, "Plastic": 1}, "requires": ["Armory"], "gives_gear": "Rifle"},
         {"id": "Flashlight", "time": 7.0, "cost": {"Plastic": 1, "Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Flashlight"},
         {"id": "Headlamp", "time": 8.0, "cost": {"Plastic": 1, "Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Headlamp"},
         {"id": "Lantern", "time": 9.0, "cost": {"Scrap Metal": 1, "Hardware": 2}, "gives_gear": "Lantern"},

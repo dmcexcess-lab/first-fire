@@ -41,14 +41,16 @@ func persist_runtime():
         Game.update_combat_runtime(runtime)
 
 func view_range() -> int:
-    # The active three-stat model has no perception/survival skill. Portable
-    # light and fatigue set the hard ceiling; actual cell light shapes the cone.
+    # Weapon sightline matters for the ranged ladder. Darkness still contracts
+    # actual visibility through FFTacticalLighting.
     var r := 5
     if player_light_on:
         r += LightingThree.item_view_bonus(str(player.get("secondary", "")))
+    if bool(player.get("weapon", {}).get("gun", false)):
+        r = maxi(r, mini(10, ThreeStatRules.weapon_range(player.get("weapon", {}))))
     if float(player.get("fatigue", 0.0)) >= 80.0:
         r -= 1
-    return clampi(r, 4, 8)
+    return clampi(r, 4, 10)
 
 func recalc_visibility():
     recalc_lighting()
@@ -228,26 +230,71 @@ func melee(target: Vector2i):
     commit_action(TimeThree.attack_cost(player, int(player.weapon.time)))
 
 func shoot(i: int):
-    if not bool(player.weapon.gun): msg = "No firearm equipped."; queue_redraw(); return
+    if not bool(player.weapon.gun):
+        msg = "No ranged weapon equipped."
+        queue_redraw()
+        return
     var z: Dictionary = zombies[i]
-    if z.dead or not visible_cells.has(z.pos): return
-    if not Game.consume_combat_ammo(int(player.weapon.ammo)): msg = "No ammunition."; queue_redraw(); return
-    player["sprinting"] = false; player.facing = dominant(z.pos - player.pos)
+    if z.dead or not visible_cells.has(z.pos):
+        return
     var dist := manhattan(player.pos, z.pos)
+    var max_range := ThreeStatRules.weapon_range(player.weapon)
+    if dist > max_range:
+        msg = "%s is out of range (%d)." % [player.weapon.name, max_range]
+        queue_redraw()
+        return
+    if not Game.consume_combat_ammo(int(player.weapon.ammo)):
+        msg = "No ammunition."
+        queue_redraw()
+        return
+    player["sprinting"] = false
+    player.facing = dominant(z.pos - player.pos)
     var combat := int(player.get("skills", {}).get("Combat", 0))
-    var range_penalty := float(maxi(0, dist - 3)) * 0.04
+    var range_penalty := float(maxi(0, dist - 3)) * 0.035
     var chance: float = ThreeStatRules.attack_chance(combat, attack_penalty(player) + range_penalty, float(player.weapon.get("gaccuracy", 0.0)), false)
-    stats.shots += 1; _flash_muzzle(player.pos, player.facing)
+    stats.shots += 1
+    if player.weapon.name != "Crossbow":
+        _flash_muzzle(player.pos, player.facing)
     if rng.randf() <= chance:
         var d: int = ThreeStatRules.gun_damage(player.weapon, combat, rng)
-        zombies[i].hp -= d; _flash_hit(z.pos, int(zombies[i].hp) <= 0)
-        msg = "%s %s hits for %d." % [str(player.weapon.get("class_label", "GUN")), player.weapon.name, d]
-        if int(zombies[i].hp) <= 0: kill_zombie(i, false)
-        else: reveal_melee_target(i)
-        if int(player.weapon.get("hands", 1)) == 2 and player.weapon.name == "Shotgun": apply_shotgun_spread(i, z.pos, d)
-    else: msg = "%s misses." % player.weapon.name
-    emit_noise(player.pos, int(player.weapon.gnoise), "gunshot", true)
+        zombies[i].hp -= d
+        _flash_hit(z.pos, int(zombies[i].hp) <= 0)
+        msg = "%s %s hits for %d." % [str(player.weapon.get("class_label", "RANGED")), player.weapon.name, d]
+        if int(zombies[i].hp) <= 0:
+            kill_zombie(i, false)
+        else:
+            reveal_melee_target(i)
+        if ThreeStatRules.weapon_pattern(player.weapon) == "cone":
+            apply_shotgun_cone(i, d)
+    else:
+        msg = "%s misses." % player.weapon.name
+    emit_noise(player.pos, int(player.weapon.gnoise), "crossbow shot" if player.weapon.name == "Crossbow" else "gunshot", true)
     commit_action(TimeThree.attack_cost(player, int(player.weapon.gtime)))
+
+func _inside_shotgun_cone(cell: Vector2i, max_range: int) -> bool:
+    var rel := cell - player.pos
+    var forward := rel.x * player.facing.x + rel.y * player.facing.y
+    if forward < 1 or forward > max_range:
+        return false
+    var side_axis := Vector2i(-player.facing.y, player.facing.x)
+    var lateral := absi(rel.x * side_axis.x + rel.y * side_axis.y)
+    var half_width := maxi(1, int(ceil(float(forward) * 0.5)))
+    return lateral <= half_width
+
+func apply_shotgun_cone(primary_index: int, damage: int) -> void:
+    var max_range := ThreeStatRules.weapon_range(player.weapon)
+    for j in range(zombies.size()):
+        if j == primary_index or zombies[j].dead:
+            continue
+        var cell: Vector2i = zombies[j].pos
+        if not _inside_shotgun_cone(cell, max_range) or not line_clear(player.pos, cell):
+            continue
+        zombies[j].hp -= damage
+        _flash_hit(cell, int(zombies[j].hp) <= 0)
+        if int(zombies[j].hp) <= 0:
+            kill_zombie(j, false)
+        else:
+            reveal_melee_target(j)
 
 func shove():
     player["sprinting"] = false
@@ -290,7 +337,8 @@ func draw_hud():
     draw_string(font,Vector2(10,22),scene_label,HORIZONTAL_ALIGNMENT_LEFT,370,14,Color.WHITE)
     draw_string(font,Vector2(10,47),"%s  HP %d/%d  %s"%[player.name,int(player.hp),int(player.max_hp),str(player.condition).to_upper()],HORIZONTAL_ALIGNMENT_LEFT,370,13,Color(.70,.84,1))
     var weapon_line := "%s | %s" % [str(player.weapon.get("class_label", "1H MELEE")), str(player.weapon.name)]
-    if bool(player.weapon.gun): weapon_line += " | Ammo %d" % int(Game.resources.get("Ammo", 0))
+    if bool(player.weapon.gun):
+        weapon_line += " | R%d | Ammo %d" % [ThreeStatRules.weapon_range(player.weapon), int(Game.resources.get("Ammo", 0))]
     draw_string(font, Vector2(10,69), weapon_line, HORIZONTAL_ALIGNMENT_LEFT, 370, 10, Color(.82,.84,.82))
     var stats_line := "COM %d  AGI %d  LEAD %d" % [int(player.skills.get("Combat",0)), int(player.skills.get("Agility",0)), int(player.skills.get("Leadership",0))]
     draw_string(font, Vector2(10,89), stats_line, HORIZONTAL_ALIGNMENT_LEFT, 370, 9, Color(.72,.78,.74))

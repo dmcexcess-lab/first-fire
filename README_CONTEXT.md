@@ -50,10 +50,11 @@ Tactical encounters use the actual expedition party: one controlled lead plus an
 
 The active combat layer is intentionally compact:
 
-- **1H Melee** — faster/lighter one-handed melee profile.
-- **2H Melee** — slower/heavier melee profile; the improvised spear retains extended straight-line reach.
-- **1H Gun** — pistol class.
-- **2H Gun** — shotgun class, including spread behavior.
+- **Melee ladder** — fists 3–5 clean hits; Utility Knife 2–3; ordinary 1H melee 2; ordinary 2H melee 1–2; Sledgehammer 1; Hatchet 1. Hatchet is intentionally the rare/expensive one-hit 1H option.
+- **Crossbow** — craftable Workbench ranged weapon, 2–3 hits, medium range (7 tiles), quiet compared with firearms.
+- **Pistol** — 1-hit short-range firearm (4 tiles).
+- **Shotgun** — 1-hit short-range firearm (4 tiles) with a real forward cone that can kill multiple infected in one shot.
+- **Rifle** — 1-hit long-range firearm (10 tiles).
 - **Stealth** — Agility-driven quieter crouched movement with positional stealth-attack opportunity; its tactical action cost is deliberately and materially slower than walking.
 - **Sprint** — Agility-driven movement with a deliberately and materially lower action cost than walking, louder noise, and improved grab avoidance.
 - **Forward** — dedicated touch movement action in the former Guard control slot.
@@ -63,7 +64,7 @@ The active combat layer is intentionally compact:
 
 **There is no armor mitigation.** Clothing must not cancel or reduce incoming physical damage. Clothing may remain as identity/weight/crafting/utility gear, but it is not an armor stat layer.
 
-Combat and Agility are the only survivor stats that affect tactical fighting/movement. Leadership does not secretly improve attacks. The starter Utility Knife is deliberately weak at **4–5 melee damage**; common light/medium infected are tuned so clean hits from that weak weapon normally take **2–3 hits** to kill.
+Combat and Agility are the only survivor stats that affect tactical fighting/movement. Leadership does not secretly improve attacks. **Weapon tier owns damage/kill count; Combat primarily improves attack reliability rather than scaling raw damage enough to collapse the ladder.** Infected durability is compressed to roughly **7–10 HP** across LIGHT/MED/HEAVY mass classes, with mass affecting shove/attack behavior more than sponge HP.
 
 `FFThreeStatRules.gd` owns the three-stat catalog, weapon classes/profiles, and Agility movement/stealth/sprint math. `FFTacticalBalance.gd` owns tactical tuning using Combat/Agility only. `FFCombatThreeStat.gd` remains the combat-model specialization over the established `FFCombat.gd` board/runtime foundation; active play routes through `FFCombatVirus.gd`, which records successful Bite hits for lead/companion virus exposure without treating Scratch or generic damage as infection events.
 
@@ -151,7 +152,7 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 
 Settlement time has one direct authoritative clock with **no secondary speed multiplier**. `DAY_SECONDS := 300.0` means **12.5 real active seconds = 1 in-game hour** and **300 real active seconds / 5 minutes per in-game day**. Camp need decay, awake fatigue, sleep duration, fire decay, camp-condition decay, chatter/event cadence, and daily-life action durations are retuned so their per-in-game-hour behavior remains coherent at the longer day length. Standard expedition travel uses authored in-game hours directly: 3h = 37.5 settlement seconds, 5h = 62.5s, 8h = 100s, 12h = 150s, and 18h = 225s. Tactical turns are a separate frozen time scale. UI refresh and autosave remain real-time responsiveness concerns.
 
-New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder now carries **exactly one starter loot/gear item: the Utility Knife**; the previous starter Flashlight and Worn Backpack are no longer granted. Scavenging must supply all additional carried gear.
+New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder carries **exactly one starter loot/gear item: the Utility Knife**. The Workbench can craft the Crossbow without an Armory; Pistol, Shotgun, and Rifle are Armory-gated firearm crafts. Hatchet is deliberately expensive to craft and does not enter field loot until Commercial Fringe; Sledgehammer joins the same later melee tier. All current ranged weapons consume the existing generic Ammo resource in this pass rather than adding a second ammunition economy.
 
 Fire Pit conversions:
 - **1 Raw Food → 2 Cooked Food**

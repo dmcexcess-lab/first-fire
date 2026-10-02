@@ -24,6 +24,7 @@ func _init() -> void:
     if not _check(str(ThreeStatRules.weapon_class("Baseball Bat").get("label", "")) == "2H MELEE", "2H melee class"): return
     if not _check(str(ThreeStatRules.weapon_class("Pistol").get("label", "")) == "1H GUN", "1H gun class"): return
     if not _check(str(ThreeStatRules.weapon_class("Shotgun").get("label", "")) == "2H GUN", "2H gun class"): return
+    if not _check(str(ThreeStatRules.weapon_class("Crossbow").get("label", "")) == "CROSSBOW" and str(ThreeStatRules.weapon_class("Rifle").get("label", "")) == "2H GUN", "crossbow and rifle classes"): return
     for agility in [0, 5, 10]:
         var walk_cost:=ThreeStatRules.normal_move_cost(agility,100)
         var sprint_cost:=ThreeStatRules.sprint_move_cost(agility,100)
@@ -40,9 +41,38 @@ func _init() -> void:
     if not _check(is_equal_approx(TacticalBalance.BITE_ATTEMPT_CHANCE, 0.20) and TacticalBalance.zombie_attack_hit_chance(baseline_actor, "scratch") > TacticalBalance.zombie_attack_hit_chance(baseline_actor, "bite"), "scratch is common/high-hit while bite is rare/low-hit"): return
     if not _check(TacticalBalance.zombie_attack_damage_range("MED", "scratch").y < TacticalBalance.zombie_attack_damage_range("MED", "bite").x, "scratch is low damage while bite is high damage"): return
     if not _check(TacticalBalance.zombie_attack_hit_chance(baseline_actor, "scratch", 4) > TacticalBalance.zombie_attack_hit_chance(baseline_actor, "scratch", 1) and TacticalBalance.mob_damage_bonus(4) > 0 and TacticalBalance.mob_attack_cost_multiplier(4) < 1.0 and TacticalBalance.mob_alert_radius(4) > TacticalBalance.mob_alert_radius(1), "mob pressure boosts infected without inflating lone stats"): return
+    var all_hp_min := TacticalBalance.zombie_hp_range("LIGHT").x
+    var all_hp_max := maxi(TacticalBalance.zombie_hp_range("LIGHT").y, maxi(TacticalBalance.zombie_hp_range("MED").y, TacticalBalance.zombie_hp_range("HEAVY").y))
+    var fists := ThreeStatRules.weapon_profile("")
     var starter_knife := ThreeStatRules.weapon_profile("Utility Knife")
-    var medium_hp := TacticalBalance.zombie_hp_range("MED")
-    if not _check(int(starter_knife.get("dmin", 0)) == 4 and int(starter_knife.get("dmax", 0)) == 5 and int(ceil(float(medium_hp.x) / 5.0)) == 2 and int(ceil(float(medium_hp.y) / 4.0)) == 3, "starter weak weapon kills common infected in two to three clean hits"): return
+    var one_hand := ThreeStatRules.weapon_profile("Kitchen Knife")
+    var two_hand := ThreeStatRules.weapon_profile("Baseball Bat")
+    var sledge := ThreeStatRules.weapon_profile("Sledgehammer")
+    var hatchet := ThreeStatRules.weapon_profile("Hatchet")
+    var crossbow := ThreeStatRules.weapon_profile("Crossbow")
+    var pistol := ThreeStatRules.weapon_profile("Pistol")
+    var shotgun := ThreeStatRules.weapon_profile("Shotgun")
+    var rifle := ThreeStatRules.weapon_profile("Rifle")
+    if not _check(int(ceil(float(all_hp_min) / float(fists["dmax"]))) == 3 and int(ceil(float(all_hp_max) / float(fists["dmin"]))) == 5, "fists kill infected in three to five hits"): return
+    if not _check(int(ceil(float(all_hp_min) / float(starter_knife["dmax"]))) == 2 and int(ceil(float(all_hp_max) / float(starter_knife["dmin"]))) == 3, "utility knife kills infected in two to three hits"): return
+    if not _check(int(ceil(float(all_hp_min) / float(one_hand["dmax"]))) == 2 and int(ceil(float(all_hp_max) / float(one_hand["dmin"]))) == 2, "standard one hand melee kills in two hits"): return
+    if not _check(int(ceil(float(all_hp_min) / float(two_hand["dmax"]))) == 1 and int(ceil(float(all_hp_max) / float(two_hand["dmin"]))) == 2, "standard two hand melee kills in one to two hits"): return
+    if not _check(int(sledge["dmin"]) >= all_hp_max and int(hatchet["dmin"]) >= all_hp_max, "top two hand and rare one hand melee kill in one hit"): return
+    if not _check(int(ceil(float(all_hp_min) / float(crossbow["gmax"]))) == 2 and int(ceil(float(all_hp_max) / float(crossbow["gmin"]))) == 3 and ThreeStatRules.weapon_range(crossbow) == 7, "crossbow is two to three hit medium range"): return
+    if not _check(int(pistol["gmin"]) >= all_hp_max and ThreeStatRules.weapon_range(pistol) == 4, "pistol is one hit short range"): return
+    if not _check(int(shotgun["gmin"]) >= all_hp_max and ThreeStatRules.weapon_range(shotgun) == 4 and ThreeStatRules.weapon_pattern(shotgun) == "cone", "shotgun is one hit short range cone"): return
+    if not _check(int(rifle["gmin"]) >= all_hp_max and ThreeStatRules.weapon_range(rifle) == 10, "rifle is one hit long range"): return
+    var hatchet_recipe: Dictionary = {}
+    var crossbow_recipe: Dictionary = {}
+    var rifle_recipe: Dictionary = {}
+    for recipe_value in D.RECIPES.get("Workbench", []):
+        var recipe: Dictionary = recipe_value
+        match str(recipe.get("id", "")):
+            "Hatchet": hatchet_recipe = recipe
+            "Crossbow": crossbow_recipe = recipe
+            "Rifle": rifle_recipe = recipe
+    if not _check(int(hatchet_recipe.get("cost", {}).get("Scrap Metal", 0)) >= 5 and int(hatchet_recipe.get("cost", {}).get("Hardware", 0)) >= 4 and not Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Residential Blocks"]).has("Hatchet") and Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Commercial Fringe"]).has("Hatchet"), "one hit one hand hatchet is expensive and late field loot"): return
+    if not _check(not Array(crossbow_recipe.get("requires", [])).has("Armory") and Array(rifle_recipe.get("requires", [])).has("Armory"), "crossbow is normally craftable while rifle is armory gated"): return
     if not _check(TacticalBalance.shove_chance(actor, "LIGHT", 1) > TacticalBalance.shove_chance(actor, "HEAVY", 1), "mass resists shove"): return
     if not _check(TacticalBalance.search_cost(actor) > 0 and TacticalBalance.search_noise(actor) > 0, "search remains bounded"): return
     if not _check(TacticalBalance.zombie_count("Camp Perimeter", "rescue", true) < TacticalBalance.zombie_count("Camp Perimeter", "rescue", false) and TacticalBalance.zombie_count("Camp Perimeter", "rescue", false) == TacticalBalance.zombie_count("Camp Perimeter", "ambush"), "objective zombie balance"): return
@@ -75,6 +105,7 @@ func _init() -> void:
     if not _check(active_inspector_source.contains("ZOMBIE VIRUS") and active_inspector_source.contains("QUARANTINE") and active_inspector_source.contains("start_virus_treatment"), "virus choices exposed in inspector"): return
     if not _check(combat_source.contains("No armor layer") and combat_source.contains("target_actor.hp -= dmg"), "no armor damage mitigation"): return
     if not _check(combat_source.contains("zombie_attack_kind(rng)") and combat_source.contains("zombie_attack_hit_chance(target_actor, attack_kind, mob_size)") and combat_source.contains("zombie_attack_damage_range") and combat_source.contains("mob_attack_cost_multiplier"), "active three-stat combat uses scratch bite and mob attack tuning"): return
+    if not _check(combat_source.contains("var max_range := ThreeStatRules.weapon_range(player.weapon)") and combat_source.contains("func apply_shotgun_cone") and combat_source.contains("weapon_pattern(player.weapon) == \"cone\""), "active ranged combat enforces hard range and shotgun cone multi-hit"): return
     if not _check(not combat_source.contains("func guard():") and not combat_source.contains("KEY_G: guard()"), "guard removed from active combat"): return
     if not _check(combat_source.contains("btn_forward_primary") and combat_source.contains("draw_button(btn_forward_primary,\"FORWARD\""), "forward occupies former guard slot"): return
     if not _check(combat_source.contains("func shove()") and combat_source.contains("super.shove()"), "shove remains active"): return

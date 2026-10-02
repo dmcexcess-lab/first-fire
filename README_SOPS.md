@@ -228,7 +228,8 @@ Important bugs should leave behind a cheaper future check when practical.
 ## 13. Product rules to preserve unless explicitly changed
 
 - simulation-first zombie survival/extraction feel;
-- common infected die in roughly 2–3 clean hits from the weak starter Utility Knife; individual infected stay weak and mob density creates pressure;
+- infected weapon ladder is authored around fragile 7–10 HP bodies: fists 3–5 hits, Utility Knife 2–3, standard 1H melee 2, standard 2H melee 1–2, Sledgehammer 1, rare/expensive Hatchet 1; Crossbow 2–3 at medium range; Pistol 1 at short range; Shotgun 1 at short cone multi-hit; Rifle 1 at long range;
+- individual infected stay weak and mob density creates pressure;
 - infected attacks split into high-hit/low-damage Scratch and low-hit/high-damage Bite; only successful Bite can roll a fixed small per-bite virus exposure chance;
 - no AI director spawning threats simply to manufacture drama;
 - persistent consequences;
