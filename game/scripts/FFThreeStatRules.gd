@@ -30,9 +30,9 @@ static func weapon_class(name: String) -> Dictionary:
             return {"kind": "melee", "hands": 2, "label": "2H MELEE"}
         "Crossbow":
             return {"kind": "ranged", "hands": 2, "label": "CROSSBOW"}
-        "6-Shot Revolver", "12-Shot Automatic", "Pistol":
+        "6-Shot Revolver", "12-Shot Automatic", "Double-Barrel Shotgun", "Pistol":
             return {"kind": "gun", "hands": 1, "label": "1H GUN"}
-        "Double-Barrel Shotgun", "Pump Shotgun", "Shotgun", "Medium Rifle", "Long Rifle", "Rifle":
+        "Pump Shotgun", "Shotgun", "Medium Rifle", "Long Rifle", "Rifle":
             return {"kind": "gun", "hands": 2, "label": "2H GUN"}
         _:
             return {"kind": "melee", "hands": 1, "label": "1H MELEE"}
@@ -67,7 +67,7 @@ static func weapon_profile(name: String) -> Dictionary:
         "12-Shot Automatic":
             return {"name": display_name, "class_label": "AUTO PISTOL", "hands": 1, "gun": true, "firearm": true, "dmin": 0, "dmax": 0, "time": 88, "noise": 6, "push": 0, "stealth": 0, "accuracy": 0.01, "reach": 1, "gmin": 10, "gmax": 12, "gtime": 92, "gnoise": 76, "gaccuracy": 0.03, "mag_capacity": 12, "reload_time": 135, "optimal_range": 4, "falloff": 0.080, "projectile_range": 0, "sight_range": 5, "projectiles": 1, "pattern": "single"}
         "Double-Barrel Shotgun":
-            return {"name": display_name, "class_label": "DOUBLE BARREL", "hands": 2, "gun": true, "firearm": true, "dmin": 0, "dmax": 0, "time": 118, "noise": 8, "push": 1, "stealth": 0, "accuracy": 0.00, "reach": 1, "gmin": 10, "gmax": 12, "gtime": 150, "gnoise": 96, "gaccuracy": 0.06, "mag_capacity": 2, "reload_time": 175, "optimal_range": 3, "falloff": 0.055, "projectile_range": 5, "sight_range": 5, "projectiles": 3, "spread_scale": 0.30, "pattern": "shotgun"}
+            return {"name": display_name, "class_label": "DOUBLE BARREL", "hands": 1, "gun": true, "firearm": true, "dmin": 0, "dmax": 0, "time": 118, "noise": 8, "push": 1, "stealth": 0, "accuracy": 0.00, "reach": 1, "gmin": 10, "gmax": 12, "gtime": 150, "gnoise": 96, "gaccuracy": 0.06, "mag_capacity": 2, "reload_time": 175, "optimal_range": 3, "falloff": 0.055, "projectile_range": 5, "sight_range": 5, "projectiles": 3, "spread_scale": 0.30, "pattern": "shotgun"}
         "Pump Shotgun":
             return {"name": display_name, "class_label": "PUMP SHOTGUN", "hands": 2, "gun": true, "firearm": true, "dmin": 0, "dmax": 0, "time": 118, "noise": 8, "push": 1, "stealth": 0, "accuracy": -0.01, "reach": 1, "gmin": 10, "gmax": 12, "gtime": 142, "gnoise": 98, "gaccuracy": 0.02, "mag_capacity": 6, "reload_time": 190, "optimal_range": 3, "falloff": 0.065, "projectile_range": 4, "sight_range": 5, "projectiles": 5, "spread_scale": 0.62, "pump_required": true, "pump_time": 62, "pattern": "shotgun"}
         "Medium Rifle":

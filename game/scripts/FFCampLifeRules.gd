@@ -29,7 +29,8 @@ const DAILY_SLEEP_WINDOW_START := 22.0
 const DAILY_SLEEP_WINDOW_END := 6.0
 const DAILY_WINDOW_MISS_RATIO := 0.60
 const DAILY_AUTONOMOUS_SECONDS := 10.0
-const AWAKE_FATIGUE_PER_SECOND := 0.28
+const FORCED_REST_MIN_HOURS := 3
+const FORCED_REST_MAX_HOURS := 5
 const SLEEP_START_FATIGUE := 35.0
 const SLEEP_DURATION := 87.5
 const SLEEP_RECOVERY_AMOUNT := 72.0
@@ -123,7 +124,7 @@ static func record_daily_activity(value, day_value: int, status: String, task_ki
     if status in ["Expedition","Pending Expedition Event"]: result["expedition"]=true
     if status=="Recovering" or task_kind in ["treatment","virus_treatment"]:
         result["care"]=true; assigned=true; result["assigned_work"]=true
-    if status=="Sleeping" or task_kind=="sleep":
+    if status in ["Sleeping","Exhausted"] or task_kind in ["sleep","forced_rest"]:
         result["autonomous"]=true; result["sleep_seconds"]=float(result["sleep_seconds"])+dt
     elif status=="Available":
         result["autonomous_seconds"]=float(result["autonomous_seconds"])+dt
@@ -425,6 +426,10 @@ static func pet_forage_resource(species:String,rng:RandomNumberGenerator)->Strin
 
 static func fatigue_gain(base_amount: float) -> float:
     return maxf(0.0, base_amount) * FATIGUE_GAIN_MULTIPLIER
+
+static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator) -> float:
+    var hours := rng.randi_range(FORCED_REST_MIN_HOURS, FORCED_REST_MAX_HOURS)
+    return maxf(0.1, (maxf(1.0, day_seconds) / 24.0) * float(hours))
 
 static func idle_recovery_rates(has_cabin: bool, caretaker_leader: bool, has_communal_table: bool = false) -> Vector2:
     var fatigue_rate: float = 0.5 if has_cabin else (1.0 / 3.0)

@@ -30,6 +30,7 @@ func _render_survivor() -> void:
 
     body.add_child(_separator())
     body.add_child(_heading("LOADOUT", 18))
+    body.add_child(_make_label("Expedition carry: %d resource items  •  Base 4 / backpacks 6 or 8" % Game.survivor_carry_capacity(survivor), 12))
     var equipment: Dictionary = survivor.get("equipment", {})
     for slot in ["Weapon", "Secondary", "Tool", "Clothing", "Pack"]:
         var gear_name := str(equipment.get(slot, ""))
@@ -176,7 +177,8 @@ func _render_item() -> void:
                     body.add_child(_make_label("Physical projectile range: %d tiles" % physical_range, 13))
                 if ThreeStatRules.weapon_pattern(profile) == "shotgun":
                     body.add_child(_make_label("Projectiles per shot: %d" % ThreeStatRules.weapon_projectiles(profile), 13))
-        if data.has("capacity"): body.add_child(_make_label("Carry capacity: %d" % int(data.get("capacity", 0)), 13))
+        if data.has("capacity"): body.add_child(_make_label("Expedition carry capacity: %d resource items" % int(data.get("capacity", 0)), 13))
+        if data.has("uses_min") and data.has("uses_max"): body.add_child(_make_label("Durability: %d–%d successful uses before breaking" % [int(data.get("uses_min", 1)), int(data.get("uses_max", 1))], 13))
         if data.has("tool"): body.add_child(_make_label("Tool tag: %s" % str(data.get("tool", "")), 13))
         if data.has("light"): body.add_child(_make_label("Light reach: %.0f tiles" % float(data.get("light_range", 0.0)), 13))
         if data.has("weight"): body.add_child(_make_label("Carried weight: %.1f" % float(data.get("weight", 0.0)), 13))

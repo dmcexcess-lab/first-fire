@@ -23,7 +23,7 @@ func _ready() -> void:
 
 func _build_ui() -> void:
     var shade := ColorRect.new()
-    shade.color = Color(0.015, 0.02, 0.018, 0.90)
+    shade.color = Color(0.015, 0.02, 0.018, 0.42)
     shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     shade.mouse_filter = Control.MOUSE_FILTER_STOP
     add_child(shade)
@@ -32,8 +32,8 @@ func _build_ui() -> void:
     panel.set_anchors_preset(Control.PRESET_CENTER)
     panel.anchor_left = 0.08
     panel.anchor_right = 0.92
-    panel.anchor_top = 0.12
-    panel.anchor_bottom = 0.88
+    panel.anchor_top = 0.46
+    panel.anchor_bottom = 0.985
     panel.offset_left = 0
     panel.offset_right = 0
     panel.offset_top = 0
@@ -48,17 +48,17 @@ func _build_ui() -> void:
     panel.add_child(margin)
 
     var column := VBoxContainer.new()
-    column.add_theme_constant_override("separation", 10)
+    column.add_theme_constant_override("separation", 6)
     margin.add_child(column)
 
     var close_button := Button.new()
     close_button.text = "← BACK TO WORK BOARD"
-    close_button.custom_minimum_size = Vector2(0, 44)
+    close_button.custom_minimum_size = Vector2(0, 36)
     close_button.pressed.connect(func(): closed.emit())
     column.add_child(close_button)
 
     title_label = Label.new()
-    title_label.add_theme_font_size_override("font_size", 24)
+    title_label.add_theme_font_size_override("font_size", 20)
     title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     column.add_child(title_label)
 
@@ -87,7 +87,7 @@ func _build_ui() -> void:
 
     for index in range(CampLifeRules.CHORE_TARGET_COUNT):
         var button := Button.new()
-        button.custom_minimum_size = Vector2(0, 68)
+        button.custom_minimum_size = Vector2(0, 52)
         button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         button.size_flags_vertical = Control.SIZE_EXPAND_FILL
         button.add_theme_font_size_override("font_size", 16)
@@ -100,7 +100,7 @@ func configure(chore: Dictionary, worker_name: String, next_target_index: int) -
     target_index = next_target_index
     var kind := str(chore.get("kind", ""))
     title_label.text = CampLifeRules.daily_chore_label(kind).to_upper()
-    worker_label.text = "%s is taking this turn." % worker_name
+    worker_label.text = "%s is working in camp while you play." % worker_name
     instruction_label.text = CampLifeRules.daily_chore_instruction(kind)
     var progress := int(chore.get("minigame_progress", 0))
     var goal := maxi(1, int(chore.get("minigame_goal", 1)))

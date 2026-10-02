@@ -34,7 +34,6 @@ var gate_zone_names: Array = []
 var gate_zone_index := 0
 var expedition_return_notice: Button
 var chore_minigame: Control
-var chore_pause_before := false
 
 func _build_ui():
     super._build_ui()
@@ -125,8 +124,11 @@ func _open_chore_minigame(chore_id: String) -> void:
     var worker: Variant = Game.get_survivor(sid)
     if worker == null:
         return
-    chore_pause_before = Game.sim_paused
-    Game.set_paused(true)
+    var task: Dictionary = worker.get("task", {})
+    if str(worker.get("status", "")) != "Chore" or str(task.get("kind", "")) != "daily_chore":
+        if str(worker.get("status", "")) == "Exhausted":
+            _show_toast("%s hit 100 fatigue and is resting before resuming this chore." % str(worker.get("name", "Survivor")))
+        return
     chore_minigame.configure(chore, str(worker.get("name", "Survivor")), Game.daily_chore_target(chore_id))
     chore_minigame.visible = true
 
@@ -134,7 +136,6 @@ func _close_chore_minigame() -> void:
     if chore_minigame == null or not chore_minigame.visible:
         return
     chore_minigame.visible = false
-    Game.set_paused(chore_pause_before)
     call_deferred("_refresh_content")
 
 func _on_chore_minigame_action(chore_id: String, target_index: int) -> void:

@@ -157,7 +157,7 @@ const GEAR := {
     "Shotgun": {"slot": "Weapon", "combat": 5, "size": 3, "legacy_alias": "Double-Barrel Shotgun"},
     "Rifle": {"slot": "Weapon", "combat": 5, "size": 3, "legacy_alias": "Long Rifle"},
     "Flashlight": {"slot": "Secondary", "size": 2, "weight": 0.8, "light": "cone", "light_range": 8.5, "light_spread": 0.52, "light_strength": 1.0, "light_color": "edf5d6", "view_bonus": 2, "charge_max": 100.0, "charge_per_tick": 0.025},
-    "Lock Pick": {"slot": "Secondary", "size": 1, "weight": 0.1, "uses_min": 3, "uses_max": 5},
+    "Lock Pick": {"slot": "Secondary", "size": 1, "weight": 0.1, "uses_min": 1, "uses_max": 3},
     "Firecracker": {"slot": "Secondary", "size": 1, "weight": 0.1, "uses": 1},
     "Headlamp": {"slot": "Secondary", "size": 1, "weight": 0.4, "light": "cone", "light_range": 7.0, "light_spread": 0.34, "light_strength": 0.88, "light_color": "f1edc5", "view_bonus": 1, "legacy": true},
     "Lantern": {"slot": "Secondary", "size": 2, "weight": 1.4, "light": "radial", "light_range": 4.5, "light_strength": 0.88, "light_color": "ffc46f", "view_bonus": 0, "legacy": true},
@@ -174,10 +174,10 @@ const GEAR := {
     "Work Jacket": {"slot": "Clothing", "size": 2, "protect": 0.05},
     "Padded Jacket": {"slot": "Clothing", "size": 2, "protect": 0.05},
     "Worn Backpack": {"slot": "Pack", "capacity": 6, "size": 0},
-    "School Backpack": {"slot": "Pack", "capacity": 8, "size": 0},
-    "Improvised Pack": {"slot": "Pack", "capacity": 8, "size": 0},
-    "Hiking Pack": {"slot": "Pack", "capacity": 12, "size": 0},
-    "Reinforced Pack": {"slot": "Pack", "capacity": 12, "size": 0},
+    "School Backpack": {"slot": "Pack", "capacity": 6, "size": 0},
+    "Improvised Pack": {"slot": "Pack", "capacity": 6, "size": 0},
+    "Hiking Pack": {"slot": "Pack", "capacity": 8, "size": 0},
+    "Reinforced Pack": {"slot": "Pack", "capacity": 8, "size": 0},
 }
 
 const TACTICAL_GEAR_UNLOCKS_BY_ZONE := {
@@ -218,13 +218,13 @@ const RECIPES := {
         {"id": "Crossbow", "time": 14.0, "cost": {"Wood": 3, "Scrap Metal": 1, "Hardware": 2, "Cloth": 1}, "gives_gear": "Crossbow"},
         {"id": "Sledgehammer", "time": 15.0, "cost": {"Wood": 2, "Scrap Metal": 4, "Hardware": 3}, "gives_gear": "Sledgehammer"},
         {"id": "Hatchet", "time": 18.0, "cost": {"Wood": 1, "Scrap Metal": 5, "Hardware": 4}, "gives_gear": "Hatchet"},
+        {"id": "Lock Pick", "time": 5.0, "cost": {"Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Lock Pick"},
         {"id": "Screwdriver Set", "time": 7.0, "cost": {"Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Screwdriver Set"},
         {"id": "Bolt Cutters", "time": 11.0, "cost": {"Scrap Metal": 3, "Hardware": 2}, "gives_gear": "Bolt Cutters"},
         {"id": "Toolbox", "time": 12.0, "cost": {"Scrap Metal": 2, "Hardware": 3}, "gives_gear": "Toolbox"},
         {"id": "First Aid Kit", "time": 10.0, "cost": {"Cloth": 2, "Plastic": 1, "Medicine": 1}, "gives_gear": "First Aid Kit"},
         {"id": "Pry Tool", "time": 8.0, "cost": {"Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Pry Tool"},
         {"id": "Framing Kit", "time": 8.0, "cost": {"Wood": 2, "Hardware": 1}, "gives_component": {"Framing Kit": 1}},
-        {"id": "Pack Frame", "time": 8.0, "cost": {"Wood": 1, "Hardware": 1}, "gives_component": {"Pack Frame": 1}},
     ],
     "Sewing Table": [
         {"id": "Work Gloves", "time": 5.0, "cost": {"Cloth": 1}, "gives_gear": "Work Gloves"},
@@ -232,11 +232,6 @@ const RECIPES := {
         {"id": "Leather Jacket", "time": 10.0, "cost": {"Cloth": 3, "Plastic": 1}, "gives_gear": "Leather Jacket"},
         {"id": "Work Jacket", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_gear": "Work Jacket"},
         {"id": "Padded Jacket", "time": 10.0, "cost": {"Cloth": 3, "Plastic": 1}, "gives_gear": "Padded Jacket"},
-        {"id": "Worn Backpack", "time": 7.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_gear": "Worn Backpack"},
-        {"id": "School Backpack", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 2}, "gives_gear": "School Backpack"},
-        {"id": "Improvised Pack", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_gear": "Improvised Pack"},
-        {"id": "Hiking Pack", "time": 12.0, "cost": {"Cloth": 3, "Plastic": 2, "Hardware": 1}, "gives_gear": "Hiking Pack"},
-        {"id": "Reinforced Pack", "time": 12.0, "cost": {"Cloth": 2, "Plastic": 1}, "component_cost": {"Pack Frame": 1}, "gives_gear": "Reinforced Pack"},
         {"id": "Weatherproofing Roll", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_component": {"Weatherproofing Roll": 1}},
     ]
 }

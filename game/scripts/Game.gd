@@ -348,8 +348,6 @@ func _add_recruit(preferred_background = "", rescuer_ids = []) -> Variant:
         return null
     var s = _generate_survivor(false, preferred_background)
     _initialize_relationships(s)
-    if rng.randf() < 0.45:
-        s["equipment"]["Pack"] = "Worn Backpack"
     for rid in rescuer_ids:
         s["relationships"][str(rid)] = rng.randi_range(15, 25)
         var rescuer: Variant = get_survivor(rid)
@@ -837,6 +835,12 @@ func _normalize_survivor_equipment_state(survivor) -> void:
             var initial := _default_gear_state(gear_name)
             if not initial.is_empty():
                 states[str(slot)] = initial
+        elif gear_name == "Lock Pick":
+            var lock_state_value = states.get(str(slot), {})
+            if lock_state_value is Dictionary:
+                var lock_state: Dictionary = lock_state_value
+                lock_state["uses_left"] = clampi(int(lock_state.get("uses_left", 1)), 1, 3)
+                states[str(slot)] = lock_state
     survivor["equipment_state"] = states
 
 func _take_inventory_gear_state(gear_name: String) -> Dictionary:
@@ -845,15 +849,21 @@ func _take_inventory_gear_state(gear_name: String) -> Dictionary:
     if not pool.is_empty():
         var state_value = pool.pop_back()
         inventory_gear_states[gear_name] = pool
-        return state_value.duplicate(true) if state_value is Dictionary else {}
+        var state: Dictionary = state_value.duplicate(true) if state_value is Dictionary else {}
+        if gear_name == "Lock Pick" and not state.is_empty():
+            state["uses_left"] = clampi(int(state.get("uses_left", 1)), 1, 3)
+        return state
     return _default_gear_state(gear_name)
 
 func _store_inventory_gear_state(gear_name: String, state: Dictionary) -> void:
     if gear_name == "" or state.is_empty():
         return
+    var stored := state.duplicate(true)
+    if gear_name == "Lock Pick":
+        stored["uses_left"] = clampi(int(stored.get("uses_left", 1)), 1, 3)
     var pool_value = inventory_gear_states.get(gear_name, [])
     var pool: Array = pool_value if pool_value is Array else []
-    pool.append(state.duplicate(true))
+    pool.append(stored)
     inventory_gear_states[gear_name] = pool
 
 func equip_gear(sid, gear_name):
@@ -1326,7 +1336,6 @@ func resolve_combat(result):
     if lead != null:
         _commit_tactical_health(lead, result.get("lead_hp", 0), result.get("lead_max_hp", 18), "was killed in a tactical field encounter")
         _commit_tactical_secondary_state(lead, str(result.get("lead_secondary_item", lead.get("equipment", {}).get("Secondary", ""))), result.get("lead_secondary_state", lead.get("equipment_state", {}).get("Secondary", {})))
-        lead["fatigue"] = min(100.0, float(lead["fatigue"]) + CampLifeRules.fatigue_gain(4.0))
         lead["stress"] = min(100.0, float(lead["stress"]) + min(18.0, float(result.get("damage", 0)) * 1.5))
         var combat_xp := mini(20, int(result.get("kills", 0)) * 2 + int(result.get("melee", 0)) + int(result.get("shots", 0)))
         if combat_xp > 0:
@@ -1336,7 +1345,6 @@ func resolve_combat(result):
         if companion != null:
             var fallback_companion_hp: int = 0 if companion.get("condition", "Dead") == "Dead" else int(_combat_condition_hp(companion))
             _commit_tactical_health(companion, result.get("companion_hp", fallback_companion_hp), result.get("companion_max_hp", maxi(1, fallback_companion_hp)), "was killed while accompanying an expedition")
-            companion["fatigue"] = min(100.0, float(companion.get("fatigue", 0.0)) + CampLifeRules.fatigue_gain(4.0))
             companion["stress"] = min(100.0, float(companion.get("stress", 0.0)) + 4.0)
     current_combat = {}
     sim_paused = false
@@ -1689,8 +1697,13 @@ func _weighted_loot_pick(zone):
 func _pack_capacity(s):
     var pack = s["equipment"].get("Pack", "")
     if pack != "" and D.GEAR.has(pack):
-        return int(D.GEAR[pack].get("capacity", 3))
-    return 3
+        return int(D.GEAR[pack].get("capacity", 4))
+    return 4
+
+func survivor_carry_capacity(survivor) -> int:
+    if survivor == null:
+        return 4
+    return _pack_capacity(survivor)
 
 func _roll_gear(exp, party):
     var zone = exp["zone"]

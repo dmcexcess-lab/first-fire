@@ -40,13 +40,13 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 Shared declarative catalogs. Item names, recipes, zones, buildings, backgrounds, and gear data live here. Legacy `protect`, old background skill-bonus fields, or other stale catalog metadata are not authoritative when contradicted by active rules; remove them when a focused cleanup safely owns that data.
 
 ### `Game.gd`
-Persistent state/orchestration foundation: camp ticks, survivor work assignment, camp-maintenance and pet state, expedition sequencing, event/tactical transitions, and schema-7 state transport shape.
+Persistent state/orchestration foundation: camp ticks, survivor work assignment, camp-maintenance and pet state, expedition sequencing, event/tactical transitions, **gear condition plus 4/6/8 carry-cap data**, and schema-7 state transport shape.
 
 ### `GameThreeStat.gd`
 Three-stat specialization and compatibility boundary. It keeps the base orchestration usable while ensuring the live survivor model contains only Combat, Agility, and Leadership.
 
 ### `GameSleepVirus.gd`
-Active settlement orchestration layer. Owns the single direct settlement clock, one-shot expedition return-time advancement through the same camp simulation, authoritative Sleeping status/tasks, centralized assignment availability, zombie-virus state progression, quarantine, timed virus treatment, camp spread, and handoff of tactical infected-contact results into persistent survivor state.
+Active settlement orchestration layer. Owns the single direct settlement clock, one-shot expedition return-time advancement through the same camp simulation, authoritative Sleeping and **Exhausted 3–5h forced-rest** status/tasks, **natural idle fatigue recovery**, centralized assignment availability, zombie-virus state progression, quarantine, timed virus treatment, camp spread, and handoff of tactical infected-contact results into persistent survivor state.
 
 ### `Main.gd`
 Top-level UI/input foundation: legacy navigation shells, overlays, work board primitives, expedition modal, and shared interaction flow. The active runtime may reuse these mature UI functions without exposing their old standalone tab navigation.
@@ -61,13 +61,13 @@ Active main-scene wrapper and current camp-as-menu controller. It hides the lega
 Living 2D camp presentation foundation. Reads authoritative state and maps it to visual stations/cosmetic survivor motion only. It must not own work timing, resources, survivor rules, or pathfinding gameplay.
 
 ### `FFCampViewSleepVirus.gd`
-Active camp/menu renderer and touch hit-test layer. Owns deterministic visual sleep-slot selection and presentation for Sleeping, training, treatment, chores, pet care, quarantine, severe illness, and mood-driven idle activity. It also owns the sparse wilderness starter presentation and touch locations for survivor selection, communal storage, First Fire, Workbench/built structures, and the camp edge/gate. Unbuilt anchors remain invisible data. Those interactions emit intent signals only; `MainSleepVirus.gd` decides which contextual sheet/overlay to open and `Game` remains authoritative for all simulation changes.
+Active camp/menu renderer and touch hit-test layer. Owns deterministic visual sleep-slot selection and presentation for Sleeping/**Exhausted**, training, treatment, **live animated chores**, pet care, quarantine, severe illness, and mood-driven idle activity. It also owns the sparse wilderness starter presentation and touch locations for survivor selection, communal storage, First Fire, Workbench/built structures, and the camp edge/gate. Unbuilt anchors remain invisible data. Those interactions emit intent signals only; `MainSleepVirus.gd` decides which contextual sheet/overlay to open and `Game` remains authoritative for all simulation changes.
 
 ### `FFSurvivorPanel.gd`
 Legacy concise roster/dashboard implementation retained as an internal reusable component while camp interaction replaces standalone roster navigation. Detailed current presentation belongs to the active inspector wrapper.
 
 ### `FFCombat.gd`
-Established tactical board/runtime foundation: map state, actors, infected, vision/fog, facing, sound propagation, doors/glass/hazards, **locked door / locked optional-container state**, physical loot-container state, objectives, survivor/pet rescue escort state, persistence, and rendering integration. Lock picking consumes the equipped persistent Lock Pick state rather than an abstract skill roll.
+Established tactical board/runtime foundation: map state, actors, infected, vision/fog, facing, sound propagation, doors/glass/hazards, **locked door / locked optional-container state**, physical loot-container state, **party-pooled resource carry capacity (4 base per survivor; packs raise it to 6 or 8)**, objectives, survivor/pet rescue escort state, persistence, and rendering integration. Lock picking consumes the equipped persistent Lock Pick state rather than an abstract skill roll.
 
 ### `FFCombatThreeStat.gd`
 Current combat rules: Combat/Agility attack and movement behavior, Stealth, Sprint, Forward, Shove, **magazine/chamber reloads with no camp Ammo resource**, Pump Shotgun cycling, distance-based ranged hit falloff, physical Crossbow/shotgun projectile range, multi-projectile shotgun cones, active off-hand use/Flashlight drain/Firecracker lure, weapon-class handling, and no armor mitigation.
@@ -103,10 +103,10 @@ Persistent survivor appearances, infected visual families, rescued-pet rendering
 Pure expedition/logistics rules: five distance bands, fixed route hours, maximum two-person party size, per-survivor Cooked Food/Clean Water travel costs, the Very Far Expedition Vehicle gate, zone caps, and compatibility haul helpers. Standard Send Out duration is authored and no longer shortened by Agility. Encounter-family weighting belongs to `FFTacticalScenarios.gd`.
 
 ### `FFCampLifeRules.gd`
-Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, scheduled midday drinking/evening eating/overnight sleep, awake fatigue and sleep recovery, pet affection/retention/daily reward, authoritative camp-condition degradation/recovery/bands, daily water/meal/sleep-window accounting, recovery/treatment modifiers, defense-building effects, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
+Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, scheduled midday drinking/evening eating/overnight sleep, **idle fatigue recovery and 3–5h forced-exhaustion duration**, pet affection/retention/daily reward, authoritative camp-condition degradation/recovery/bands, daily water/meal/sleep-window accounting, recovery/treatment modifiers, defense-building effects, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
 
 ### `FFCampChoreMinigame.gd`
-Shared touch-first presentation/controller for the four daily chore interactions. It renders one reusable six-target interaction surface with chore-specific instructions and labels, emits action intents only, and never awards resources or mutates camp state. `MainSleepVirus.gd` pauses/restores settlement simulation around the overlay and forwards intents to authoritative `GameSleepVirus.gd` chore APIs.
+Shared touch-first presentation/controller for the four daily chore interactions. It renders one reusable six-target interaction surface with chore-specific instructions and labels, emits action intents only, and never awards resources or mutates camp state. The overlay is a lower translucent sheet over the **still-running living camp**; `MainSleepVirus.gd` does **not** pause settlement for it and forwards intents to authoritative `GameSleepVirus.gd` chore APIs while the assigned survivor continues its camp animation.
 
 ### `FFVirusRules.gd`
 Pure zombie-virus rules. Owns stage names/normalization, contact-to-exposure probability, daily progression, camp-spread probability, and treatment plans/costs. It does not mutate Game state or render UI.

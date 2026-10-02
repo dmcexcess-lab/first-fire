@@ -1255,6 +1255,46 @@ func search_explore_cell(cell: Vector2i) -> void:
         return
     search_loot_container(cell)
 
+func actor_carry_capacity(actor: Dictionary) -> int:
+    var pack := str(actor.get("pack", ""))
+    if pack != "" and D.GEAR.has(pack):
+        return int(D.GEAR[pack].get("capacity", 4))
+    return 4
+
+func party_carry_capacity() -> int:
+    var total := actor_carry_capacity(player)
+    if not ally.is_empty() and not bool(ally.get("dead", false)):
+        total += actor_carry_capacity(ally)
+    return total
+
+func carried_loot_count() -> int:
+    var total := 0
+    for amount in collected_container_loot().values():
+        total += maxi(0, int(amount))
+    return total
+
+func _fit_loot_to_remaining_capacity(contents: Dictionary) -> Dictionary:
+    var remaining := maxi(0, party_carry_capacity() - carried_loot_count())
+    var taken: Dictionary = {}
+    var keys: Array = contents.keys()
+    keys.sort()
+    for key_value in keys:
+        if remaining <= 0:
+            break
+        var key := str(key_value)
+        var amount := maxi(0, int(contents.get(key_value, 0)))
+        var take := mini(remaining, amount)
+        if take > 0:
+            taken[key] = take
+            remaining -= take
+    return taken
+
+func _loot_unit_count(loot: Dictionary) -> int:
+    var total := 0
+    for amount in loot.values():
+        total += maxi(0, int(amount))
+    return total
+
 func search_loot_container(cell: Vector2i) -> void:
     if not loot_containers.has(cell):
         msg = "Nothing to search there."
@@ -1270,11 +1310,16 @@ func search_loot_container(cell: Vector2i) -> void:
         return
     if locked_containers.has(cell) and not try_unlock(cell, true):
         return
+    var original_contents: Dictionary = container_contents.get(cell, {})
+    var contents := _fit_loot_to_remaining_capacity(original_contents)
+    var left_behind := maxi(0, _loot_unit_count(original_contents) - _loot_unit_count(contents))
+    container_contents[cell] = contents
     looted_containers[cell] = true
     stats["containers"] = int(stats.get("containers", 0)) + 1
     var container_kind := str(loot_containers[cell])
-    var contents: Dictionary = container_contents.get(cell, {})
     var loot_text := _format_loot(contents)
+    if left_behind > 0:
+        loot_text += " • %d left behind (carry full)" % left_behind
     var is_explore_site := str(context.get("kind", "")) == "explore" and explore_cells.has(cell)
     if is_explore_site:
         explore_searched[cell] = true

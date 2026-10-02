@@ -172,10 +172,16 @@ jobs:
           grep -Fq '"Lock Pick": {"slot": "Secondary"' game/scripts/FFData.gd
           grep -Fq '"Firecracker": {"slot": "Secondary"' game/scripts/FFData.gd
           grep -Fq '"id": "Crossbow"' game/scripts/FFData.gd
-          if grep -Eq '"id": "(6-Shot Revolver|12-Shot Automatic|Double-Barrel Shotgun|Pump Shotgun|Medium Rifle|Long Rifle|Flashlight|Lock Pick|Firecracker)"' game/scripts/FFData.gd; then exit 1; fi
+          grep -Fq '"id": "Lock Pick"' game/scripts/FFData.gd
+          grep -Fq '"Worn Backpack": {"slot": "Pack", "capacity": 6' game/scripts/FFData.gd
+          grep -Fq '"Hiking Pack": {"slot": "Pack", "capacity": 8' game/scripts/FFData.gd
+          if grep -Eq '"id": "(6-Shot Revolver|12-Shot Automatic|Double-Barrel Shotgun|Pump Shotgun|Medium Rifle|Long Rifle|Flashlight|Firecracker|Worn Backpack|School Backpack|Improvised Pack|Hiking Pack|Reinforced Pack)"' game/scripts/FFData.gd; then exit 1; fi
           if grep -q '"Ammo"' game/scripts/FFData.gd; then exit 1; fi
           if grep -q 'consume_combat_ammo' game/scripts/FFCombatThreeStat.gd; then exit 1; fi
           grep -q 'func supplement_distance_loot_containers' game/scripts/FFCombat.gd
+          grep -q 'func party_carry_capacity' game/scripts/FFCombat.gd
+          grep -q 'func _fit_loot_to_remaining_capacity' game/scripts/FFCombat.gd
+          grep -q 'CARRY %d/%d' game/scripts/FFCombatThreeStat.gd
           grep -q 'func zombie_mob_size' game/scripts/FFCombat.gd
           grep -Fq 'const BITE_EXPOSURE_CHANCE := 0.03' game/scripts/FFVirusRules.gd
           grep -q 'func bite_exposure_occurs' game/scripts/FFVirusRules.gd
@@ -203,10 +209,19 @@ jobs:
           grep -Fq 'TacticalScenarios.pick_outing' game/scripts/Game.gd
           if grep -Fq 'func start_expedition(primary_id: int, zone: String)' game/scripts/GameThreeStat.gd; then exit 1; fi
           grep -q 'func survivor_can_assign' game/scripts/GameSleepVirus.gd
+          grep -q 'func _begin_forced_rest_if_exhausted' game/scripts/GameSleepVirus.gd
+          grep -Fq '"status"] = "Exhausted"' game/scripts/GameSleepVirus.gd
+          grep -Fq '"resume_task":resume_task' game/scripts/GameSleepVirus.gd
+          grep -Fq 'survivor["fatigue"] = 0.0' game/scripts/GameSleepVirus.gd
+          if grep -q 'AWAKE_FATIGUE_PER_SECOND' game/scripts/GameSleepVirus.gd game/scripts/FFCampLifeRules.gd; then exit 1; fi
           grep -q 'func start_virus_treatment' game/scripts/GameSleepVirus.gd
           grep -q 'func quarantine_survivor' game/scripts/GameSleepVirus.gd
           grep -q 'infected_hits' game/scripts/FFCombatVirus.gd
-          grep -q 'status == "Sleeping"' game/scripts/FFCampViewSleepVirus.gd
+          grep -Fq 'status in ["Sleeping", "Exhausted"]' game/scripts/FFCampViewSleepVirus.gd
+          grep -q 'work_phase' game/scripts/FFCampViewSleepVirus.gd
+          grep -q 'POUTING' game/scripts/FFCampViewSleepVirus.gd
+          if grep -q 'chore_pause_before' game/scripts/MainSleepVirus.gd; then exit 1; fi
+          if grep -q 'Game.set_paused(true)' game/scripts/MainSleepVirus.gd; then exit 1; fi
           grep -q 'ZOMBIE VIRUS' game/scripts/FFInspectorVirus.gd
           grep -q 'pointing/emulate_mouse_from_touch=false' game/project.godot
           grep -q 'vram_texture_compression/for_mobile=false' game/export_presets.cfg

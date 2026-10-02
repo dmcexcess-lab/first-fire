@@ -544,7 +544,7 @@ func draw_hud():
         if bool(player.get("needs_pump", false)):
             weapon_line += " | PUMP"
     draw_string(font, Vector2(10,69), weapon_line, HORIZONTAL_ALIGNMENT_LEFT, 370, 10, Color(.82,.84,.82))
-    var stats_line := "COM %d  AGI %d  LEAD %d" % [int(player.skills.get("Combat",0)), int(player.skills.get("Agility",0)), int(player.skills.get("Leadership",0))]
+    var stats_line := "COM %d  AGI %d  LEAD %d  CARRY %d/%d" % [int(player.skills.get("Combat",0)), int(player.skills.get("Agility",0)), int(player.skills.get("Leadership",0)), carried_loot_count(), party_carry_capacity()]
     draw_string(font, Vector2(10,89), stats_line, HORIZONTAL_ALIGNMENT_LEFT, 370, 9, Color(.72,.78,.74))
     var exit_steps := nearest_exit_distance(player.pos)
     var exit_text := "EXIT %d" % exit_steps if exit_steps >= 0 else "EXIT ?"

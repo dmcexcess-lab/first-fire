@@ -1,3 +1,16 @@
+## Beta Candidate — Camp Fatigue, Live Chores & Carry Capacity — 2026-10-01
+
+- Lock Picks can now be **crafted at the Workbench** for 1 Scrap Metal + 1 Hardware as well as found in the field. Each Lock Pick rolls **1–3 successful unlock uses** before breaking; schema-7 Lock Picks carrying older 4–5-use state are clamped into the new range when equipped/stored.
+- Rebuilt expedition resource carry around a clear backpack ladder: **4 items with no pack, 6 with common packs, 8 with better packs**. All backpacks are now **field-found only**; backpack and Pack Frame crafting recipes were removed, and new recruits no longer spawn with a free pack.
+- Physical tactical container loot now obeys the pooled carry capacity of the one- or two-survivor expedition party. Overflow resource units are left behind when capacity is full; named field-gear objectives remain separate from resource carry capacity.
+- The tactical HUD and survivor inspector now expose current/max expedition carry capacity.
+- **Double-Barrel Shotgun is now one-handed** while retaining its 2-shell, 3-projectile, tight-spread physical-range role.
+- Daily camp chore minigames no longer pause settlement simulation. The overlay is a lower translucent sheet so the living camp stays visible, and the assigned survivor performs a chore-specific animation at the real camp work location while the player completes the touch interaction.
+- Reworked fatigue into a work-pressure loop: **idle camp time naturally reduces fatigue**, while chores, crafting/building/training and expedition return fatigue continue to raise it. Removed the extra fixed tactical-resolution fatigue that previously stacked on top of route fatigue.
+- At **100 fatigue**, a survivor enters **Exhausted**, goes to a bed/sleep slot for a random **3–5 in-game hours**, visibly shows a POUTING/rest state, and returns with **0 fatigue / full sleep need**. If work is already underway, its exact task/progress is suspended during the exhaustion rest and resumes afterward so paid materials and chore progress are not lost.
+- Expanded architecture smoke and CI source contracts for the 1H Double-Barrel, craftable 1–3-use Lock Pick, found-only 6/8 backpacks, active tactical carry enforcement, non-pausing live chore minigames, idle fatigue recovery, and forced exhaustion rest.
+- Save schema remains **7**; these changes use additive normalization/compatibility state.
+
 ## Beta Candidate — Firearm Magazines, Found-Only Off-Hand Tools & Tactical Locks — 2026-10-01
 
 - Rebuilt ranged weapons around **magazines/chambers and explicit tactical reloads**. The shared camp `Ammo` resource is retired and is removed from loaded schema-7 saves.
