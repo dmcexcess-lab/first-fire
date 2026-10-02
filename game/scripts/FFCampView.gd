@@ -343,9 +343,10 @@ func _draw_structures(origin: Vector2, tile: float) -> void:
         _draw_armory(origin, tile)
 
 func _draw_bedroll(origin: Vector2, tile: float) -> void:
-    var r := _cell_rect(SLEEP_CELL, origin, tile).grow(-tile * 0.11)
-    Tiles.draw_prop(self, r, "bed")
-    draw_rect(Rect2(r.position + Vector2(tile * 0.10, tile * 0.60), Vector2(r.size.x * 0.70, tile * 0.10)), Color(0.25, 0.31, 0.28, 0.65))
+    for cell in [Vector2i(4, 6), Vector2i(5, 6), Vector2i(6, 6)]:
+        var r := _cell_rect(cell, origin, tile).grow(-tile * 0.14)
+        Tiles.draw_prop(self, r, "bed")
+        draw_rect(Rect2(r.position + Vector2(tile * 0.10, tile * 0.60), Vector2(r.size.x * 0.70, tile * 0.10)), Color(0.25, 0.31, 0.28, 0.65))
 
 func _draw_rain_catcher(origin: Vector2, tile: float) -> void:
     var r := _cell_rect(building_cell("Rain Catcher"), origin, tile).grow(-tile * 0.08)
@@ -355,7 +356,7 @@ func _draw_rain_catcher(origin: Vector2, tile: float) -> void:
     draw_line(r.position + Vector2(r.size.x * 0.82, r.size.y * 0.12), r.position + Vector2(r.size.x * 0.82, r.size.y * 0.62), Color("6a6253"), maxf(1.0, tile * 0.04))
 
 func _draw_large_tarp(origin: Vector2, tile: float) -> void:
-    var r := Rect2(_cell_rect(Vector2i(4, 5), origin, tile).position, Vector2(tile * 3.0, tile * 2.0)).grow(-tile * 0.06)
+    var r := Rect2(_cell_rect(Vector2i(3, 5), origin, tile).position, Vector2(tile * 4.0, tile * 2.0)).grow(-tile * 0.06)
     draw_colored_polygon(PackedVector2Array([
         r.position + Vector2(r.size.x * 0.04, r.size.y * 0.92),
         r.position + Vector2(r.size.x * 0.50, r.size.y * 0.08),
@@ -437,15 +438,15 @@ func _draw_watch_post(origin: Vector2, tile: float) -> void:
     draw_line(c + Vector2(0, -tile * 0.30), c + Vector2(0, -tile * 0.48), Color("9f9478"), maxf(1.0, tile * 0.04))
 
 func _draw_barracks(origin: Vector2, tile: float) -> void:
-    var r := Rect2(_cell_rect(Vector2i(2, 7), origin, tile).position, Vector2(tile * 3.0, tile * 2.0)).grow(-tile * 0.04)
+    var r := Rect2(_cell_rect(Vector2i(1, 7), origin, tile).position, Vector2(tile * 6.0, tile * 2.0)).grow(-tile * 0.04)
     draw_rect(r, Color("56594f"))
     draw_colored_polygon(PackedVector2Array([
         r.position + Vector2(-tile * 0.05, r.size.y * 0.24),
         r.position + Vector2(r.size.x * 0.50, -tile * 0.10),
         r.position + Vector2(r.size.x + tile * 0.05, r.size.y * 0.24),
     ]), Color("70644f"))
-    for x in [0.18, 0.42, 0.66]:
-        draw_rect(Rect2(r.position + Vector2(r.size.x * x, r.size.y * 0.48), Vector2(tile * 0.34, tile * 0.42)), Color("2c342f"))
+    for x in [0.10, 0.26, 0.42, 0.58, 0.74, 0.90]:
+        draw_rect(Rect2(r.position + Vector2(r.size.x * x - tile * 0.16, r.size.y * 0.48), Vector2(tile * 0.32, tile * 0.42)), Color("2c342f"))
     draw_rect(r, Color("a59674"), false, maxf(1.0, tile * 0.04))
 
 func _draw_armory(origin: Vector2, tile: float) -> void:
@@ -457,7 +458,7 @@ func _draw_armory(origin: Vector2, tile: float) -> void:
     draw_line(r.position + Vector2(r.size.x * 0.74, r.size.y * 0.20), r.position + Vector2(r.size.x * 0.88, r.size.y * 0.76), Color("a5aaa2"), maxf(1.0, tile * 0.035))
 
 func _draw_dormitory(origin: Vector2, tile: float) -> void:
-    var r := Rect2(_cell_rect(Vector2i(9, 7), origin, tile).position, Vector2(tile * 3.0, tile * 2.0)).grow(-tile * 0.03)
+    var r := Rect2(_cell_rect(Vector2i(8, 7), origin, tile).position, Vector2(tile * 5.0, tile * 3.0)).grow(-tile * 0.03)
     draw_rect(r, Color("4d5a55"))
     draw_colored_polygon(PackedVector2Array([
         r.position + Vector2(-tile * 0.04, r.size.y * 0.26),
@@ -468,14 +469,37 @@ func _draw_dormitory(origin: Vector2, tile: float) -> void:
     Tiles.draw_window(self, Rect2(r.position + Vector2(r.size.x * 0.58, r.size.y * 0.36), r.size * 0.26))
 
 func _draw_tavern(origin: Vector2, tile: float) -> void:
-    var r := Rect2(_cell_rect(Vector2i(6, 3), origin, tile).position, Vector2(tile * 3.0, tile * 3.0)).grow(-tile * 0.05)
+    var r := Rect2(_cell_rect(Vector2i(5, 3), origin, tile).position, Vector2(tile * 5.0, tile * 3.0)).grow(-tile * 0.05)
+    var fire_center := _cell_center(FIRE_CELL, origin, tile)
+
+    # First tavern state: roof posts, a cooking spit and rough benches around the original fire.
     draw_rect(Rect2(r.position + Vector2(0, tile * 0.18), Vector2(r.size.x, tile * 0.14)), Color("75603f"))
     draw_line(r.position + Vector2(tile * 0.12, tile * 0.32), r.position + Vector2(tile * 0.12, r.size.y), Color("6d5135"), maxf(2.0, tile * 0.08))
     draw_line(r.position + Vector2(r.size.x - tile * 0.12, tile * 0.32), r.position + Vector2(r.size.x - tile * 0.12, r.size.y), Color("6d5135"), maxf(2.0, tile * 0.08))
-    var counter := Rect2(r.position + Vector2(tile * 1.70, tile * 1.05), Vector2(tile * 0.85, tile * 0.34))
-    Tiles.draw_prop(self, counter, "counter")
-    for offset in [Vector2(-0.75, 0.75), Vector2(0.72, 0.78)]:
-        draw_circle(_cell_center(FIRE_CELL, origin, tile) + offset * tile, tile * 0.12, Color("5b4834"))
+    draw_line(fire_center + Vector2(-tile * 0.55, -tile * 0.42), fire_center + Vector2(tile * 0.55, -tile * 0.42), Color("8d7c60"), maxf(2.0, tile * 0.05))
+    draw_line(fire_center + Vector2(-tile * 0.46, -tile * 0.42), fire_center + Vector2(-tile * 0.46, tile * 0.05), Color("6c5a43"), maxf(2.0, tile * 0.04))
+    draw_line(fire_center + Vector2(tile * 0.46, -tile * 0.42), fire_center + Vector2(tile * 0.46, tile * 0.05), Color("6c5a43"), maxf(2.0, tile * 0.04))
+    for offset in [Vector2(-1.15, 0.75), Vector2(1.15, 0.75)]:
+        var bench_center := fire_center + offset * tile
+        draw_rect(Rect2(bench_center - Vector2(tile * 0.42, tile * 0.10), Vector2(tile * 0.84, tile * 0.20)), Color("5b4834"))
+
+    # Barracks means enough carpentry and population to justify real tables.
+    if bool(Game.buildings.get("Barracks", false)):
+        Tiles.draw_prop(self, Rect2(r.position + Vector2(tile * 0.35, tile * 1.00), Vector2(tile * 1.10, tile * 0.65)), "table")
+        Tiles.draw_prop(self, Rect2(r.position + Vector2(r.size.x - tile * 1.45, tile * 1.00), Vector2(tile * 1.10, tile * 0.65)), "table")
+
+    # Water infrastructure turns the cook area into a cleaner prep surface.
+    if bool(Game.buildings.get("Water Tank", false)):
+        var prep := Rect2(r.position + Vector2(tile * 3.25, tile * 0.62), Vector2(tile * 1.20, tile * 0.38))
+        Tiles.draw_prop(self, prep, "counter")
+        draw_circle(prep.position + Vector2(tile * 0.22, tile * 0.20), tile * 0.10, Color("6e8b92"))
+
+    # The mature camp gets a full bar/counter and enclosed tavern frontage.
+    if bool(Game.buildings.get("Dormitory", false)):
+        var counter := Rect2(r.position + Vector2(tile * 0.45, tile * 2.05), Vector2(r.size.x - tile * 0.90, tile * 0.42))
+        Tiles.draw_prop(self, counter, "counter")
+        draw_line(r.position + Vector2(tile * 0.20, tile * 0.52), r.position + Vector2(r.size.x - tile * 0.20, tile * 0.52), Color("9b835c"), maxf(2.0, tile * 0.05))
+
     draw_rect(r, Color(0.86, 0.71, 0.43, 0.28), false, maxf(1.0, tile * 0.035))
 
 func _draw_fire(origin: Vector2, tile: float) -> void:

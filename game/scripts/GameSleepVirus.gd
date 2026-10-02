@@ -502,10 +502,9 @@ func _process_survivors(delta):
             var leader: Variant = get_survivor(leader_id)
             caretaker = leader != null and leader["leader_ability"] == "Caretaker"
         var recovery := CampLifeRules.idle_recovery_rates(
-            bool(buildings.get("Barracks", false)),
+            CampLifeRules.shelter_tier(buildings),
             caretaker,
-            bool(buildings.get("Tavern", false)),
-            bool(buildings.get("Dormitory", false))
+            bool(buildings.get("Tavern", false))
         )
 
         if status == "Available":
@@ -659,9 +658,16 @@ func _complete_task(survivor):
         return
     if kind == "sleep":
         survivor["task"] = {}
-        var result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), "rest")
+        var shelter_quality := CampLifeRules.shelter_tier(buildings)
+        var result := CampLifeRules.complete_sleep(
+            survivor.get("needs", {}),
+            float(survivor.get("fatigue", 0.0)),
+            float(survivor.get("stress", 0.0)),
+            shelter_quality
+        )
         survivor["needs"] = result.get("needs", survivor.get("needs", {}))
         survivor["fatigue"] = float(result.get("fatigue", survivor.get("fatigue", 0.0)))
+        survivor["stress"] = float(result.get("stress", survivor.get("stress", 0.0)))
         survivor["status"] = _home_idle_status(survivor)
         save_game()
         state_changed.emit()

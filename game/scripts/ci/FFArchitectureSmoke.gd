@@ -185,7 +185,8 @@ func _init() -> void:
     if not _check(active_camp_source.contains("WORK_BOARD_CELL") and active_camp_source.contains("duties_pressed.emit()") and active_camp_source.contains("daily_chore_incomplete_count"), "physical work board is visible active chore entry point"): return
     if not _check(base_game_source.contains("buildings = {\"Fire Pit\": true, \"Sleeping Bag\": true, \"Storage Crate\": true}") and not base_game_source.contains("buildings[\"Workbench\"] = true") and not active_game_source.contains("buildings[\"Workbench\"] = true"), "starter camp begins with fire bedroll storage but no free workbench"): return
     if not _check(base_game_source.contains("func building_under_construction") and base_game_source.contains("building_under_construction(str(building))") and active_main_source.contains("CAMP EXPANSION") and active_main_source.contains("_draw_expansion_group") and active_main_source.contains("\"Large Tarp\", \"Barracks\", \"Dormitory\""), "work board owns duplicate-safe permanent camp expansion"): return
-    if not _check(base_game_source.contains("if buildings.get(\"Dormitory\", false)") and base_game_source.contains("if buildings.get(\"Barracks\", false)") and base_game_source.contains("if buildings.get(\"Large Tarp\", false)") and base_game_source.contains("return 10") and base_game_source.contains("return 4"), "shelter capacity is tiered one four ten eighteen"): return
+    if not _check(base_game_source.contains("if buildings.get(\"Dormitory\", false)") and base_game_source.contains("if buildings.get(\"Barracks\", false)") and base_game_source.contains("if buildings.get(\"Large Tarp\", false)") and base_game_source.contains("return 12") and base_game_source.contains("return 7") and base_game_source.contains("return 3"), "shelter capacity is tiered three seven twelve eighteen"): return
+    if not _check(not base_game_source.contains("shelter_capacity() + 1") and base_game_source.contains("Shelter is full. First Fire has to turn this survivor away."), "shelter capacity is a hard recruitment cap with no squeeze-in exception"): return
     if not _check(base_game_source.contains("founder[\"equipment\"] = {\"Weapon\": \"Utility Knife\", \"Secondary\": \"\", \"Clothing\": \"\", \"Pack\": \"\", \"Tool\": \"\"}"), "founder starts with exactly one carried loot item"): return
     if not _check(active_camp_source.contains("func _draw_wilderness") and active_camp_source.contains("remain code/data only") and not active_camp_source.contains("build_plot_pressed.emit"), "sparse wilderness hides future build placeholders"): return
     if not _check(inspector_source.contains("CAMP LIFE") and inspector_source.contains("_start_training") and inspector_source.contains("physical camp work board") and not inspector_source.contains("camp_chore_needed"), "survivor inspector routes daily chores to physical work board"): return
@@ -247,7 +248,7 @@ func _init() -> void:
     if not _check(int(D.STARTING_RESOURCES.get("Cooked Food", 0)) >= 3 and int(D.STARTING_RESOURCES.get("Clean Water", 0)) >= 3, "new game basic supply runway"): return
     var base_needs := CampLifeRules.default_needs()
     if not _check(base_needs.has("hunger") and base_needs.has("safety") and base_needs.has("hygiene"), "camp needs"): return
-    if not _check(is_equal_approx(CampLifeRules.SLEEP_DURATION, 87.5) and is_equal_approx(CampLifeRules.FIRE_DECAY_PER_SECOND, 0.096) and CampLifeRules.FORCED_REST_MIN_HOURS == 3 and CampLifeRules.FORCED_REST_MAX_HOURS == 5, "camp sleep exhaustion and decay cadence is tuned for five-minute days"): return
+    if not _check(is_equal_approx(CampLifeRules.SLEEP_DURATION, 100.0) and is_equal_approx(CampLifeRules.FIRE_DECAY_PER_SECOND, 0.096) and CampLifeRules.FORCED_REST_MIN_HOURS == 3 and CampLifeRules.FORCED_REST_MAX_HOURS == 5, "normal sleep is eight in-game hours and forced exhaustion remains three to five hours"): return
     var exhaustion_rng := RandomNumberGenerator.new()
     exhaustion_rng.seed = 20261002
     var exhaustion_duration := CampLifeRules.forced_rest_duration(300.0, exhaustion_rng)
@@ -307,18 +308,24 @@ func _init() -> void:
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":50,"fun":90},0.0,5,1,false,false,schedule_rng,23.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "rest", "nighttime fatigue selects real sleep"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,false,false,schedule_rng,12.5,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "drink_water", "midday water window selects drinking"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,false,false,schedule_rng,19.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "eat_meal", "evening meal window selects eating"): return
-    var rested := CampLifeRules.complete_activity({"sleep":40}, 60.0, "rest")
-    if not _check(float(rested["fatigue"]) < 10.0 and float(rested["needs"]["sleep"]) > 90.0, "full sleep meaningfully restores fatigue"): return
+    var bedroll_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 0)
+    var tarp_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 1)
+    var barracks_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 2)
+    var dorm_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 3)
+    if not _check(float(tarp_sleep["needs"]["sleep"]) > float(bedroll_sleep["needs"]["sleep"]) and float(barracks_sleep["needs"]["sleep"]) > float(tarp_sleep["needs"]["sleep"]) and float(dorm_sleep["needs"]["sleep"]) > float(barracks_sleep["needs"]["sleep"]), "eight-hour sleep raises the Rested moodlet faster as shelter improves"): return
+    if not _check(float(tarp_sleep["stress"]) < float(bedroll_sleep["stress"]) and float(barracks_sleep["stress"]) < float(tarp_sleep["stress"]) and float(dorm_sleep["stress"]) < float(barracks_sleep["stress"]), "better sleeping quarters provide progressively stronger mood recovery"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":20,"hygiene":90},0.0,5,1,false,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "keep_watch", "low safety drives treeline watch outside need windows"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,false,false,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
     if not _check(base_game_source.contains("var pets := []") and base_game_source.contains("func start_camp_chore") and base_game_source.contains("func perform_camp_task_tap") and base_game_source.contains("rescue_is_pet"), "active camp work and pet rescue state"): return
     if not _check(CampSocial.candidate_standing({"id":1,"condition":"Healthy","skills":{"Leadership":5},"reputation":0,"relationships":{}}, []) == 30, "leadership drives politics"): return
     if not _check(D.BUILD_ORDER.size() == 13 and D.BUILDINGS.has("Large Tarp") and D.BUILDINGS.has("Tavern") and D.BUILDINGS.has("Barracks") and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory") and not D.BUILDINGS.has("Cabin") and not D.BUILDINGS.has("Bunkhouse") and not D.BUILDINGS.has("Communal Table"), "camp expansion building tree"): return
-    if not _check(Array(D.BUILDINGS["Tavern"].get("requires", [])).has("Large Tarp") and Array(D.BUILDINGS["Barracks"].get("requires", [])).has("Sewing Table") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Tavern"), "shelter hearth utility prerequisites form a readable expansion ladder"): return
-    var base_recovery := CampLifeRules.idle_recovery_rates(false, false, false, false)
-    var barracks_recovery := CampLifeRules.idle_recovery_rates(true, false, false, false)
-    var dorm_recovery := CampLifeRules.idle_recovery_rates(true, false, true, true)
-    if not _check(barracks_recovery.x > base_recovery.x and dorm_recovery.x > barracks_recovery.x and dorm_recovery.y > barracks_recovery.y, "barracks dormitory and tavern improve camp recovery"): return
+    if not _check(Array(D.BUILDINGS["Tavern"].get("requires", [])).has("Large Tarp") and Array(D.BUILDINGS["Barracks"].get("requires", [])).has("Sewing Table") and Array(D.BUILDINGS["Infirmary"].get("requires", [])).has("Water Tank") and Array(D.BUILDINGS["Armory"].get("requires", [])).has("Watch Post") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Tavern") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Water Tank"), "late buildings depend on established shelter utility and security tech"): return
+    if not _check(int(D.BUILDINGS["Workbench"].get("cost", {}).get("Wood", 0)) == 2 and int(D.BUILDINGS["Workbench"].get("cost", {}).get("Scrap Metal", 0)) == 1 and not D.BUILDINGS["Workbench"].has("requires"), "first workbench is a light direct starter build"): return
+    var base_recovery := CampLifeRules.idle_recovery_rates(0, false, false)
+    var tarp_recovery := CampLifeRules.idle_recovery_rates(1, false, false)
+    var barracks_recovery := CampLifeRules.idle_recovery_rates(2, false, false)
+    var dorm_recovery := CampLifeRules.idle_recovery_rates(3, false, true)
+    if not _check(tarp_recovery.y > base_recovery.y and barracks_recovery.x > tarp_recovery.x and dorm_recovery.x > barracks_recovery.x and dorm_recovery.y > barracks_recovery.y, "shelter upgrades and tavern progressively improve recovery"): return
     if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary"): return
     if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
     if not _check(str(TacticalVisuals.weapon_visual("Pistol").get("kind", "")) == "pistol", "weapon visual catalog"): return

@@ -106,6 +106,11 @@ jobs:
           grep -Fq 'buildings = {"Fire Pit": true, "Sleeping Bag": true, "Storage Crate": true}' game/scripts/Game.gd
           if grep -Fq 'buildings["Workbench"] = true' game/scripts/Game.gd game/scripts/GameSleepVirus.gd; then exit 1; fi
           grep -q 'func building_under_construction' game/scripts/Game.gd
+          grep -Fq 'return 12' game/scripts/Game.gd
+          grep -Fq 'return 7' game/scripts/Game.gd
+          grep -Fq 'return 3' game/scripts/Game.gd
+          if grep -Fq 'shelter_capacity() + 1' game/scripts/Game.gd; then exit 1; fi
+          grep -Fq '"Workbench": {"time": 12.0, "cost": {"Wood": 2, "Scrap Metal": 1}' game/scripts/FFData.gd
           grep -q 'CAMP EXPANSION' game/scripts/MainSleepVirus.gd
           grep -q 'func start_training' game/scripts/GameSleepVirus.gd
           grep -q 'func _draw_wilderness' game/scripts/FFCampViewSleepVirus.gd
@@ -178,6 +183,8 @@ jobs:
           grep -Fq '"id": "Crossbow"' game/scripts/FFData.gd
           grep -Fq '"id": "Community Stew"' game/scripts/FFData.gd
           grep -Fq '"requires": ["Armory"], "gives_gear": "Crossbow"' game/scripts/FFData.gd
+          grep -Fq '"requires": ["Barracks", "Workbench", "Water Tank"]' game/scripts/FFData.gd
+          grep -Fq '"requires": ["Barracks", "Workbench", "Watch Post"]' game/scripts/FFData.gd
           grep -Fq '"id": "Lock Pick"' game/scripts/FFData.gd
           grep -Fq '"Worn Backpack": {"slot": "Pack", "capacity": 6' game/scripts/FFData.gd
           grep -Fq '"Hiking Pack": {"slot": "Pack", "capacity": 8' game/scripts/FFData.gd

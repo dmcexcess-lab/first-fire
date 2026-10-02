@@ -253,19 +253,19 @@ const RECIPES := {
 }
 
 const BUILDINGS := {
-    "Large Tarp": {"time": 12.0, "cost": {"Wood": 2, "Cloth": 3, "Plastic": 1}, "description": "First shelter expansion. Replaces exposed bedroll sleeping with a covered four-person camp."},
+    "Large Tarp": {"time": 12.0, "cost": {"Wood": 2, "Cloth": 3, "Plastic": 1}, "description": "First shelter expansion. Raises the hard population cap to 7 and improves sleep quality and mood recovery."},
     "Rain Catcher": {"time": 10.0, "cost": {"Wood": 2, "Cloth": 1, "Plastic": 1}, "description": "Produces 1 Dirty Water each day. A Water Tank doubles the daily yield."},
-    "Workbench": {"time": 18.0, "cost": {"Wood": 3, "Scrap Metal": 2, "Hardware": 1}, "description": "Unlocks basic weapon, tool and structural-component crafting."},
+    "Workbench": {"time": 12.0, "cost": {"Wood": 2, "Scrap Metal": 1}, "description": "Light first fabrication bench. Unlocks all non-hearth crafting paths and basic tools, weapons and structural components."},
     "Noise Line": {"time": 10.0, "cost": {"Scrap Metal": 1, "Hardware": 1, "Cloth": 1}, "description": "Early warning line that raises camp safety and lowers perimeter injury risk."},
-    "Tavern": {"time": 28.0, "cost": {"Wood": 6, "Cloth": 2, "Plastic": 2, "Hardware": 2}, "requires": ["Large Tarp", "Workbench"], "description": "Expands the First Fire into the camp social and cooking hub. Unlocks Community Stew, improves downtime, and enables shared meals."},
+    "Tavern": {"time": 28.0, "cost": {"Wood": 6, "Cloth": 2, "Plastic": 2, "Hardware": 2}, "requires": ["Large Tarp", "Workbench"], "description": "Grows the First Fire into an evolving cooking and social hub: spit and rough benches first, then better tables and cook surfaces as camp infrastructure matures. Unlocks Community Stew and shared meals."},
     "Sewing Table": {"time": 18.0, "cost": {"Wood": 3, "Cloth": 2, "Hardware": 1}, "requires": ["Large Tarp", "Workbench"], "description": "Unlocks clothing and weatherproofing crafting."},
     "Garden Plot": {"time": 20.0, "cost": {"Wood": 3, "Seeds": 1}, "requires": ["Workbench"], "description": "Produces 2 Raw Food on days it is tended."},
     "Water Tank": {"time": 24.0, "cost": {"Scrap Metal": 5, "Plastic": 4, "Hardware": 2}, "requires": ["Rain Catcher", "Workbench"], "description": "Doubles the daily Rain Catcher output and provides a visible camp water reserve."},
-    "Barracks": {"time": 42.0, "cost": {"Wood": 8, "Cloth": 4, "Plastic": 2}, "component_cost": {"Framing Kit": 2, "Weatherproofing Roll": 1}, "requires": ["Large Tarp", "Workbench", "Sewing Table"], "description": "Permanent ten-person sleeping quarters. Improves rest and camp safety."},
-    "Infirmary": {"time": 32.0, "cost": {"Wood": 5, "Cloth": 3, "Plastic": 3, "Hardware": 3}, "component_cost": {"Bandage": 2}, "requires": ["Barracks", "Workbench"], "description": "Speeds treatment and wound recovery, reduces untreated critical decline, and crafts Zombie Cure from recovered corpses."},
-    "Watch Post": {"time": 28.0, "cost": {"Wood": 5, "Scrap Metal": 2, "Hardware": 2}, "requires": ["Noise Line", "Workbench"], "description": "Strong perimeter overwatch that further raises safety and reduces outside-event danger."},
-    "Armory": {"time": 38.0, "cost": {"Wood": 8, "Scrap Metal": 8, "Hardware": 6, "Plastic": 2}, "requires": ["Barracks", "Workbench"], "description": "Secure heavy-work area that unlocks advanced Workbench weapons and tools."},
-    "Dormitory": {"time": 55.0, "cost": {"Wood": 12, "Scrap Metal": 6, "Cloth": 4, "Hardware": 4}, "component_cost": {"Framing Kit": 4, "Weatherproofing Roll": 2}, "requires": ["Barracks", "Tavern", "Infirmary", "Sewing Table"], "description": "Final eighteen-person housing tier with the camp's best sleep and idle recovery."},
+    "Barracks": {"time": 46.0, "cost": {"Wood": 10, "Cloth": 5, "Plastic": 3, "Hardware": 2}, "component_cost": {"Framing Kit": 3, "Weatherproofing Roll": 2}, "requires": ["Large Tarp", "Workbench", "Sewing Table"], "description": "Permanent twelve-person sleeping quarters. Strongly improves sleep recovery, mood recovery, and camp safety."},
+    "Infirmary": {"time": 38.0, "cost": {"Wood": 8, "Cloth": 4, "Plastic": 5, "Hardware": 4}, "component_cost": {"Bandage": 2}, "requires": ["Barracks", "Workbench", "Water Tank"], "description": "Late medical infrastructure. Speeds treatment and wound recovery, reduces untreated critical decline, and crafts Zombie Cure from recovered corpses."},
+    "Watch Post": {"time": 32.0, "cost": {"Wood": 6, "Scrap Metal": 3, "Hardware": 3}, "requires": ["Noise Line", "Workbench"], "description": "Strong perimeter overwatch that further raises safety and reduces outside-event danger."},
+    "Armory": {"time": 46.0, "cost": {"Wood": 10, "Scrap Metal": 10, "Hardware": 8, "Plastic": 3}, "requires": ["Barracks", "Workbench", "Watch Post"], "description": "Late secure fabrication area. Requires established housing and perimeter tech, then unlocks advanced Workbench weapons and tools."},
+    "Dormitory": {"time": 62.0, "cost": {"Wood": 16, "Scrap Metal": 8, "Cloth": 6, "Hardware": 6}, "component_cost": {"Framing Kit": 5, "Weatherproofing Roll": 3}, "requires": ["Barracks", "Tavern", "Infirmary", "Sewing Table", "Water Tank"], "description": "Final eighteen-person housing tier. Requires a mature support network and provides the camp's best sleep and mood recovery."},
 }
 
 const BUILD_ORDER := [

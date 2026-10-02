@@ -246,7 +246,7 @@ Important bugs should leave behind a cheaper future check when practical.
 - survivor social behavior is autonomous rather than conversation micromanagement;
 - standard expeditions support a **1–2 survivor tactical party**; the second survivor is a real on-map AI companion, not an abstract bonus;
 - a single **Expedition Vehicle** unlock may gate Very Far travel, but a broader vehicle-driving/fuel system and 3D camp remain cut;
-- camp expansion is physical and work-board driven: starter camp is First Fire + one sleeping bag + communal storage; shelter progresses **1 → 4 → 10 → 18** through Large Tarp → Barracks → Dormitory, First Fire upgrades into Tavern, Workbench is built rather than free, and Armory gates advanced Workbench recipes;
+- camp expansion is physical and work-board driven: starter camp is First Fire + a three-bedroll sleeping area + communal storage; shelter has exact hard population caps **3 → 7 → 12 → 18** through Large Tarp → Barracks → Dormitory, and better shelter improves 8-hour sleep/mood recovery; First Fire evolves into Tavern; the first Workbench is a light **2 Wood + 1 Scrap Metal** direct build, while late infrastructure is costly/dependency-heavy and Armory gates advanced Workbench recipes;
 - hard population cap is 18; mature settlement is 15+ survivors plus all buildings and elected leadership, with endless continuation;
 - feature freeze: completion/balance/content/bugfixes only, no new foundational pillars;
 - low encounter count with deep mechanics beats many fake choices;

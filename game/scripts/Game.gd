@@ -229,10 +229,10 @@ func shelter_capacity():
     if buildings.get("Dormitory", false):
         return MAX_POPULATION
     if buildings.get("Barracks", false):
-        return 10
+        return 12
     if buildings.get("Large Tarp", false):
-        return 4
-    return 1
+        return 7
+    return 3
 
 func building_under_construction(building: String) -> bool:
     for survivor in survivors:
@@ -364,8 +364,8 @@ func _add_recruit(preferred_background = "", rescuer_ids = []) -> Variant:
     if population() >= MAX_POPULATION:
         toast_requested.emit("First Fire is at its %d-person limit." % MAX_POPULATION)
         return null
-    if population() >= mini(MAX_POPULATION, shelter_capacity() + 1):
-        toast_requested.emit("There is no room to squeeze another survivor into camp right now.")
+    if population() >= shelter_capacity():
+        toast_requested.emit("Shelter is full. First Fire has to turn this survivor away.")
         return null
     var s = _generate_survivor(false, preferred_background)
     _initialize_relationships(s)
@@ -389,8 +389,8 @@ func _add_recruit_candidate(candidate: Dictionary, rescuer_ids = []) -> Variant:
     if population() >= MAX_POPULATION:
         toast_requested.emit("First Fire is at its %d-person limit." % MAX_POPULATION)
         return null
-    if population() >= mini(MAX_POPULATION, shelter_capacity() + 1):
-        toast_requested.emit("There is no room to squeeze another survivor into camp right now.")
+    if population() >= shelter_capacity():
+        toast_requested.emit("Shelter is full. First Fire has to turn this survivor away.")
         return null
     var s: Dictionary = candidate.duplicate(true)
     if int(s.get("id", -1)) < 0:
@@ -504,7 +504,7 @@ func _process_survivors(delta):
             if leader_id!=-1:
                 var leader:Variant=get_survivor(leader_id)
                 caretaker=leader!=null and leader["leader_ability"]=="Caretaker"
-            var recovery:=CampLifeRules.idle_recovery_rates(bool(buildings.get("Barracks",false)),caretaker,bool(buildings.get("Tavern",false)),bool(buildings.get("Dormitory",false)))
+            var recovery:=CampLifeRules.idle_recovery_rates(CampLifeRules.shelter_tier(buildings),caretaker,bool(buildings.get("Tavern",false)))
             s["fatigue"]=max(0.0,float(s["fatigue"])-recovery.x*delta)
             s["stress"]=max(0.0,float(s["stress"])-recovery.y*delta)
             s["needs"]=CampLifeRules.update_needs(s["needs"],float(s["fatigue"]),0.0,safety,hygiene_support,false)
@@ -1910,7 +1910,7 @@ func _choice(text, action, disabled = false, reason = ""):
     return c
 
 func _has_room_for_recruit():
-    return population() < MAX_POPULATION and population() < mini(MAX_POPULATION, shelter_capacity() + 1)
+    return population() < MAX_POPULATION and population() < shelter_capacity()
 
 func _party_has_gear_name(ids, gear_name):
     for sid in ids:

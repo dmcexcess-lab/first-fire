@@ -13,7 +13,7 @@ const CAMP_TUTORIAL_STEPS := [
     },
     {
         "title": "BUILD THE CAMP",
-        "body": "You begin with the First Fire, one sleeping bag and communal storage. Use the work board to build a Large Tarp, Workbench and later structures. The tarp grows into Barracks and Dormitory housing; the fire can grow into a Tavern."
+        "body": "You begin with the First Fire, three rough bedroll spaces and communal storage. Until you build a Workbench, the fire only cooks food, boils water and makes Bandages. The first bench is deliberately light: 2 Wood + 1 Scrap Metal. Shelter then grows 3 → 7 → 12 → 18 through Large Tarp, Barracks and Dormitory; the fire grows into an evolving Tavern."
     },
     {
         "title": "ASSIGN FROM THE CAMP",
@@ -787,11 +787,11 @@ func _draw_camp_work_board() -> void:
 func _draw_camp_expansion() -> void:
     content_box.add_child(_separator())
     content_box.add_child(_heading("CAMP EXPANSION", 19))
-    content_box.add_child(_make_label("Shelter %d / %d  •  Build permanent upgrades with a free survivor. Construction consumes materials when work begins." % [Game.shelter_capacity(), Game.MAX_POPULATION], 12))
+    content_box.add_child(_make_label("Shelter %d / %d  •  Hard population cap. Build permanent upgrades with a free survivor; construction consumes materials when work begins." % [Game.shelter_capacity(), Game.MAX_POPULATION], 12))
     content_box.add_child(_worker_picker())
     _draw_expansion_group("SHELTER", ["Large Tarp", "Barracks", "Dormitory"])
     _draw_expansion_group("HEARTH", ["Tavern"])
-    _draw_expansion_group("UTILITY", ["Rain Catcher", "Workbench", "Sewing Table", "Garden Plot", "Water Tank", "Infirmary", "Armory"])
+    _draw_expansion_group("UTILITY", ["Workbench", "Rain Catcher", "Sewing Table", "Garden Plot", "Water Tank", "Infirmary", "Armory"])
     _draw_expansion_group("SECURITY", ["Noise Line", "Watch Post"])
 
 func _draw_expansion_group(group_name: String, building_names: Array) -> void:

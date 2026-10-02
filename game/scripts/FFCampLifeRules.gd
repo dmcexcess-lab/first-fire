@@ -32,8 +32,9 @@ const DAILY_AUTONOMOUS_SECONDS := 10.0
 const FORCED_REST_MIN_HOURS := 3
 const FORCED_REST_MAX_HOURS := 5
 const SLEEP_START_FATIGUE := 35.0
-const SLEEP_DURATION := 87.5
-const SLEEP_RECOVERY_AMOUNT := 72.0
+const SLEEP_DURATION := 100.0
+const SLEEP_RECOVERY_BY_TIER := [44.0, 58.0, 74.0, 90.0]
+const SLEEP_STRESS_RELIEF_BY_TIER := [1.0, 3.0, 6.0, 10.0]
 const MEAL_ACTIVITY_SECONDS := 12.5
 const DRINK_ACTIVITY_SECONDS := 7.5
 const MEAL_HUNGER_GAIN := 55.0
@@ -59,6 +60,28 @@ const NEED_KEYS := ["hunger", "thirst", "sleep", "fun", "safety", "hygiene"]
 
 static func default_needs() -> Dictionary:
     return {"hunger":82.0,"thirst":84.0,"sleep":95.0,"fun":72.0,"safety":70.0,"hygiene":76.0}
+
+static func shelter_tier(buildings: Dictionary) -> int:
+    if bool(buildings.get("Dormitory", false)): return 3
+    if bool(buildings.get("Barracks", false)): return 2
+    if bool(buildings.get("Large Tarp", false)): return 1
+    return 0
+
+static func sleep_recovery_amount(tier: int) -> float:
+    return float(SLEEP_RECOVERY_BY_TIER[clampi(tier, 0, SLEEP_RECOVERY_BY_TIER.size() - 1)])
+
+static func sleep_stress_relief(tier: int) -> float:
+    return float(SLEEP_STRESS_RELIEF_BY_TIER[clampi(tier, 0, SLEEP_STRESS_RELIEF_BY_TIER.size() - 1)])
+
+static func complete_sleep(needs: Dictionary, fatigue: float, stress: float, tier: int) -> Dictionary:
+    var n := normalize_needs(needs)
+    var f := maxf(0.0, fatigue - sleep_recovery_amount(tier))
+    n["sleep"] = clampf(100.0 - f, 0.0, 100.0)
+    return {
+        "needs": n,
+        "fatigue": f,
+        "stress": maxf(0.0, stress - sleep_stress_relief(tier)),
+    }
 
 static func degrade_camp_condition(value: float, delta: float) -> float:
     return clampf(value - CAMP_MAINTENANCE_DECAY_PER_SECOND * maxf(0.0, delta), 0.0, 100.0)
@@ -382,7 +405,7 @@ static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int
 static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dictionary:
     var n:=normalize_needs(needs); var f:=fatigue
     match kind:
-        "rest": f=maxf(0.0,fatigue-SLEEP_RECOVERY_AMOUNT); n["sleep"]=clampf(100.0-f,0.0,100.0)
+        "rest": f=maxf(0.0,fatigue-sleep_recovery_amount(0)); n["sleep"]=clampf(100.0-f,0.0,100.0)
         "eat_meal": n["hunger"]=clampf(float(n["hunger"])+MEAL_HUNGER_GAIN,0.0,100.0)
         "drink_water": n["thirst"]=clampf(float(n["thirst"])+DRINK_THIRST_GAIN,0.0,100.0)
         "wash": n["hygiene"]=clampf(float(n["hygiene"])+48.0,0.0,100.0)
@@ -435,15 +458,12 @@ static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator)
     var hours := rng.randi_range(FORCED_REST_MIN_HOURS, FORCED_REST_MAX_HOURS)
     return maxf(0.1, (maxf(1.0, day_seconds) / 24.0) * float(hours))
 
-static func idle_recovery_rates(has_barracks: bool, caretaker_leader: bool, has_tavern: bool = false, has_dormitory: bool = false) -> Vector2:
-    var fatigue_rate: float = 1.0 / 3.0
-    var stress_rate: float = 0.1
-    if has_barracks:
-        fatigue_rate = 0.50
-        stress_rate = 1.0 / 6.0
-    if has_dormitory:
-        fatigue_rate = 0.62
-        stress_rate = 0.20
+static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, has_tavern: bool = false) -> Vector2:
+    var tier := clampi(shelter_quality, 0, 3)
+    var fatigue_rates := [0.30, 0.36, 0.50, 0.62]
+    var stress_rates := [0.08, 0.11, 0.16, 0.21]
+    var fatigue_rate: float = float(fatigue_rates[tier])
+    var stress_rate: float = float(stress_rates[tier])
     if has_tavern:
         stress_rate *= 1.30
     if caretaker_leader:

@@ -1,3 +1,13 @@
+## Beta Candidate — Shelter Quality, Hard Caps & Early Workbench — 2026-10-02
+
+- Set the shelter/population ladder to exact hard caps of **3 → 7 → 12 → 18** for starter bedroll camp → Large Tarp → Barracks → Dormitory. Recruitment no longer allows one survivor beyond shelter; full camps explicitly turn arrivals away.
+- Expanded living-camp sleep presentation to three starter bedrolls, seven tarp sleep positions, twelve Barracks positions, and eighteen Dormitory positions.
+- Normal autonomous sleep is now **8 in-game hours**. Better housing progressively restores more Fatigue, reduces more Stress, reaches the Rested moodlet faster, and improves ordinary idle recovery.
+- Made the first **Workbench** a light no-prerequisite build costing **2 Wood + 1 Scrap Metal**. Before it exists, crafting is limited to First Fire Cook Food, Boil Water, and Bandage.
+- Deepened late-building tech dependencies and costs: Infirmary now also requires Water Tank; Armory requires Watch Post; Dormitory requires the mature shelter/social/medical/water chain.
+- Tavern remains one building identity but now **visually evolves with camp infrastructure**: initial spit + rough benches, then proper tables, cleaner prep surfaces, and a mature bar/counter as Barracks, Water Tank, and Dormitory come online.
+- Save schema remains **8**; this is a compatible balance/progression refinement because the new shelter caps are not below the just-shipped schema-8 capacities in a way that strands existing saves.
+
 ## Beta Candidate — Camp Expansion & Building Progression — 2026-10-02
 
 - Rebuilt camp growth around four readable lanes: **Shelter**, **Hearth**, **Utility**, and **Security**. The physical work board is now the permanent construction planner while unbuilt map anchors remain hidden.
