@@ -480,7 +480,7 @@ func _draw_tavern(origin: Vector2, tile: float) -> void:
     draw_line(fire_center + Vector2(-tile * 0.46, -tile * 0.42), fire_center + Vector2(-tile * 0.46, tile * 0.05), Color("6c5a43"), maxf(2.0, tile * 0.04))
     draw_line(fire_center + Vector2(tile * 0.46, -tile * 0.42), fire_center + Vector2(tile * 0.46, tile * 0.05), Color("6c5a43"), maxf(2.0, tile * 0.04))
     for offset in [Vector2(-1.15, 0.75), Vector2(1.15, 0.75)]:
-        var bench_center := fire_center + offset * tile
+        var bench_center: Vector2 = fire_center + offset * tile
         draw_rect(Rect2(bench_center - Vector2(tile * 0.42, tile * 0.10), Vector2(tile * 0.84, tile * 0.20)), Color("5b4834"))
 
     # Barracks means enough carpentry and population to justify real tables.
