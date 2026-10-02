@@ -67,6 +67,19 @@ static func shelter_tier(buildings: Dictionary) -> int:
     if bool(buildings.get("Large Tarp", false)): return 1
     return 0
 
+static func tavern_tier(buildings: Dictionary) -> int:
+    if bool(buildings.get("Tavern Brewery", false)): return 3
+    if bool(buildings.get("Tavern Kitchen", false)): return 2
+    if bool(buildings.get("Tavern", false)): return 1
+    return 0
+
+static func tavern_social_stress_relief(tier: int, beer_session: bool = false) -> float:
+    var normal := [0.0, 3.0, 5.0, 8.0]
+    var value := float(normal[clampi(tier, 0, normal.size() - 1)])
+    if beer_session:
+        value += 4.0
+    return value
+
 static func sleep_recovery_amount(tier: int) -> float:
     return float(SLEEP_RECOVERY_BY_TIER[clampi(tier, 0, SLEEP_RECOVERY_BY_TIER.size() - 1)])
 
@@ -383,7 +396,7 @@ static func moodlets(needs:Dictionary)->Array:
     if r.is_empty(): r.append("Okay")
     return r
 
-static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,has_tavern:bool,hygiene_support:bool,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0)->Dictionary:
+static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,tavern_quality:int,hygiene_support:bool,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0,beer:int=0)->Dictionary:
     # Ordinary needs are autonomous. Productive camp labor is never auto-assigned.
     # Schedule-critical needs take priority over flavor idles.
     var n:=normalize_needs(needs)
@@ -397,12 +410,16 @@ static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int
     if float(n["hygiene"])<44.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":12.5,"duration":12.5}
     if float(n["safety"])<44.0: return {"kind":"keep_watch","label":"Watching the Treeline","remaining":15.0,"duration":15.0}
     if float(n["fun"])<58.0:
-        if has_tavern: return {"kind":"tavern_social","label":"At the Tavern","remaining":17.5,"duration":17.5}
+        if tavern_quality >= 3 and beer > 0:
+            return {"kind":"tavern_drink","label":"Sharing a Beer","remaining":17.5,"duration":17.5}
+        if tavern_quality > 0:
+            var labels := ["Watching Fire", "At the Tavern", "At the Tavern Kitchen", "At the Tavern Bar"]
+            return {"kind":"tavern_social","label":str(labels[clampi(tavern_quality, 0, labels.size() - 1)]),"remaining":17.5,"duration":17.5}
         return {"kind":"watch_fire","label":"Watching Fire","remaining":17.5,"duration":17.5}
     if rng.randf()<0.18: return {"kind":"wander","label":"Walking Camp","remaining":12.5,"duration":12.5}
     return {}
 
-static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dictionary:
+static func complete_activity(needs:Dictionary,fatigue:float,kind:String,tavern_quality:int=0)->Dictionary:
     var n:=normalize_needs(needs); var f:=fatigue
     match kind:
         "rest": f=maxf(0.0,fatigue-sleep_recovery_amount(0)); n["sleep"]=clampf(100.0-f,0.0,100.0)
@@ -410,7 +427,15 @@ static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dicti
         "drink_water": n["thirst"]=clampf(float(n["thirst"])+DRINK_THIRST_GAIN,0.0,100.0)
         "wash": n["hygiene"]=clampf(float(n["hygiene"])+48.0,0.0,100.0)
         "watch_fire": n["fun"]=clampf(float(n["fun"])+22.0,0.0,100.0); n["safety"]=clampf(float(n["safety"])+6.0,0.0,100.0)
-        "tavern_social": n["fun"]=clampf(float(n["fun"])+34.0,0.0,100.0); n["safety"]=clampf(float(n["safety"])+9.0,0.0,100.0)
+        "tavern_social":
+            var social_fun := [22.0, 32.0, 40.0, 48.0]
+            var social_safety := [6.0, 8.0, 10.0, 12.0]
+            var tier := clampi(tavern_quality, 0, 3)
+            n["fun"]=clampf(float(n["fun"])+float(social_fun[tier]),0.0,100.0)
+            n["safety"]=clampf(float(n["safety"])+float(social_safety[tier]),0.0,100.0)
+        "tavern_drink":
+            n["fun"]=clampf(float(n["fun"])+56.0,0.0,100.0)
+            n["safety"]=clampf(float(n["safety"])+12.0,0.0,100.0)
     return {"needs":n,"fatigue":f}
 
 static func default_pet_needs() -> Dictionary:
@@ -458,14 +483,14 @@ static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator)
     var hours := rng.randi_range(FORCED_REST_MIN_HOURS, FORCED_REST_MAX_HOURS)
     return maxf(0.1, (maxf(1.0, day_seconds) / 24.0) * float(hours))
 
-static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, has_tavern: bool = false) -> Vector2:
+static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, tavern_quality: int = 0) -> Vector2:
     var tier := clampi(shelter_quality, 0, 3)
+    var tavern_tier_value := clampi(tavern_quality, 0, 3)
     var fatigue_rates := [0.30, 0.36, 0.50, 0.62]
     var stress_rates := [0.08, 0.11, 0.16, 0.21]
+    var tavern_multipliers := [1.0, 1.18, 1.36, 1.55]
     var fatigue_rate: float = float(fatigue_rates[tier])
-    var stress_rate: float = float(stress_rates[tier])
-    if has_tavern:
-        stress_rate *= 1.30
+    var stress_rate: float = float(stress_rates[tier]) * float(tavern_multipliers[tavern_tier_value])
     if caretaker_leader:
         fatigue_rate *= 1.2
         stress_rate *= 1.2

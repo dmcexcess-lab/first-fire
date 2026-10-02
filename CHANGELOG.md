@@ -1,3 +1,14 @@
+## Beta Candidate — Progressive Tavern — 2026-10-02
+
+- Rebuilt the hearth into a self-contained three-stage progression: **Tavern → Tavern Kitchen → Tavern Brewery**. Later Tavern visuals no longer appear automatically because unrelated housing/water buildings were completed.
+- **Tavern** keeps the original fire, adds the roof/spit/rough benches, unlocks Community Stew (**2 Raw Food → 5 Cooked Food**), and improves autonomous social mood recovery.
+- **Tavern Kitchen** is a paid upgrade requiring Tavern + Sewing Table + Garden Plot + Water Tank. It adds proper tables/prep space, stronger Tavern social recovery, and Kitchen Supper (**3 Raw Food + 1 Clean Water → 8 Cooked Food**).
+- **Tavern Brewery** is a late paid upgrade requiring Tavern Kitchen + Barracks + Water Tank + Garden Plot. It adds brewing vessels/bar presentation, the strongest Tavern social recovery, and **Brew Beer (2 Raw Food + 2 Clean Water → 4 Beer)**.
+- Added **Beer** as a real camp resource. When Brewery survivors choose autonomous Tavern social downtime and Beer is available, one Beer is consumed for an enhanced fun/stress-recovery session; if stock is gone before completion, the activity safely falls back to normal Tavern socializing.
+- Dormitory now requires Tavern Kitchen as part of its mature-camp dependency chain. Mature settlement completion therefore includes all 15 planned building/upgrade projects.
+- Reaffirmed hard shelter rejection: survivors encountered while the current 3/7/12/18 cap is full are turned away and are not stored as waiting recruits.
+- Save schema remains **8**; existing schema-8 Taverns remain Stage 1 and the new Kitchen/Brewery/Beer state is additive.
+
 ## Beta Candidate — Shelter Quality, Hard Caps & Early Workbench — 2026-10-02
 
 - Set the shelter/population ladder to exact hard caps of **3 → 7 → 12 → 18** for starter bedroll camp → Large Tarp → Barracks → Dormitory. Recruitment no longer allows one survivor beyond shelter; full camps explicitly turn arrivals away.

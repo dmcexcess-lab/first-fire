@@ -73,6 +73,8 @@ func _init() -> void:
     var recipe_ids: Array = []
     var bandage_recipe: Dictionary = {}
     var tavern_recipe: Dictionary = {}
+    var tavern_kitchen_recipe: Dictionary = {}
+    var beer_recipe: Dictionary = {}
     var hatchet_recipe: Dictionary = {}
     var crossbow_recipe: Dictionary = {}
     var lock_pick_recipe: Dictionary = {}
@@ -83,6 +85,10 @@ func _init() -> void:
             bandage_recipe = fire_recipe
         if str(fire_recipe.get("id", "")) == "Community Stew":
             tavern_recipe = fire_recipe
+        if str(fire_recipe.get("id", "")) == "Kitchen Supper":
+            tavern_kitchen_recipe = fire_recipe
+        if str(fire_recipe.get("id", "")) == "Brew Beer":
+            beer_recipe = fire_recipe
     for recipe_value in D.RECIPES.get("Workbench", []):
         var recipe: Dictionary = recipe_value
         recipe_ids.append(str(recipe.get("id", "")))
@@ -101,7 +107,9 @@ func _init() -> void:
     for gear_name in found_only_guns + found_only_offhand:
         if not _check(not recipe_ids.has(gear_name), "%s is found-only" % gear_name): return
     if not _check(not bandage_recipe.is_empty() and int(bandage_recipe.get("cost", {}).get("Cloth", 0)) == 1 and int(bandage_recipe.get("cost", {}).get("Clean Water", 0)) == 1 and int(bandage_recipe.get("gives_component", {}).get("Bandage", 0)) == 1, "bandage is craftable at the First Fire"): return
-    if not _check(not tavern_recipe.is_empty() and Array(tavern_recipe.get("requires", [])).has("Tavern") and int(tavern_recipe.get("gives_resource", {}).get("Cooked Food", 0)) == 5, "tavern upgrades the fire with efficient community cooking"): return
+    if not _check(not tavern_recipe.is_empty() and Array(tavern_recipe.get("requires", [])).has("Tavern") and int(tavern_recipe.get("gives_resource", {}).get("Cooked Food", 0)) == 5, "tavern stage one upgrades the fire with efficient community cooking"): return
+    if not _check(not tavern_kitchen_recipe.is_empty() and Array(tavern_kitchen_recipe.get("requires", [])).has("Tavern Kitchen") and int(tavern_kitchen_recipe.get("cost", {}).get("Raw Food", 0)) == 3 and int(tavern_kitchen_recipe.get("gives_resource", {}).get("Cooked Food", 0)) == 8, "tavern kitchen improves raw-to-cooked conversion"): return
+    if not _check(not beer_recipe.is_empty() and Array(beer_recipe.get("requires", [])).has("Tavern Brewery") and int(beer_recipe.get("gives_resource", {}).get("Beer", 0)) == 4 and D.RESOURCE_ORDER.has("Beer"), "tavern brewery unlocks beer as a real camp resource"): return
     if not _check(not cure_recipe.is_empty() and int(cure_recipe.get("cost", {}).get("Zombie Corpse", 0)) == 2 and int(cure_recipe.get("gives_component", {}).get("Zombie Cure", 0)) == 1 and D.RESOURCE_ORDER.has("Zombie Corpse"), "zombie cure is craftable at the infirmary from two recovered corpses"): return
     if not _check(not recipe_ids.has("First Aid Kit") and not D.GEAR.has("First Aid Kit"), "first aid kit is found-only consumable rather than craftable gear"): return
     var nearby_medical: Dictionary = D.ZONES["Nearby Streets"]["loot"]
@@ -305,27 +313,36 @@ func _init() -> void:
     if not _check(CampLifeRules.pet_should_leave({"affection":10}) and not CampLifeRules.pet_should_leave({"affection":60}), "neglected pets leave"): return
     if not _check(pet_find in ["Wood","Scrap Metal","Hardware","Cloth","Plastic","Raw Food"], "daily pet material reward"): return
     var schedule_rng := RandomNumberGenerator.new(); schedule_rng.seed = 13
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":50,"fun":90},0.0,5,1,false,false,schedule_rng,23.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "rest", "nighttime fatigue selects real sleep"): return
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,false,false,schedule_rng,12.5,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "drink_water", "midday water window selects drinking"): return
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,false,false,schedule_rng,19.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "eat_meal", "evening meal window selects eating"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":50,"fun":90},0.0,5,1,0,false,schedule_rng,23.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "rest", "nighttime fatigue selects real sleep"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,0,false,schedule_rng,12.5,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "drink_water", "midday water window selects drinking"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,0,false,schedule_rng,19.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "eat_meal", "evening meal window selects eating"): return
     var bedroll_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 0)
     var tarp_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 1)
     var barracks_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 2)
     var dorm_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 3)
     if not _check(float(tarp_sleep["needs"]["sleep"]) > float(bedroll_sleep["needs"]["sleep"]) and float(barracks_sleep["needs"]["sleep"]) > float(tarp_sleep["needs"]["sleep"]) and float(dorm_sleep["needs"]["sleep"]) > float(barracks_sleep["needs"]["sleep"]), "eight-hour sleep raises the Rested moodlet faster as shelter improves"): return
     if not _check(float(tarp_sleep["stress"]) < float(bedroll_sleep["stress"]) and float(barracks_sleep["stress"]) < float(tarp_sleep["stress"]) and float(dorm_sleep["stress"]) < float(barracks_sleep["stress"]), "better sleeping quarters provide progressively stronger mood recovery"): return
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":20,"hygiene":90},0.0,5,1,false,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "keep_watch", "low safety drives treeline watch outside need windows"): return
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,false,false,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":20,"hygiene":90},0.0,5,1,0,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "keep_watch", "low safety drives treeline watch outside need windows"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,0,false,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
+    var tavern_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":20,"safety":90,"hygiene":90},0.0,5,3,2,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,0)
+    var beer_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":20,"safety":90,"hygiene":90},0.0,5,3,3,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,1)
+    if not _check(str(tavern_activity.get("kind","")) == "tavern_social" and str(beer_activity.get("kind","")) == "tavern_drink", "progressive tavern social activity culminates in optional beer sessions"): return
     if not _check(base_game_source.contains("var pets := []") and base_game_source.contains("func start_camp_chore") and base_game_source.contains("func perform_camp_task_tap") and base_game_source.contains("rescue_is_pet"), "active camp work and pet rescue state"): return
     if not _check(CampSocial.candidate_standing({"id":1,"condition":"Healthy","skills":{"Leadership":5},"reputation":0,"relationships":{}}, []) == 30, "leadership drives politics"): return
-    if not _check(D.BUILD_ORDER.size() == 13 and D.BUILDINGS.has("Large Tarp") and D.BUILDINGS.has("Tavern") and D.BUILDINGS.has("Barracks") and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory") and not D.BUILDINGS.has("Cabin") and not D.BUILDINGS.has("Bunkhouse") and not D.BUILDINGS.has("Communal Table"), "camp expansion building tree"): return
-    if not _check(Array(D.BUILDINGS["Tavern"].get("requires", [])).has("Large Tarp") and Array(D.BUILDINGS["Barracks"].get("requires", [])).has("Sewing Table") and Array(D.BUILDINGS["Infirmary"].get("requires", [])).has("Water Tank") and Array(D.BUILDINGS["Armory"].get("requires", [])).has("Watch Post") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Tavern") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Water Tank"), "late buildings depend on established shelter utility and security tech"): return
+    if not _check(D.BUILD_ORDER.size() == 15 and D.BUILDINGS.has("Large Tarp") and D.BUILDINGS.has("Tavern") and D.BUILDINGS.has("Tavern Kitchen") and D.BUILDINGS.has("Tavern Brewery") and D.BUILDINGS.has("Barracks") and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory") and not D.BUILDINGS.has("Cabin") and not D.BUILDINGS.has("Bunkhouse") and not D.BUILDINGS.has("Communal Table"), "camp expansion building tree includes three-stage tavern"): return
+    if not _check(Array(D.BUILDINGS["Tavern"].get("requires", [])).has("Large Tarp") and Array(D.BUILDINGS["Tavern Kitchen"].get("requires", [])).has("Tavern") and Array(D.BUILDINGS["Tavern Kitchen"].get("requires", [])).has("Garden Plot") and Array(D.BUILDINGS["Tavern Brewery"].get("requires", [])).has("Tavern Kitchen") and Array(D.BUILDINGS["Tavern Brewery"].get("requires", [])).has("Barracks") and Array(D.BUILDINGS["Barracks"].get("requires", [])).has("Sewing Table") and Array(D.BUILDINGS["Infirmary"].get("requires", [])).has("Water Tank") and Array(D.BUILDINGS["Armory"].get("requires", [])).has("Watch Post") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Tavern Kitchen") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Water Tank"), "late buildings and tavern stages depend on established camp tech"): return
     if not _check(int(D.BUILDINGS["Workbench"].get("cost", {}).get("Wood", 0)) == 2 and int(D.BUILDINGS["Workbench"].get("cost", {}).get("Scrap Metal", 0)) == 1 and not D.BUILDINGS["Workbench"].has("requires"), "first workbench is a light direct starter build"): return
-    var base_recovery := CampLifeRules.idle_recovery_rates(0, false, false)
-    var tarp_recovery := CampLifeRules.idle_recovery_rates(1, false, false)
-    var barracks_recovery := CampLifeRules.idle_recovery_rates(2, false, false)
-    var dorm_recovery := CampLifeRules.idle_recovery_rates(3, false, true)
-    if not _check(tarp_recovery.y > base_recovery.y and barracks_recovery.x > tarp_recovery.x and dorm_recovery.x > barracks_recovery.x and dorm_recovery.y > barracks_recovery.y, "shelter upgrades and tavern progressively improve recovery"): return
+    var base_recovery := CampLifeRules.idle_recovery_rates(0, false, 0)
+    var tarp_recovery := CampLifeRules.idle_recovery_rates(1, false, 0)
+    var barracks_recovery := CampLifeRules.idle_recovery_rates(2, false, 1)
+    var kitchen_recovery := CampLifeRules.idle_recovery_rates(2, false, 2)
+    var brewery_recovery := CampLifeRules.idle_recovery_rates(2, false, 3)
+    var dorm_recovery := CampLifeRules.idle_recovery_rates(3, false, 3)
+    if not _check(tarp_recovery.y > base_recovery.y and barracks_recovery.x > tarp_recovery.x and kitchen_recovery.y > barracks_recovery.y and brewery_recovery.y > kitchen_recovery.y and dorm_recovery.x > brewery_recovery.x, "shelter and each tavern stage progressively improve recovery"): return
+    var tavern_social_one := CampLifeRules.complete_activity({"fun":20,"safety":60}, 0.0, "tavern_social", 1)
+    var tavern_social_three := CampLifeRules.complete_activity({"fun":20,"safety":60}, 0.0, "tavern_social", 3)
+    if not _check(float(tavern_social_three["needs"]["fun"]) > float(tavern_social_one["needs"]["fun"]) and CampLifeRules.tavern_social_stress_relief(3, true) > CampLifeRules.tavern_social_stress_relief(1, false), "later tavern stages and beer provide stronger social mood recovery"): return
+    if not _check(active_game_source.contains("resources[\"Beer\"] = int(resources.get(\"Beer\", 0)) - 1") and active_main_source.contains("\"Tavern\", \"Tavern Kitchen\", \"Tavern Brewery\""), "active runtime consumes beer socially and work board exposes the full tavern chain"): return
     if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary"): return
     if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
     if not _check(str(TacticalVisuals.weapon_visual("Pistol").get("kind", "")) == "pistol", "weapon visual catalog"): return

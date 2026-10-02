@@ -504,7 +504,7 @@ func _process_survivors(delta):
             if leader_id!=-1:
                 var leader:Variant=get_survivor(leader_id)
                 caretaker=leader!=null and leader["leader_ability"]=="Caretaker"
-            var recovery:=CampLifeRules.idle_recovery_rates(CampLifeRules.shelter_tier(buildings),caretaker,bool(buildings.get("Tavern",false)))
+            var recovery:=CampLifeRules.idle_recovery_rates(CampLifeRules.shelter_tier(buildings),caretaker,CampLifeRules.tavern_tier(buildings))
             s["fatigue"]=max(0.0,float(s["fatigue"])-recovery.x*delta)
             s["stress"]=max(0.0,float(s["stress"])-recovery.y*delta)
             s["needs"]=CampLifeRules.update_needs(s["needs"],float(s["fatigue"]),0.0,safety,hygiene_support,false)
@@ -530,7 +530,20 @@ func _process_survivors(delta):
 func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:bool)->void:
     var activity:Dictionary=s.get("camp_activity",{})
     if activity.is_empty():
-        activity=CampLifeRules.choose_available_activity(s.get("needs",{}),fire_level,int(resources.get("Wood",0)),pop,bool(buildings.get("Tavern",false)),hygiene_support,rng)
+        activity=CampLifeRules.choose_available_activity(
+            s.get("needs",{}),
+            fire_level,
+            int(resources.get("Wood",0)),
+            pop,
+            CampLifeRules.tavern_tier(buildings),
+            hygiene_support,
+            rng,
+            CampLifeRules.settlement_hour(day_elapsed,DAY_SECONDS),
+            s.get("daily_activity",{}),
+            int(resources.get("Cooked Food",0)),
+            int(resources.get("Clean Water",0)),
+            int(resources.get("Beer",0))
+        )
         s["camp_activity"]=activity
         if activity.is_empty(): return
     activity["remaining"]=maxf(0.0,float(activity.get("remaining",0.0))-delta); s["camp_activity"]=activity
@@ -542,9 +555,18 @@ func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:boo
             fire_level=clampf(fire_level+CampLifeRules.FIRE_MAINTAIN_GAIN,0.0,100.0)
             s["stress"]=maxf(0.0,float(s.get("stress",0.0))-1.0)
     else:
-        var result:=CampLifeRules.complete_activity(s.get("needs",{}),float(s.get("fatigue",0.0)),kind)
+        var tavern_quality:=CampLifeRules.tavern_tier(buildings)
+        if kind=="tavern_drink":
+            if int(resources.get("Beer",0))>0:
+                resources["Beer"]=int(resources.get("Beer",0))-1
+            else:
+                kind="tavern_social"
+        var result:=CampLifeRules.complete_activity(s.get("needs",{}),float(s.get("fatigue",0.0)),kind,tavern_quality)
         s["needs"]=result.get("needs",s.get("needs",{})); s["fatigue"]=float(result.get("fatigue",s.get("fatigue",0.0)))
-        if kind in ["watch_fire","tavern_social","cards","guitar"]: s["stress"]=maxf(0.0,float(s.get("stress",0.0))-(4.0 if kind=="tavern_social" else 2.0))
+        if kind in ["tavern_social","tavern_drink"]:
+            s["stress"]=maxf(0.0,float(s.get("stress",0.0))-CampLifeRules.tavern_social_stress_relief(tavern_quality,kind=="tavern_drink"))
+        elif kind in ["watch_fire","cards","guitar"]:
+            s["stress"]=maxf(0.0,float(s.get("stress",0.0))-2.0)
     s["camp_activity"]={}
 
 func _clear_camp_activity(s)->void:

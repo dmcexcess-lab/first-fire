@@ -139,7 +139,7 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
     var camp_activity: Dictionary = survivor.get("camp_activity", {})
     match str(camp_activity.get("kind", "")):
         "maintain_fire", "watch_fire": return FIRE_CELL + Vector2i(0, 1)
-        "tavern_social": return FIRE_CELL + Vector2i(1, 0)
+        "tavern_social", "tavern_drink": return FIRE_CELL + Vector2i(1, 0)
         "rest": return sleep_anchor_cell()
         "wash": return building_cell("Water Tank") + Vector2i(1, 0) if bool(Game.buildings.get("Water Tank", false)) else building_cell("Rain Catcher") + Vector2i(1, 0)
     if float(survivor.get("fatigue", 0.0)) >= 78.0:
@@ -483,21 +483,21 @@ func _draw_tavern(origin: Vector2, tile: float) -> void:
         var bench_center: Vector2 = fire_center + offset * tile
         draw_rect(Rect2(bench_center - Vector2(tile * 0.42, tile * 0.10), Vector2(tile * 0.84, tile * 0.20)), Color("5b4834"))
 
-    # Barracks means enough carpentry and population to justify real tables.
-    if bool(Game.buildings.get("Barracks", false)):
+    # Stage 2 builds the Tavern itself outward with proper tables and prep space.
+    if bool(Game.buildings.get("Tavern Kitchen", false)):
         Tiles.draw_prop(self, Rect2(r.position + Vector2(tile * 0.35, tile * 1.00), Vector2(tile * 1.10, tile * 0.65)), "table")
         Tiles.draw_prop(self, Rect2(r.position + Vector2(r.size.x - tile * 1.45, tile * 1.00), Vector2(tile * 1.10, tile * 0.65)), "table")
-
-    # Water infrastructure turns the cook area into a cleaner prep surface.
-    if bool(Game.buildings.get("Water Tank", false)):
         var prep := Rect2(r.position + Vector2(tile * 3.25, tile * 0.62), Vector2(tile * 1.20, tile * 0.38))
         Tiles.draw_prop(self, prep, "counter")
         draw_circle(prep.position + Vector2(tile * 0.22, tile * 0.20), tile * 0.10, Color("6e8b92"))
 
-    # The mature camp gets a full bar/counter and enclosed tavern frontage.
-    if bool(Game.buildings.get("Dormitory", false)):
+    # Stage 3 adds brewing vessels and a real bar/counter.
+    if bool(Game.buildings.get("Tavern Brewery", false)):
         var counter := Rect2(r.position + Vector2(tile * 0.45, tile * 2.05), Vector2(r.size.x - tile * 0.90, tile * 0.42))
         Tiles.draw_prop(self, counter, "counter")
+        for barrel_offset in [Vector2(0.62, 1.72), Vector2(1.12, 1.72), Vector2(4.00, 1.72)]:
+            var barrel_center: Vector2 = r.position + barrel_offset * tile
+            Tiles.draw_barrel(self, Rect2(barrel_center - Vector2(tile * 0.18, tile * 0.22), Vector2(tile * 0.36, tile * 0.44)))
         draw_line(r.position + Vector2(tile * 0.20, tile * 0.52), r.position + Vector2(r.size.x - tile * 0.20, tile * 0.52), Color("9b835c"), maxf(2.0, tile * 0.05))
 
     draw_rect(r, Color(0.86, 0.71, 0.43, 0.28), false, maxf(1.0, tile * 0.035))
@@ -743,6 +743,8 @@ func _activity_short(survivor: Dictionary) -> String:
     match str(a.get("kind", "")):
         "maintain_fire": return "FIRE"
         "watch_fire": return "WATCH FIRE"
+        "tavern_social": return "TAVERN"
+        "tavern_drink": return "SHARING BEER"
         "rest": return "REST"
         "wash": return "WASH"
     return ""

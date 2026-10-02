@@ -8,10 +8,11 @@ const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
 signal send_survivor(survivor_id: int)
 
 const ITEM_DESCRIPTIONS := {
-    "Raw Food": "Unprepared food. Cook it at the Fire Pit to turn one unit into two Cooked Food.",
+    "Raw Food": "Unprepared food. The First Fire turns one unit into two Cooked Food; Tavern upgrades unlock more efficient bulk cooking and brewing.",
     "Cooked Food": "Ready-to-eat camp food. This is what the settlement consumes during daily upkeep.",
-    "Dirty Water": "Unsafe water gathered in the field. Boil it at the Fire Pit to turn one unit into two Clean Water.",
-    "Clean Water": "Safe drinking water used by the camp and by some medical crafting.",
+    "Dirty Water": "Unsafe water gathered in the field. Boil it at the First Fire to turn one unit into two Clean Water.",
+    "Clean Water": "Safe drinking water used by the camp, medical crafting, Tavern cooking, and eventual brewing.",
+    "Beer": "Brewed at a completed Tavern Brewery from fermentable Raw Food and Clean Water. Survivors can consume it during autonomous Tavern social time for a stronger mood and stress-recovery benefit.",
     "Wood": "Common construction and crafting stock used for shelters, tools, workstations, and structural components.",
     "Scrap Metal": "Recovered metal stock used in tools, weapons, workstations, and stronger construction.",
     "Cloth": "Fabric salvage used for clothing, shelter work, medical supplies, packs, and weatherproofing.",

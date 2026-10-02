@@ -112,6 +112,10 @@ jobs:
           if grep -Fq 'shelter_capacity() + 1' game/scripts/Game.gd; then exit 1; fi
           grep -Fq '"Workbench": {"time": 12.0, "cost": {"Wood": 2, "Scrap Metal": 1}' game/scripts/FFData.gd
           grep -q 'CAMP EXPANSION' game/scripts/MainSleepVirus.gd
+          grep -Fq '"Tavern", "Tavern Kitchen", "Tavern Brewery"' game/scripts/MainSleepVirus.gd
+          grep -q 'func tavern_tier' game/scripts/FFCampLifeRules.gd
+          grep -q 'tavern_drink' game/scripts/FFCampLifeRules.gd
+          grep -Fq 'resources["Beer"] = int(resources.get("Beer", 0)) - 1' game/scripts/GameSleepVirus.gd
           grep -q 'func start_training' game/scripts/GameSleepVirus.gd
           grep -q 'func _draw_wilderness' game/scripts/FFCampViewSleepVirus.gd
           if grep -q 'build_plot_pressed.emit' game/scripts/FFCampViewSleepVirus.gd; then exit 1; fi
@@ -182,6 +186,11 @@ jobs:
           grep -Fq '"Firecracker": {"slot": "Secondary"' game/scripts/FFData.gd
           grep -Fq '"id": "Crossbow"' game/scripts/FFData.gd
           grep -Fq '"id": "Community Stew"' game/scripts/FFData.gd
+          grep -Fq '"id": "Kitchen Supper"' game/scripts/FFData.gd
+          grep -Fq '"id": "Brew Beer"' game/scripts/FFData.gd
+          grep -Fq '"Beer": 0' game/scripts/FFData.gd
+          grep -Fq '"Tavern Kitchen":' game/scripts/FFData.gd
+          grep -Fq '"Tavern Brewery":' game/scripts/FFData.gd
           grep -Fq '"requires": ["Armory"], "gives_gear": "Crossbow"' game/scripts/FFData.gd
           grep -Fq '"requires": ["Barracks", "Workbench", "Water Tank"]' game/scripts/FFData.gd
           grep -Fq '"requires": ["Barracks", "Workbench", "Watch Post"]' game/scripts/FFData.gd

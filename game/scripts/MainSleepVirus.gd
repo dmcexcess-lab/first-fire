@@ -261,7 +261,14 @@ func _on_camp_gate_pressed() -> void:
     _open_camp_context("gate")
 
 func _draw_station_context(station_name: String) -> void:
-    var station_title := "TAVERN FIRE" if station_name == "Fire Pit" and bool(Game.buildings.get("Tavern", false)) else station_name
+    var station_title := station_name
+    if station_name == "Fire Pit":
+        if bool(Game.buildings.get("Tavern Brewery", false)):
+            station_title = "TAVERN BREWERY"
+        elif bool(Game.buildings.get("Tavern Kitchen", false)):
+            station_title = "TAVERN KITCHEN"
+        elif bool(Game.buildings.get("Tavern", false)):
+            station_title = "TAVERN HEARTH"
     _draw_context_header(station_title, "Choose a free survivor, then make only what this station can produce. Locked recipes show the camp structure they still require.")
     if station_name != "Fire Pit" and not bool(Game.buildings.get(station_name, false)):
         content_box.add_child(_make_label("This station has not been built yet.", 13))
@@ -790,7 +797,7 @@ func _draw_camp_expansion() -> void:
     content_box.add_child(_make_label("Shelter %d / %d  •  Hard population cap. Build permanent upgrades with a free survivor; construction consumes materials when work begins." % [Game.shelter_capacity(), Game.MAX_POPULATION], 12))
     content_box.add_child(_worker_picker())
     _draw_expansion_group("SHELTER", ["Large Tarp", "Barracks", "Dormitory"])
-    _draw_expansion_group("HEARTH", ["Tavern"])
+    _draw_expansion_group("HEARTH", ["Tavern", "Tavern Kitchen", "Tavern Brewery"])
     _draw_expansion_group("UTILITY", ["Workbench", "Rain Catcher", "Sewing Table", "Garden Plot", "Water Tank", "Infirmary", "Armory"])
     _draw_expansion_group("SECURITY", ["Noise Line", "Watch Post"])
 

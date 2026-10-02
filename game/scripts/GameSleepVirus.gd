@@ -504,7 +504,7 @@ func _process_survivors(delta):
         var recovery := CampLifeRules.idle_recovery_rates(
             CampLifeRules.shelter_tier(buildings),
             caretaker,
-            bool(buildings.get("Tavern", false))
+            CampLifeRules.tavern_tier(buildings)
         )
 
         if status == "Available":
@@ -545,13 +545,14 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
             fire_level,
             int(resources.get("Wood", 0)),
             pop,
-            bool(buildings.get("Tavern", false)),
+            CampLifeRules.tavern_tier(buildings),
             hygiene_support,
             rng,
             CampLifeRules.settlement_hour(day_elapsed, DAY_SECONDS),
             survivor.get("daily_activity", {}),
             int(resources.get("Cooked Food", 0)),
-            int(resources.get("Clean Water", 0))
+            int(resources.get("Clean Water", 0)),
+            int(resources.get("Beer", 0))
         )
         if activity.is_empty():
             return
@@ -588,11 +589,19 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
             survivor["needs"] = drink_result.get("needs", survivor.get("needs", {}))
             survivor["daily_activity"]["drank_normally"] = true
     else:
-        var result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), kind)
+        var tavern_quality := CampLifeRules.tavern_tier(buildings)
+        if kind == "tavern_drink":
+            if int(resources.get("Beer", 0)) > 0:
+                resources["Beer"] = int(resources.get("Beer", 0)) - 1
+            else:
+                kind = "tavern_social"
+        var result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), kind, tavern_quality)
         survivor["needs"] = result.get("needs", survivor.get("needs", {}))
         survivor["fatigue"] = float(result.get("fatigue", survivor.get("fatigue", 0.0)))
-        if kind in ["watch_fire", "tavern_social", "cards", "guitar"]:
-            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - (4.0 if kind == "tavern_social" else 2.0))
+        if kind in ["tavern_social", "tavern_drink"]:
+            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - CampLifeRules.tavern_social_stress_relief(tavern_quality, kind == "tavern_drink"))
+        elif kind in ["watch_fire", "cards", "guitar"]:
+            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - 2.0)
     survivor["camp_activity"] = {}
 
 func _complete_task(survivor):

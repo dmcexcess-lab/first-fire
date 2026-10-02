@@ -341,7 +341,7 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
     var activity: Dictionary = survivor.get("camp_activity", {})
     match str(activity.get("kind", "")):
         "maintain_fire", "watch_fire": return FIRE_CELL + Vector2i(0, 1)
-        "tavern_social": return FIRE_CELL + Vector2i(1, 0)
+        "tavern_social", "tavern_drink": return FIRE_CELL + Vector2i(1, 0)
         "check_food": return CAMP_CHEST_CELL + Vector2i(-1, 0)
         "check_water": return CAMP_CHEST_CELL + Vector2i(0, 1)
         "keep_watch": return Vector2i(15, 5)

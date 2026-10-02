@@ -101,14 +101,14 @@ The active screen no longer presents the legacy CAMP / CRAFT / BUILD / SURVIVORS
 
 - tap a **survivor** → full survivor stats/condition/equipment/inventory inspector;
 - tap the **communal chest / Storage Crate** → communal resources, components and gear inventory;
-- tap the **First Fire** → default Day-1 Fire Pit crafting; once Tavern is built the same hearth becomes the Tavern cooking/social hub and exposes its gated recipe;
+- tap the **First Fire** → default Day-1 Fire Pit crafting; Tavern stages keep using that same physical hearth and progressively expose better cooking, brewing, and social recovery;
 - tap a built **Workbench**, **Sewing Table**, or **Infirmary** → recipes for that station only;
 - tap a **built structure** → contextual structure information and any active interaction (for example Garden Plot tending);
 - tap the **camp work board** → daily duties, maintenance, pet care, and the permanent camp-expansion planner;
 - tap the **gate** → survivor/send-out chooser.
 
-The First Fire, communal storage box, and three rough bedroll spaces are the only guaranteed new-game camp fixtures. Camp growth is a hard-cap progression: **Bedroll Camp (3) → Large Tarp (7) → Barracks (12) → Dormitory (18)**. Recruitment cannot exceed the current shelter tier; a survivor arriving at a full camp must be turned away. First Fire → Tavern grows the hearth into an evolving social/cooking center rather than a one-step cosmetic swap.
-Before the Workbench exists, the only crafting available is **Cook Food, Boil Water, and Bandage at the First Fire**. The first Workbench costs only **2 Wood + 1 Scrap Metal** and has no prerequisite. Tavern adds Community Stew; Workbench supplies basic tools/weapons/components; **Crossbow, Sledgehammer, Hatchet, Bolt Cutters, and Toolbox require an Armory**; Sewing Table owns clothing/weatherproofing; Infirmary owns Zombie Cure processing. Later infrastructure is intentionally expensive and dependency-heavy: Infirmary requires Barracks + Workbench + Water Tank, Armory requires Barracks + Workbench + Watch Post, and Dormitory requires a mature housing/social/medical/water support chain.
+The First Fire, communal storage box, and three rough bedroll spaces are the only guaranteed new-game camp fixtures. Camp growth is a hard-cap progression: **Bedroll Camp (3) → Large Tarp (7) → Barracks (12) → Dormitory (18)**. Recruitment cannot exceed the current shelter tier; a survivor arriving at a full camp is turned away and is **not** retained in a waiting list or nearby-recruit state. The Tavern is its own parallel progression: **First Fire → Tavern → Tavern Kitchen → Tavern Brewery**.
+Before the Workbench exists, the only crafting available is **Cook Food, Boil Water, and Bandage at the First Fire**. The first Workbench costs only **2 Wood + 1 Scrap Metal** and has no prerequisite. Tavern Stage 1 adds **Community Stew (2 Raw Food → 5 Cooked Food)** and stronger social downtime. **Tavern Kitchen** requires Tavern + Sewing Table + Garden Plot + Water Tank and adds **Kitchen Supper (3 Raw Food + 1 Clean Water → 8 Cooked Food)** plus another social-recovery step. **Tavern Brewery** requires Tavern Kitchen + Barracks + Water Tank + Garden Plot and adds **Brew Beer (2 Raw Food + 2 Clean Water → 4 Beer)**. Beer is a real camp resource; autonomous Brewery social sessions can consume one Beer for the strongest Tavern mood/stress benefit. Workbench supplies basic tools/weapons/components; **Crossbow, Sledgehammer, Hatchet, Bolt Cutters, and Toolbox require an Armory**; Sewing Table owns clothing/weatherproofing; Infirmary owns Zombie Cure processing. Later infrastructure remains intentionally expensive and dependency-heavy: Infirmary requires Barracks + Workbench + Water Tank, Armory requires Barracks + Workbench + Watch Post, and Dormitory requires Tavern Kitchen as part of its mature support chain.
 
 The top camp HUD is the authoritative clock/resource readout. The map title stays intentionally short (`FIRST FIRE CAMP • DAY N`), the idle `RUNNING` label is hidden, and the secondary status line only appears for meaningful states such as an away survivor, tactical encounter, active work, illness, or pause. Routine expedition returns are promoted from transient toast text into a persistent tap-to-dismiss camp return notice carrying the exact haul/empty-handed result.
 
@@ -160,9 +160,12 @@ Settlement time has one direct authoritative clock with **no secondary speed mul
 
 New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder carries **exactly one starter loot/gear item: the Utility Knife**. A built Workbench can craft basic gear including the Lock Pick; advanced Workbench recipes such as Crossbow/Hatchet/Sledgehammer are Armory-gated. A built Infirmary can craft Zombie Cure from 2 Zombie Corpses; all firearms plus Flashlight/Firecracker remain found-only. Survivors can carry **4 loot items without a pack**; found-only backpacks raise that individual capacity to **6 or 8**, and a two-survivor expedition pools both capacities on the tactical map. Capacity is pure item count: each recovered resource/component unit, including a Zombie Corpse, uses one slot; weight and item size do not change the 4/6/8 cap. Hatchet remains deliberately expensive and does not enter field loot until Commercial Fringe; Sledgehammer joins the same later melee tier. The former shared Ammo resource is retired; tactical reload/chamber state is the only ranged ammunition constraint.
 
-Fire Pit conversions:
-- **1 Raw Food → 2 Cooked Food**
-- **1 Dirty Water → 2 Clean Water**
+Fire Pit / Tavern conversions:
+- **1 Raw Food → 2 Cooked Food** at the starter fire
+- **1 Dirty Water → 2 Clean Water** at the starter fire
+- **2 Raw Food → 5 Cooked Food** with Tavern / Community Stew
+- **3 Raw Food + 1 Clean Water → 8 Cooked Food** with Tavern Kitchen / Kitchen Supper
+- **2 Raw Food + 2 Clean Water → 4 Beer** with Tavern Brewery / Brew Beer
 
 Routine scavenging stays constrained by zone caps/depletion, pack capacity, and authored loot distribution rather than a Scavenging stat.
 

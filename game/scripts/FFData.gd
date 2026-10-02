@@ -2,7 +2,7 @@ extends RefCounted
 class_name FFData
 
 const RESOURCE_ORDER := [
-    "Raw Food", "Cooked Food", "Dirty Water", "Clean Water",
+    "Raw Food", "Cooked Food", "Dirty Water", "Clean Water", "Beer",
     "Wood", "Scrap Metal", "Cloth", "Plastic", "Hardware",
     "Zombie Corpse", "Seeds"
 ]
@@ -12,6 +12,7 @@ const STARTING_RESOURCES := {
     "Cooked Food": 3,
     "Dirty Water": 0,
     "Clean Water": 3,
+    "Beer": 0,
     "Wood": 0,
     "Scrap Metal": 0,
     "Cloth": 0,
@@ -220,6 +221,8 @@ const RECIPES := {
         {"id": "Boil Water", "time": 3.0, "cost": {"Dirty Water": 1}, "gives_resource": {"Clean Water": 2}},
         {"id": "Bandage", "time": 5.0, "cost": {"Cloth": 1, "Clean Water": 1}, "gives_component": {"Bandage": 1}},
         {"id": "Community Stew", "time": 8.0, "cost": {"Raw Food": 2}, "requires": ["Tavern"], "gives_resource": {"Cooked Food": 5}},
+        {"id": "Kitchen Supper", "time": 10.0, "cost": {"Raw Food": 3, "Clean Water": 1}, "requires": ["Tavern Kitchen"], "gives_resource": {"Cooked Food": 8}},
+        {"id": "Brew Beer", "time": 20.0, "cost": {"Raw Food": 2, "Clean Water": 2}, "requires": ["Tavern Brewery"], "gives_resource": {"Beer": 4}},
     ],
     "Workbench": [
         {"id": "Utility Knife", "time": 6.0, "cost": {"Scrap Metal": 1, "Cloth": 1}, "gives_gear": "Utility Knife"},
@@ -257,7 +260,9 @@ const BUILDINGS := {
     "Rain Catcher": {"time": 10.0, "cost": {"Wood": 2, "Cloth": 1, "Plastic": 1}, "description": "Produces 1 Dirty Water each day. A Water Tank doubles the daily yield."},
     "Workbench": {"time": 12.0, "cost": {"Wood": 2, "Scrap Metal": 1}, "description": "Light first fabrication bench. Unlocks all non-hearth crafting paths and basic tools, weapons and structural components."},
     "Noise Line": {"time": 10.0, "cost": {"Scrap Metal": 1, "Hardware": 1, "Cloth": 1}, "description": "Early warning line that raises camp safety and lowers perimeter injury risk."},
-    "Tavern": {"time": 28.0, "cost": {"Wood": 6, "Cloth": 2, "Plastic": 2, "Hardware": 2}, "requires": ["Large Tarp", "Workbench"], "description": "Grows the First Fire into an evolving cooking and social hub: spit and rough benches first, then better tables and cook surfaces as camp infrastructure matures. Unlocks Community Stew and shared meals."},
+    "Tavern": {"time": 28.0, "cost": {"Wood": 6, "Cloth": 2, "Plastic": 2, "Hardware": 2}, "requires": ["Large Tarp", "Workbench"], "description": "Stage 1 hearth upgrade: roof, cooking spit and rough benches. Unlocks Community Stew and improves social mood recovery."},
+    "Tavern Kitchen": {"time": 38.0, "cost": {"Wood": 8, "Scrap Metal": 3, "Plastic": 2, "Hardware": 4}, "component_cost": {"Weatherproofing Roll": 1}, "requires": ["Tavern", "Sewing Table", "Garden Plot", "Water Tank"], "description": "Stage 2 tavern: proper tables, prep space and better cookware. Unlocks Kitchen Supper for stronger raw-to-cooked conversion and improves social recovery."},
+    "Tavern Brewery": {"time": 52.0, "cost": {"Wood": 10, "Scrap Metal": 6, "Plastic": 4, "Hardware": 5}, "component_cost": {"Weatherproofing Roll": 1}, "requires": ["Tavern Kitchen", "Barracks", "Water Tank", "Garden Plot"], "description": "Stage 3 tavern: brewing vessels, bar and mature gathering hall. Unlocks Beer and the strongest tavern social recovery."},
     "Sewing Table": {"time": 18.0, "cost": {"Wood": 3, "Cloth": 2, "Hardware": 1}, "requires": ["Large Tarp", "Workbench"], "description": "Unlocks clothing and weatherproofing crafting."},
     "Garden Plot": {"time": 20.0, "cost": {"Wood": 3, "Seeds": 1}, "requires": ["Workbench"], "description": "Produces 2 Raw Food on days it is tended."},
     "Water Tank": {"time": 24.0, "cost": {"Scrap Metal": 5, "Plastic": 4, "Hardware": 2}, "requires": ["Rain Catcher", "Workbench"], "description": "Doubles the daily Rain Catcher output and provides a visible camp water reserve."},
@@ -265,13 +270,13 @@ const BUILDINGS := {
     "Infirmary": {"time": 38.0, "cost": {"Wood": 8, "Cloth": 4, "Plastic": 5, "Hardware": 4}, "component_cost": {"Bandage": 2}, "requires": ["Barracks", "Workbench", "Water Tank"], "description": "Late medical infrastructure. Speeds treatment and wound recovery, reduces untreated critical decline, and crafts Zombie Cure from recovered corpses."},
     "Watch Post": {"time": 32.0, "cost": {"Wood": 6, "Scrap Metal": 3, "Hardware": 3}, "requires": ["Noise Line", "Workbench"], "description": "Strong perimeter overwatch that further raises safety and reduces outside-event danger."},
     "Armory": {"time": 46.0, "cost": {"Wood": 10, "Scrap Metal": 10, "Hardware": 8, "Plastic": 3}, "requires": ["Barracks", "Workbench", "Watch Post"], "description": "Late secure fabrication area. Requires established housing and perimeter tech, then unlocks advanced Workbench weapons and tools."},
-    "Dormitory": {"time": 62.0, "cost": {"Wood": 16, "Scrap Metal": 8, "Cloth": 6, "Hardware": 6}, "component_cost": {"Framing Kit": 5, "Weatherproofing Roll": 3}, "requires": ["Barracks", "Tavern", "Infirmary", "Sewing Table", "Water Tank"], "description": "Final eighteen-person housing tier. Requires a mature support network and provides the camp's best sleep and mood recovery."},
+    "Dormitory": {"time": 62.0, "cost": {"Wood": 16, "Scrap Metal": 8, "Cloth": 6, "Hardware": 6}, "component_cost": {"Framing Kit": 5, "Weatherproofing Roll": 3}, "requires": ["Barracks", "Tavern Kitchen", "Infirmary", "Sewing Table", "Water Tank"], "description": "Final eighteen-person housing tier. Requires a mature support network and provides the camp's best sleep and mood recovery."},
 }
 
 const BUILD_ORDER := [
     "Large Tarp", "Rain Catcher", "Workbench", "Noise Line", "Tavern",
-    "Sewing Table", "Garden Plot", "Water Tank", "Barracks", "Infirmary",
-    "Watch Post", "Armory", "Dormitory"
+    "Sewing Table", "Garden Plot", "Water Tank", "Tavern Kitchen", "Barracks",
+    "Infirmary", "Watch Post", "Tavern Brewery", "Armory", "Dormitory"
 ]
 
 const LEADER_ABILITIES := {
