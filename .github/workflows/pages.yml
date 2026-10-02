@@ -143,9 +143,18 @@ jobs:
           grep -Fq '"Camp Perimeter": Vector2i(3, 5)' game/scripts/FFTacticalBalance.gd
           grep -q 'func mob_hit_bonus' game/scripts/FFTacticalBalance.gd
           grep -q 'func mob_attack_cost_multiplier' game/scripts/FFTacticalBalance.gd
+          grep -Fq 'const BITE_ATTEMPT_CHANCE := 0.20' game/scripts/FFTacticalBalance.gd
+          grep -q 'func zombie_attack_hit_chance' game/scripts/FFTacticalBalance.gd
+          grep -q 'func zombie_attack_damage_range' game/scripts/FFTacticalBalance.gd
+          grep -q 'zombie_attack_kind(rng)' game/scripts/FFCombatThreeStat.gd
+          grep -q 'zombie_attack_hit_chance(target_actor, attack_kind, mob_size)' game/scripts/FFCombatThreeStat.gd
+          grep -Fq 'if name == "Utility Knife":' game/scripts/FFThreeStatRules.gd
           grep -q 'func supplement_distance_loot_containers' game/scripts/FFCombat.gd
           grep -q 'func zombie_mob_size' game/scripts/FFCombat.gd
-          grep -Fq 'return clampf(0.03 + float(infected_hits - 1) * 0.025, 0.03, 0.12)' game/scripts/FFVirusRules.gd
+          grep -Fq 'const BITE_EXPOSURE_CHANCE := 0.03' game/scripts/FFVirusRules.gd
+          grep -q 'func bite_exposure_occurs' game/scripts/FFVirusRules.gd
+          grep -q 'outcome != "bite_hit"' game/scripts/FFCombatVirus.gd
+          grep -q 'bite_exposure_occurs(lead_bites, rng)' game/scripts/GameSleepVirus.gd
           if grep -Fq '0 if kind == "explore" and bool(context.get("quiet", false))' game/scripts/FFCombat.gd; then exit 1; fi
           grep -q 'const Environments = preload' game/scripts/FFTacticalScenarios.gd
           grep -q 'var current_combat := {}' game/scripts/Game.gd

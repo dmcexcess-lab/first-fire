@@ -254,21 +254,35 @@ func shove():
     super.shove()
 
 func zombie_attack(i: int, target_actor: Dictionary):
-    var hit: float = BalanceThree.zombie_hit_chance(target_actor)
+    var attack_kind := BalanceThree.zombie_attack_kind(rng)
+    var mob_size := zombie_mob_size(target_actor.pos, 2)
+    var hit: float = BalanceThree.zombie_attack_hit_chance(target_actor, attack_kind, mob_size)
+    var outcome := "%s_miss" % attack_kind
     if rng.randf() <= hit:
-        var damage_range: Vector2i = BalanceThree.zombie_damage_range(str(zombies[i].get("mass", "MED")))
-        var dmg := rng.randi_range(damage_range.x, damage_range.y)
+        var damage_range: Vector2i = BalanceThree.zombie_attack_damage_range(str(zombies[i].get("mass", "MED")), attack_kind)
+        var dmg := rng.randi_range(damage_range.x, damage_range.y) + BalanceThree.mob_damage_bonus(mob_size)
         # No armor layer: clothing never reduces or cancels physical damage.
         target_actor.hp -= dmg
         _flash_hit(target_actor.pos, int(target_actor.hp) <= 0)
+        outcome = "%s_hit" % attack_kind
         if target_actor.controlled:
             stats.damage += dmg
-            msg = "The infected hits you for %d." % dmg
-        else: msg = "%s gets hit." % target_actor.name
-        if target_actor.hp <= 0: target_actor.hp = 0; target_actor.dead = true
+            if attack_kind == "bite":
+                msg = "BITE — the infected tears in for %d." % dmg
+            elif mob_size >= 3:
+                msg = "The mob crowds you — scratch for %d." % dmg
+            else:
+                msg = "Scratch — %d damage." % dmg
+        else:
+            msg = "%s is bitten." % target_actor.name if attack_kind == "bite" else "%s is scratched." % target_actor.name
+        if target_actor.hp <= 0:
+            target_actor.hp = 0
+            target_actor.dead = true
     elif target_actor.controlled:
-        msg = "You outrun the grab." if bool(target_actor.get("sprinting", false)) else "You avoid the grab."
-    zombies[i].next = tick + TimeThree.zombie_attack_cost(zombies[i])
+        msg = "The bite misses." if attack_kind == "bite" else ("You outrun the scratch." if bool(target_actor.get("sprinting", false)) else "You avoid the scratch.")
+    var base_attack_cost := TimeThree.zombie_attack_cost(zombies[i])
+    zombies[i].next = tick + maxi(45, int(round(float(base_attack_cost) * BalanceThree.mob_attack_cost_multiplier(mob_size))))
+    return outcome
 
 func draw_hud():
     draw_rect(Rect2(0,0,SCREEN_W,INFO_H),Color(.035,.045,.04,.99))

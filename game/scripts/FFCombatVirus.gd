@@ -2,11 +2,14 @@ extends "res://scripts/FFCombatThreeStat.gd"
 
 func restore_runtime():
     super.restore_runtime()
-    stats["infected_hits"] = int(runtime.get("infected_hits", 0))
+    stats["bite_hits"] = int(runtime.get("bite_hits", 0))
+    stats["companion_bite_hits"] = int(runtime.get("companion_bite_hits", 0))
 
 func persist_runtime():
     super.persist_runtime()
-    runtime["infected_hits"] = int(stats.get("infected_hits", 0))
+    runtime["bite_hits"] = int(stats.get("bite_hits", 0))
+    runtime["companion_bite_hits"] = int(stats.get("companion_bite_hits", 0))
+    runtime.erase("infected_hits")
     Game.update_combat_runtime(runtime)
 
 func check_objective_and_exit():
@@ -24,10 +27,14 @@ func commit_action(cost: int):
         check_objective_and_exit()
 
 func zombie_attack(i: int, target_actor: Dictionary):
-    var hp_before := int(target_actor.get("hp", 0))
-    super.zombie_attack(i, target_actor)
-    if bool(target_actor.get("controlled", false)) and int(target_actor.get("hp", 0)) < hp_before:
-        stats["infected_hits"] = int(stats.get("infected_hits", 0)) + 1
+    var outcome := str(super.zombie_attack(i, target_actor))
+    if outcome != "bite_hit":
+        return outcome
+    if bool(target_actor.get("controlled", false)):
+        stats["bite_hits"] = int(stats.get("bite_hits", 0)) + 1
+    elif not ally.is_empty() and int(target_actor.get("id", -1)) == int(ally.get("id", -2)):
+        stats["companion_bite_hits"] = int(stats.get("companion_bite_hits", 0)) + 1
+    return outcome
 
 func finish_encounter(outcome: String):
     if game_over:
@@ -53,7 +60,8 @@ func finish_encounter(outcome: String):
         "melee": int(stats.get("melee", 0)),
         "shoves": int(stats.get("shoves", 0)),
         "damage": int(stats.damage),
-        "infected_hits": int(stats.get("infected_hits", 0)),
+        "bite_hits": int(stats.get("bite_hits", 0)),
+        "companion_bite_hits": int(stats.get("companion_bite_hits", 0)),
         "searches_completed": explore_searched.size(),
         "search_sites_total": explore_cells.size(),
         "containers_opened": looted_containers.size(),

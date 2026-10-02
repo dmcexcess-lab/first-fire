@@ -46,7 +46,7 @@ Backgrounds seed the three current stats rather than six specialist skills. XP/p
 
 Outside-world danger is tactical/physical. Camp social life/politics remains narrative/dialogue.
 
-Tactical encounters use the actual expedition party: one controlled lead plus an optional AI companion. Current encounter types are **Rescue, Explore Location, and Ambush**. Rescue calls can reveal either a stranded survivor or a stranded camp pet (dog/cat); pets use the same physical reach/contact/escort/extract structure. Wounds, deaths, fatigue, stress, ammunition use, and lead infected-contact exposure return to camp state; companion HP/condition also persists back to camp. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
+Tactical encounters use the actual expedition party: one controlled lead plus an optional AI companion. Current encounter types are **Rescue, Explore Location, and Ambush**. Rescue calls can reveal either a stranded survivor or a stranded camp pet (dog/cat); pets use the same physical reach/contact/escort/extract structure. Wounds, deaths, fatigue, stress, ammunition use, and successful **Bite** exposure results return to camp state; companion HP/condition and companion bite exposure are also persisted. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
 
 The active combat layer is intentionally compact:
 
@@ -58,13 +58,14 @@ The active combat layer is intentionally compact:
 - **Sprint** — Agility-driven movement with a deliberately and materially lower action cost than walking, louder noise, and improved grab avoidance.
 - **Forward** — dedicated touch movement action in the former Guard control slot.
 - **Shove** — spacing/stagger action; heavier infected resist it more.
-- **Mob pressure** — a lone infected is deliberately weak. Multiple nearby infected improve grab accuracy, add only a small damage bump, shorten their attack cadence, and can pull nearby packmates directly into the chase. The danger curve should come primarily from density/positioning rather than inflated individual HP/damage.
+- **Mob pressure** — a lone infected is deliberately weak. Multiple nearby infected improve attack pressure, add only a small damage bump, shorten their attack cadence, and can pull nearby packmates directly into the chase. The danger curve should come primarily from density/positioning rather than inflated individual HP/damage.
+- **Scratch / Bite attack split** — infected attempt a Scratch most of the time and a Bite rarely. Scratch has the higher hit chance and low physical damage. Bite has a much lower hit chance, substantially higher physical damage, and is the **only** tactical attack that can expose a survivor to the zombie virus.
 
 **There is no armor mitigation.** Clothing must not cancel or reduce incoming physical damage. Clothing may remain as identity/weight/crafting/utility gear, but it is not an armor stat layer.
 
-Combat and Agility are the only survivor stats that affect tactical fighting/movement. Leadership does not secretly improve attacks.
+Combat and Agility are the only survivor stats that affect tactical fighting/movement. Leadership does not secretly improve attacks. The starter Utility Knife is deliberately weak at **4–5 melee damage**; common light/medium infected are tuned so clean hits from that weak weapon normally take **2–3 hits** to kill.
 
-`FFThreeStatRules.gd` owns the three-stat catalog, weapon classes/profiles, and Agility movement/stealth/sprint math. `FFTacticalBalance.gd` owns tactical tuning using Combat/Agility only. `FFCombatThreeStat.gd` remains the combat-model specialization over the established `FFCombat.gd` board/runtime foundation; active play routes through `FFCombatVirus.gd`, which adds direct infected-contact tracking for virus exposure without changing physical damage rules.
+`FFThreeStatRules.gd` owns the three-stat catalog, weapon classes/profiles, and Agility movement/stealth/sprint math. `FFTacticalBalance.gd` owns tactical tuning using Combat/Agility only. `FFCombatThreeStat.gd` remains the combat-model specialization over the established `FFCombat.gd` board/runtime foundation; active play routes through `FFCombatVirus.gd`, which records successful Bite hits for lead/companion virus exposure without treating Scratch or generic damage as infection events.
 
 ## Tactical world
 
@@ -132,10 +133,10 @@ Physical wound treatment:
 - **Critical:** 1 Medicine; timed emergency stabilization to Wounded, after which normal wound care applies.
 
 Zombie virus:
-- Only successful direct infected contact can create field exposure; generic damage does not.
-- Field transmission is intentionally **rare**: one direct infected hit is about **3% exposure risk**, repeated hits raise the encounter risk gradually, and the curve caps at **12%**.
-- Exposed survivors now have a **50%** natural-clear chance at the next daily progression; established camp spread is also substantially lower than the earlier Alpha tuning.
-- **Exposed:** can be decontaminated with 1 Clean Water + 1 Sterile Dressing; untreated exposure gets one 30% natural-clear chance, otherwise becomes Infected at the next daily transition.
+- **Only a successful Bite can create field exposure. Scratches never roll infection.** Generic physical damage does not create exposure either.
+- Every successful Bite gets the same independent **3% exposure roll**. The percentage does not rise, stack, or accumulate because of earlier scratches/bites; multiple bites simply produce multiple separate 3% checks.
+- Exposed survivors have a **50%** natural-clear chance at the next daily progression; established camp spread remains substantially lower than the earlier Alpha tuning.
+- **Exposed:** can be decontaminated with 1 Clean Water + 1 Sterile Dressing; untreated exposure gets the 50% natural-clear check, otherwise becomes Infected at the next daily transition.
 - **Infected:** 1 Medicine starts a timed treatment course; untreated infection becomes Feverish at the next daily transition.
 - **Feverish:** survivor is automatically unavailable; emergency treatment requires a built Infirmary + 2 Medicine. An untreated feverish case can become terminal at the next daily transition.
 - **Quarantine:** available for any active virus stage when the survivor is otherwise free; it makes the survivor unavailable and prevents close-contact camp spread. Unquarantined Infected/Feverish survivors can expose campmates.

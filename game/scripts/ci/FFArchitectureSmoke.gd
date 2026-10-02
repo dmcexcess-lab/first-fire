@@ -36,9 +36,13 @@ func _init() -> void:
     var actor := {"skills": {"Combat": 3, "Agility": 4, "Leadership": 1}, "fatigue": 0.0, "sprinting": false, "crouched": false}
     var sprinting := actor.duplicate(true); sprinting["sprinting"] = true
     var baseline_actor := {"skills": {"Agility": 0}, "fatigue": 0.0, "sprinting": false}
-    if not _check(TacticalBalance.zombie_hit_chance(sprinting) < TacticalBalance.zombie_hit_chance(actor), "sprint evasion"): return
-    if not _check(TacticalBalance.zombie_hit_chance(baseline_actor) <= 0.55 and TacticalBalance.zombie_damage_range("HEAVY").y <= 4 and TacticalBalance.zombie_hp_range("LIGHT").y <= 7, "lone infected stay intentionally weak"): return
-    if not _check(TacticalBalance.zombie_hit_chance(baseline_actor, 4) > TacticalBalance.zombie_hit_chance(baseline_actor, 1) and TacticalBalance.mob_damage_bonus(4) > 0 and TacticalBalance.mob_attack_cost_multiplier(4) < 1.0 and TacticalBalance.mob_alert_radius(4) > TacticalBalance.mob_alert_radius(1), "mob pressure boosts infected without inflating lone stats"): return
+    if not _check(TacticalBalance.zombie_attack_hit_chance(sprinting, "scratch") < TacticalBalance.zombie_attack_hit_chance(actor, "scratch"), "sprint evasion"): return
+    if not _check(is_equal_approx(TacticalBalance.BITE_ATTEMPT_CHANCE, 0.20) and TacticalBalance.zombie_attack_hit_chance(baseline_actor, "scratch") > TacticalBalance.zombie_attack_hit_chance(baseline_actor, "bite"), "scratch is common/high-hit while bite is rare/low-hit"): return
+    if not _check(TacticalBalance.zombie_attack_damage_range("MED", "scratch").y < TacticalBalance.zombie_attack_damage_range("MED", "bite").x, "scratch is low damage while bite is high damage"): return
+    if not _check(TacticalBalance.zombie_attack_hit_chance(baseline_actor, "scratch", 4) > TacticalBalance.zombie_attack_hit_chance(baseline_actor, "scratch", 1) and TacticalBalance.mob_damage_bonus(4) > 0 and TacticalBalance.mob_attack_cost_multiplier(4) < 1.0 and TacticalBalance.mob_alert_radius(4) > TacticalBalance.mob_alert_radius(1), "mob pressure boosts infected without inflating lone stats"): return
+    var starter_knife := ThreeStatRules.weapon_profile("Utility Knife")
+    var medium_hp := TacticalBalance.zombie_hp_range("MED")
+    if not _check(int(starter_knife.get("dmin", 0)) == 4 and int(starter_knife.get("dmax", 0)) == 5 and int(ceil(float(medium_hp.x) / 5.0)) == 2 and int(ceil(float(medium_hp.y) / 4.0)) == 3, "starter weak weapon kills common infected in two to three clean hits"): return
     if not _check(TacticalBalance.shove_chance(actor, "LIGHT", 1) > TacticalBalance.shove_chance(actor, "HEAVY", 1), "mass resists shove"): return
     if not _check(TacticalBalance.search_cost(actor) > 0 and TacticalBalance.search_noise(actor) > 0, "search remains bounded"): return
     if not _check(TacticalBalance.zombie_count("Camp Perimeter", "rescue", true) < TacticalBalance.zombie_count("Camp Perimeter", "rescue", false) and TacticalBalance.zombie_count("Camp Perimeter", "rescue", false) == TacticalBalance.zombie_count("Camp Perimeter", "ambush"), "objective zombie balance"): return
@@ -70,12 +74,13 @@ func _init() -> void:
     if not _check(inspector_source.contains("ThreeStatRules.STAT_NAMES") and not inspector_source.contains("Scavenging\", \"Survival"), "inspector exposes three stats"): return
     if not _check(active_inspector_source.contains("ZOMBIE VIRUS") and active_inspector_source.contains("QUARANTINE") and active_inspector_source.contains("start_virus_treatment"), "virus choices exposed in inspector"): return
     if not _check(combat_source.contains("No armor layer") and combat_source.contains("target_actor.hp -= dmg"), "no armor damage mitigation"): return
+    if not _check(combat_source.contains("zombie_attack_kind(rng)") and combat_source.contains("zombie_attack_hit_chance(target_actor, attack_kind, mob_size)") and combat_source.contains("zombie_attack_damage_range") and combat_source.contains("mob_attack_cost_multiplier"), "active three-stat combat uses scratch bite and mob attack tuning"): return
     if not _check(not combat_source.contains("func guard():") and not combat_source.contains("KEY_G: guard()"), "guard removed from active combat"): return
     if not _check(combat_source.contains("btn_forward_primary") and combat_source.contains("draw_button(btn_forward_primary,\"FORWARD\""), "forward occupies former guard slot"): return
     if not _check(combat_source.contains("func shove()") and combat_source.contains("super.shove()"), "shove remains active"): return
     if not _check(combat_source.contains("func toggle_sprint()") and combat_source.contains("func stealth_attack"), "sprint and stealth actions"): return
     if not _check(combat_source.contains("vision_range_for_light") and combat_source.contains("vision_cone_min_dot"), "active sight uses light-sensitive cone geometry"): return
-    if not _check(active_combat_source.contains("infected_hits") and active_combat_source.contains("super.zombie_attack"), "direct infected contact tracked"): return
+    if not _check(active_combat_source.contains("bite_hits") and active_combat_source.contains("companion_bite_hits") and active_combat_source.contains("outcome != \"bite_hit\"") and active_combat_source.contains("super.zombie_attack"), "only successful bites enter tactical virus tracking"): return
     var base_combat_source := FileAccess.get_file_as_string("res://scripts/FFCombat.gd")
     if not _check(base_combat_source.contains("rescue_contacted and not rescuee.is_empty()") and base_combat_source.contains("func search_loot_container"), "protected rescue opening and physical container search"): return
     if not _check(combat_source.contains("nearest_exit_distance") and combat_source.contains("LOOT %d/%d"), "route-oriented tactical HUD"): return
@@ -93,7 +98,8 @@ func _init() -> void:
     if not _check(active_camp_source.contains("func _draw_wilderness") and active_camp_source.contains("remain code/data only") and not active_camp_source.contains("build_plot_pressed.emit"), "sparse wilderness hides future build placeholders"): return
     if not _check(inspector_source.contains("CAMP LIFE") and inspector_source.contains("_start_training") and inspector_source.contains("physical camp work board") and not inspector_source.contains("camp_chore_needed"), "survivor inspector routes daily chores to physical work board"): return
 
-    if not _check(is_equal_approx(VirusRules.exposure_chance(1), 0.03) and VirusRules.exposure_chance(4) > VirusRules.exposure_chance(1) and VirusRules.exposure_chance(10) <= 0.12 and VirusRules.EXPOSED_NATURAL_CLEAR_CHANCE >= 0.50, "virus exposure is rare even after repeated infected contact"): return
+    if not _check(is_equal_approx(VirusRules.bite_exposure_chance(), 0.03) and is_equal_approx(VirusRules.exposure_chance(1), VirusRules.exposure_chance(8)) and VirusRules.EXPOSED_NATURAL_CLEAR_CHANCE >= 0.50, "virus exposure is a fixed small independent chance per successful bite"): return
+    if not _check(active_game_source.contains("bite_exposure_occurs(lead_bites, rng)") and active_game_source.contains("companion_bite_hits") and not active_game_source.contains("exposure_chance(infected_hits)"), "game resolves bite-only exposure without stacked hit chance"): return
     var early_plan: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_EXPOSED, false)
     var infected_plan: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_INFECTED, false)
     var fever_no_infirmary: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_FEVERISH, false)

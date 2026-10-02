@@ -1,3 +1,14 @@
+## Beta Candidate — Scratch / Bite Infected Attacks — 2026-10-01
+
+- Split infected attacks into two explicit tactical attacks:
+  - **Scratch** — the normal attack (80% of attack attempts), higher hit chance, low physical damage, and **zero virus exposure chance**.
+  - **Bite** — rare (20% of attack attempts), substantially lower hit chance, higher physical damage, and the **only** infected attack that can transmit the zombie virus.
+- Bite transmission is now a fixed **3% independent roll per successful bite**. The infection percentage never rises or stacks from prior bites or scratches; multiple bites simply create separate 3% checks.
+- Removed generic infected-hit accumulation from the active virus pipeline. Tactical runtime now persists successful bite counts for the lead and optional companion, and camp resolution evaluates only those bite events.
+- Tuned common infected durability against the starter weak weapon: the Utility Knife now deals **4–5 damage**, while common LIGHT/MED infected use **7–9 / 8–10 HP**, producing a reliable **2–3 clean-hit kill**. HEAVY infected remain somewhat tougher.
+- Preserved the weak-single / dangerous-mob direction: mob size can still raise attack pressure and cadence, but it does not turn Scratch into an infection vector.
+- Added deterministic CI/smoke contracts for Scratch-vs-Bite hit/damage ordering, fixed per-bite infection probability, bite-only tracking, companion bite exposure, and the starter-knife 2–3-hit relationship.
+
 ## Beta Candidate — Weak Infected, Mob Pressure & Rare Virus — 2026-10-01
 
 - Rebalanced individual infected downward: light/medium/heavy HP bands and base damage are lower, and a lone infected now has a substantially lower grab chance than the previous Alpha tuning.

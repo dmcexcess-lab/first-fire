@@ -690,13 +690,22 @@ func resolve_combat(result):
     if not current_combat.is_empty():
         var ids: Array = current_combat.get("survivor_ids", [])
         var lead: Variant = get_survivor(ids[0]) if not ids.is_empty() else null
-        var infected_hits := int(result.get("infected_hits", 0))
-        var survived := int(result.get("lead_hp", 0)) > 0 and str(result.get("outcome", "dead")) == "escaped"
-        if survived and lead != null and infected_hits > 0 and virus_stage(lead) == VirusRules.STAGE_CLEAR:
-            if rng.randf() < VirusRules.exposure_chance(infected_hits):
-                if _expose_survivor(lead, "%d direct infected hit%s in the field" % [infected_hits, "" if infected_hits == 1 else "s"]):
+        var lead_bites := int(result.get("bite_hits", 0))
+        var lead_survived := int(result.get("lead_hp", 0)) > 0 and str(result.get("outcome", "dead")) == "escaped"
+        if lead_survived and lead != null and lead_bites > 0 and virus_stage(lead) == VirusRules.STAGE_CLEAR:
+            if VirusRules.bite_exposure_occurs(lead_bites, rng):
+                if _expose_survivor(lead, "%d infected bite%s in the field" % [lead_bites, "" if lead_bites == 1 else "s"]):
                     lead["stress"] = minf(100.0, float(lead.get("stress", 0.0)) + 10.0)
-                    toast_requested.emit("%s was exposed to the zombie virus. Early decontamination can stop it." % lead["name"])
+                    toast_requested.emit("%s was exposed to the zombie virus by a bite. Early decontamination can stop it." % lead["name"])
+        if ids.size() > 1:
+            var companion: Variant = get_survivor(int(ids[1]))
+            var companion_bites := int(result.get("companion_bite_hits", 0))
+            var companion_survived := int(result.get("companion_hp", 0)) > 0 and str(result.get("outcome", "dead")) == "escaped"
+            if companion_survived and companion != null and companion_bites > 0 and virus_stage(companion) == VirusRules.STAGE_CLEAR:
+                if VirusRules.bite_exposure_occurs(companion_bites, rng):
+                    if _expose_survivor(companion, "%d infected bite%s while accompanying an expedition" % [companion_bites, "" if companion_bites == 1 else "s"]):
+                        companion["stress"] = minf(100.0, float(companion.get("stress", 0.0)) + 10.0)
+                        toast_requested.emit("%s was exposed to the zombie virus by a bite." % companion["name"])
     super.resolve_combat(result)
 
 func _resolve_daily_rations() -> void:

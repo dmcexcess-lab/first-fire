@@ -7,6 +7,7 @@ const STAGE_INFECTED := "Infected"
 const STAGE_FEVERISH := "Feverish"
 const STAGES := [STAGE_CLEAR, STAGE_EXPOSED, STAGE_INFECTED, STAGE_FEVERISH]
 const EXPOSED_NATURAL_CLEAR_CHANCE := 0.50
+const BITE_EXPOSURE_CHANCE := 0.03
 
 static func default_state() -> Dictionary:
     return {"stage": STAGE_CLEAR, "days": 0, "quarantined": false}
@@ -31,12 +32,21 @@ static func is_active(value) -> bool:
 static func is_severe(value) -> bool:
     return stage(value) == STAGE_FEVERISH
 
+static func bite_exposure_chance() -> float:
+    return BITE_EXPOSURE_CHANCE
+
+static func bite_exposure_occurs(successful_bites: int, rng: RandomNumberGenerator) -> bool:
+    # Each successful bite is an independent small roll. The chance itself
+    # never scales upward or stacks with prior bites.
+    for _bite in range(maxi(0, successful_bites)):
+        if rng.randf() < BITE_EXPOSURE_CHANCE:
+            return true
+    return false
+
 static func exposure_chance(infected_hits: int) -> float:
-    if infected_hits <= 0:
-        return 0.0
-    # Virus transmission should be frightening because it is uncommon, not
-    # because every scrape is a near-guaranteed infection.
-    return clampf(0.03 + float(infected_hits - 1) * 0.025, 0.03, 0.12)
+    # Compatibility facade for older callers. One or more eligible bite events
+    # always use the same per-bite probability; scratches are not eligible.
+    return BITE_EXPOSURE_CHANCE if infected_hits > 0 else 0.0
 
 static func expose(value) -> Dictionary:
     var state := normalize(value)

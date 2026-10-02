@@ -84,10 +84,11 @@ static func explore_reward_rolls(searches: int, unused_skill: int = 0) -> int:
     return clampi(rolls, 1, 3)
 
 static func zombie_hp_range(mass: String) -> Vector2i:
-    # Individual infected are intentionally fragile. Threat comes from numbers.
-    if mass == "LIGHT": return Vector2i(4, 7)
-    if mass == "HEAVY": return Vector2i(8, 12)
-    return Vector2i(6, 9)
+    # The starter Utility Knife deals 4–5 damage. Common LIGHT/MED infected
+    # therefore take 2–3 solid weak-weapon hits; HEAVY bodies can take longer.
+    if mass == "LIGHT": return Vector2i(7, 9)
+    if mass == "HEAVY": return Vector2i(11, 14)
+    return Vector2i(8, 10)
 
 static func container_label(container_kind: String) -> String:
     match container_kind:
@@ -200,19 +201,36 @@ static func mob_attack_cost_multiplier(mob_size: int) -> float:
 static func mob_alert_radius(pack_size: int) -> int:
     return 3 + mini(3, maxi(0, pack_size - 1))
 
-static func zombie_hit_chance(actor: Dictionary, mob_size: int = 1) -> float:
+const BITE_ATTEMPT_CHANCE := 0.20
+
+static func zombie_attack_kind(rng: RandomNumberGenerator) -> String:
+    return "bite" if rng.randf() < BITE_ATTEMPT_CHANCE else "scratch"
+
+static func zombie_attack_hit_chance(actor: Dictionary, attack_kind: String, mob_size: int = 1) -> float:
     var agility := int(actor.get("skills", {}).get("Agility", 0))
     var fatigue := float(actor.get("fatigue", 0.0))
-    var chance := 0.52 - float(agility) * 0.018 + mob_hit_bonus(mob_size)
+    var base := 0.72 if attack_kind == "scratch" else 0.32
+    var mob_bonus := mob_hit_bonus(mob_size) if attack_kind == "scratch" else mob_hit_bonus(mob_size) * 0.60
+    var chance := base - float(agility) * 0.018 + mob_bonus
     if fatigue >= 80.0: chance += 0.08
     elif fatigue >= 60.0: chance += 0.04
     if bool(actor.get("sprinting", false)):
         chance -= minf(0.22, 0.05 + float(agility) * 0.017)
-    return clampf(chance, 0.14, 0.82)
+    return clampf(chance, 0.12 if attack_kind == "bite" else 0.24, 0.68 if attack_kind == "bite" else 0.92)
+
+static func zombie_attack_damage_range(mass: String, attack_kind: String) -> Vector2i:
+    if attack_kind == "bite":
+        if mass == "LIGHT": return Vector2i(3, 5)
+        if mass == "HEAVY": return Vector2i(5, 7)
+        return Vector2i(4, 6)
+    if mass == "LIGHT": return Vector2i(1, 2)
+    if mass == "HEAVY": return Vector2i(1, 3)
+    return Vector2i(1, 2)
+
+# Compatibility helpers for the inherited base runtime. Active combat uses the
+# explicit scratch/bite helpers above.
+static func zombie_hit_chance(actor: Dictionary, mob_size: int = 1) -> float:
+    return zombie_attack_hit_chance(actor, "scratch", mob_size)
 
 static func zombie_damage_range(mass: String) -> Vector2i:
-    # A lone infected should hurt, not chunk a healthy survivor. Mob pressure
-    # adds the extra danger in FFCombat rather than inflating base damage.
-    if mass == "LIGHT": return Vector2i(1, 2)
-    if mass == "HEAVY": return Vector2i(2, 4)
-    return Vector2i(1, 3)
+    return zombie_attack_damage_range(mass, "scratch")

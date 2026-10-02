@@ -46,6 +46,8 @@ static func weapon_profile(name: String) -> Dictionary:
     if kind == "melee" and hands == 2:
         var reach := 2 if name == "Improvised Spear" else 1
         return {"name": name, "class_label": "2H MELEE", "hands": 2, "gun": false, "ammo": 0, "dmin": 6, "dmax": 10, "time": 122, "noise": 9, "push": 2, "stealth": 2, "accuracy": -0.01, "reach": reach}
+    if name == "Utility Knife":
+        return {"name": name, "class_label": "1H MELEE", "hands": 1, "gun": false, "ammo": 0, "dmin": 4, "dmax": 5, "time": 88, "noise": 5, "push": 1, "stealth": 3, "accuracy": 0.05, "reach": 1}
     var display_name := name if name != "" else "Bare Hands"
     return {"name": display_name, "class_label": "1H MELEE", "hands": 1, "gun": false, "ammo": 0, "dmin": 3, "dmax": 7, "time": 88, "noise": 5, "push": 1, "stealth": 3, "accuracy": 0.05, "reach": 1}
 

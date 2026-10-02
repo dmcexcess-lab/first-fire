@@ -228,6 +228,8 @@ Important bugs should leave behind a cheaper future check when practical.
 ## 13. Product rules to preserve unless explicitly changed
 
 - simulation-first zombie survival/extraction feel;
+- common infected die in roughly 2–3 clean hits from the weak starter Utility Knife; individual infected stay weak and mob density creates pressure;
+- infected attacks split into high-hit/low-damage Scratch and low-hit/high-damage Bite; only successful Bite can roll a fixed small per-bite virus exposure chance;
 - no AI director spawning threats simply to manufacture drama;
 - persistent consequences;
 - no conventional player-level power ladder;
