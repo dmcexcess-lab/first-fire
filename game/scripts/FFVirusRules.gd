@@ -99,34 +99,34 @@ static func treatment_plan(stage_name: String, has_infirmary: bool) -> Dictionar
                 "label": "Exposure decontamination",
                 "duration": 20.0,
                 "resources": {"Clean Water": 1},
-                "components": {"Sterile Dressing": 1},
-                "summary": "1 Clean Water + 1 Sterile Dressing",
+                "components": {"Bandage": 1},
+                "summary": "1 Clean Water + 1 Bandage",
             }
         STAGE_INFECTED:
             return {
                 "available": true,
-                "id": "medicine_course",
-                "label": "Zombie-virus medicine course",
+                "id": "cure_course",
+                "label": "Zombie Cure course",
                 "duration": 60.0,
-                "resources": {"Medicine": 1},
-                "components": {},
-                "summary": "1 Medicine",
+                "resources": {},
+                "components": {"Zombie Cure": 1},
+                "summary": "1 Zombie Cure",
             }
         STAGE_FEVERISH:
             if not has_infirmary:
                 return {
                     "available": false,
-                    "reason": "Feverish zombie-virus cases need an Infirmary and 2 Medicine.",
-                    "summary": "Infirmary + 2 Medicine",
+                    "reason": "Feverish zombie-virus cases need an Infirmary and 1 Zombie Cure.",
+                    "summary": "Infirmary + 1 Zombie Cure",
                 }
             return {
                 "available": true,
-                "id": "emergency_course",
-                "label": "Emergency zombie-virus treatment",
+                "id": "emergency_cure",
+                "label": "Emergency Zombie Cure",
                 "duration": 90.0,
-                "resources": {"Medicine": 2},
-                "components": {},
-                "summary": "2 Medicine in the Infirmary",
+                "resources": {},
+                "components": {"Zombie Cure": 1},
+                "summary": "1 Zombie Cure in the Infirmary",
             }
         _:
             return {"available": false, "reason": "No zombie-virus treatment is needed.", "summary": "None"}

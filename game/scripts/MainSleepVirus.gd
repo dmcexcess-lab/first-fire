@@ -559,9 +559,9 @@ func _zone_focus_text(zone: String) -> String:
     match zone:
         "Camp Perimeter": return "food, water, wood"
         "Nearby Streets": return "food, water, mixed materials"
-        "Residential Blocks": return "food, cloth, medicine"
-        "Commercial Fringe": return "hardware, scrap, medicine"
-        "Industrial Edge": return "scrap, hardware, ammo"
+        "Residential Blocks": return "food, cloth, rare first aid"
+        "Commercial Fringe": return "hardware, scrap, medical finds"
+        "Industrial Edge": return "scrap, hardware, rare medical finds"
     return "mixed supplies"
 
 func _leave_from_gate() -> void:

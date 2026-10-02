@@ -1,3 +1,12 @@
+## Beta Candidate — Medical Supply Rarity Pass — 2026-10-02
+
+- Reworked medical supplies into a clear three-tier economy: **Bandages are crafted** at the First Fire, **First Aid Kits are rare found-only supplies**, and **Zombie Cure is found-only and the rarest medical find**.
+- Hurt/Wounded treatment now consumes Bandages; Critical trauma consumes a First Aid Kit.
+- Early zombie-virus exposure decontamination uses 1 Clean Water + 1 Bandage. Established infection consumes 1 Zombie Cure, while Feverish emergency care still requires a built Infirmary plus 1 Zombie Cure.
+- Tactical resource/container loot now stores medical components directly. First Aid Kits begin appearing rarely on Nearby Streets; Zombie Cure does not enter the loot table until Residential Blocks and remains lower-weight than First Aid Kits.
+- Removed First Aid Kit from active gear/crafting pools. Schema-7 saves normalize legacy Medicine into First Aid Kits, Sterile Dressings into Bandages, and old First Aid Kit gear into the new consumable supply without a save wipe.
+- Save schema remains **7**.
+
 ## Beta Candidate — Camp Fatigue, Live Chores & Carry Capacity — 2026-10-01
 
 - Lock Picks can now be **crafted at the Workbench** for 1 Scrap Metal + 1 Hardware as well as found in the field. Each Lock Pick rolls **1–3 successful unlock uses** before breaking; schema-7 Lock Picks carrying older 4–5-use state are clamped into the new range when equipped/stored.

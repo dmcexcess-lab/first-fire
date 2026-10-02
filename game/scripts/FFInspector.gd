@@ -17,10 +17,9 @@ const ITEM_DESCRIPTIONS := {
     "Cloth": "Fabric salvage used for clothing, shelter work, medical supplies, packs, and weatherproofing.",
     "Plastic": "Light salvage used in packs, weather protection, and improvised construction.",
     "Hardware": "Fasteners, fittings, hinges, and other small mechanical parts. Frequently required for useful infrastructure.",
-    "Medicine": "High-grade medical supplies reserved for critical injuries and emergency stabilization.",
     "Ammo": "Shared firearm ammunition. Tactical gunfire consumes this camp supply directly.",
     "Seeds": "Planting stock used to establish and support food-growing infrastructure.",
-    "Sterile Dressing": "A clean wound-care component made from Cloth and Clean Water. Used for Hurt and Wounded physical injuries.",
+    "Bandage": "Craftable wound care made from Cloth and Clean Water. Used for Hurt and Wounded physical injuries.",
     "Framing Kit": "Prepared structural hardware and timber used in major shelter construction.",
     "Pack Frame": "A rigid pack component used to build higher-capacity carrying gear.",
     "Weatherproofing Roll": "Prepared cloth and plastic used to seal major structures against weather.",
@@ -42,7 +41,8 @@ const ITEM_DESCRIPTIONS := {
     "Screwdriver Set": "Compact technical toolkit that improves Technical capability.",
     "Bolt Cutters": "Specialized cutting tool for chains, wire, and similar physical barriers.",
     "Toolbox": "General-purpose field toolkit that improves Technical capability.",
-    "First Aid Kit": "Portable medical kit that improves Medical capability in the field.",
+    "First Aid Kit": "Rare found-only emergency medical supply consumed to stabilize Critical physical trauma.",
+    "Zombie Cure": "The rarest medical field find. Clears established zombie-virus infection; severe fever still needs an Infirmary.",
     "Pry Tool": "Compact breaching tool made for forcing open stubborn barriers.",
     "Work Gloves": "Basic protective workwear for hands-on camp and field activity.",
     "Heavy Boots": "Durable protective footwear suited to debris, rough ground, and hard travel.",
@@ -264,11 +264,11 @@ func _render_survivor() -> void:
         var actions = HBoxContainer.new()
         actions.add_theme_constant_override("separation", 4)
         if condition == "Hurt":
-            body.add_child(_make_label("Treatment: 1 Sterile Dressing. Cuts minor-injury recovery to at most 30s.", 11))
+            body.add_child(_make_label("Treatment: 1 Bandage. Cuts minor-injury recovery to at most 30s.", 11))
         elif condition == "Wounded":
-            body.add_child(_make_label("Treatment: 1 Sterile Dressing. Starts timed wound care; close this inspector to let camp time advance.", 11))
+            body.add_child(_make_label("Treatment: 1 Bandage. Starts timed wound care; close this inspector to let camp time advance.", 11))
         elif condition == "Critical":
-            body.add_child(_make_label("Treatment: 1 Medicine. Starts emergency stabilization; close this inspector to let camp time advance.", 11))
+            body.add_child(_make_label("Treatment: 1 First Aid Kit. Starts emergency stabilization; close this inspector to let camp time advance.", 11))
         var treat = Button.new()
         treat.text = "TREAT"
         treat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -430,7 +430,7 @@ func _treatment_status_line(survivor) -> String:
     if status == "Recovering" and str(task.get("kind", "")) == "treatment":
         return "Treatment underway — %.0fs remaining. Camp time is paused while this inspector is open." % float(task.get("remaining", 0.0))
     if condition == "Critical":
-        return "Critical injury — Medicine and active treatment are required before condition can improve."
+        return "Critical injury — a First Aid Kit and active treatment are required before condition can improve."
     var remaining: float = float(survivor.get("injury_remaining", 0.0))
     if remaining > 0.0:
         return "Injury recovery — about %.0fs remaining while camp time runs." % remaining

@@ -3,8 +3,7 @@ class_name FFData
 
 const RESOURCE_ORDER := [
     "Raw Food", "Cooked Food", "Dirty Water", "Clean Water",
-    "Wood", "Scrap Metal", "Cloth", "Plastic", "Hardware",
-    "Medicine", "Seeds"
+    "Wood", "Scrap Metal", "Cloth", "Plastic", "Hardware", "Seeds"
 ]
 
 const STARTING_RESOURCES := {
@@ -17,8 +16,21 @@ const STARTING_RESOURCES := {
     "Cloth": 0,
     "Plastic": 0,
     "Hardware": 0,
-    "Medicine": 0,
     "Seeds": 0,
+}
+
+const COMPONENT_ORDER := [
+    "Bandage", "First Aid Kit", "Zombie Cure",
+    "Framing Kit", "Pack Frame", "Weatherproofing Roll"
+]
+
+const STARTING_COMPONENTS := {
+    "Bandage": 0,
+    "First Aid Kit": 0,
+    "Zombie Cure": 0,
+    "Framing Kit": 0,
+    "Pack Frame": 0,
+    "Weatherproofing Roll": 0,
 }
 
 const BACKGROUNDS := {
@@ -93,7 +105,7 @@ const ZONES := {
         "loot": {
             "Dirty Water": 28, "Raw Food": 22,
             "Wood": 11, "Plastic": 9, "Cloth": 8, "Scrap Metal": 8, "Hardware": 6,
-            "Clean Water": 5, "Cooked Food": 2, "Seeds": 2, "Medicine": 1
+            "Clean Water": 5, "Cooked Food": 2, "Seeds": 2, "First Aid Kit": 1
         }
     },
     "Residential Blocks": {
@@ -102,7 +114,7 @@ const ZONES := {
         "loot": {
             "Dirty Water": 25, "Raw Food": 20,
             "Cloth": 10, "Wood": 9, "Plastic": 9, "Hardware": 8, "Scrap Metal": 7,
-            "Clean Water": 5, "Cooked Food": 2, "Medicine": 4, "Seeds": 3
+            "Clean Water": 5, "Cooked Food": 2, "First Aid Kit": 3, "Zombie Cure": 1, "Seeds": 3
         }
     },
     "Commercial Fringe": {
@@ -111,7 +123,7 @@ const ZONES := {
         "loot": {
             "Dirty Water": 22, "Raw Food": 18,
             "Hardware": 12, "Scrap Metal": 11, "Plastic": 10, "Cloth": 9, "Wood": 7,
-            "Clean Water": 5, "Cooked Food": 2, "Medicine": 5, "Seeds": 3
+            "Clean Water": 5, "Cooked Food": 2, "First Aid Kit": 4, "Zombie Cure": 1, "Seeds": 3
         }
     },
     "Industrial Edge": {
@@ -120,7 +132,7 @@ const ZONES := {
         "loot": {
             "Dirty Water": 20, "Raw Food": 16,
             "Scrap Metal": 14, "Hardware": 12, "Plastic": 10, "Wood": 8, "Cloth": 7,
-            "Clean Water": 5, "Cooked Food": 2, "Medicine": 3, "Seeds": 2
+            "Clean Water": 5, "Cooked Food": 2, "First Aid Kit": 3, "Zombie Cure": 1, "Seeds": 2
         }
     }
 }
@@ -166,7 +178,6 @@ const GEAR := {
     "Screwdriver Set": {"slot": "Tool", "size": 2, "technical": 1},
     "Bolt Cutters": {"slot": "Tool", "size": 3, "tool": "Cutters"},
     "Toolbox": {"slot": "Tool", "size": 3, "technical": 1},
-    "First Aid Kit": {"slot": "Tool", "size": 2, "medical": 1},
     "Pry Tool": {"slot": "Tool", "size": 2, "tool": "Breach"},
     "Work Gloves": {"slot": "Clothing", "size": 1},
     "Heavy Boots": {"slot": "Clothing", "size": 2},
@@ -187,7 +198,7 @@ const TACTICAL_GEAR_UNLOCKS_BY_ZONE := {
     ],
     "Nearby Streets": [
         "Baseball Bat", "Hammer", "Improvised Spear", "Lock Pick", "Pry Tool",
-        "Work Jacket", "Heavy Boots", "First Aid Kit"
+        "Work Jacket", "Heavy Boots"
     ],
     "Residential Blocks": [
         "Crowbar", "Crossbow", "Toolbox", "Padded Jacket", "Leather Jacket", "Hiking Pack"
@@ -205,7 +216,7 @@ const RECIPES := {
     "Fire Pit": [
         {"id": "Cook Food", "time": 3.0, "cost": {"Raw Food": 1}, "gives_resource": {"Cooked Food": 2}},
         {"id": "Boil Water", "time": 3.0, "cost": {"Dirty Water": 1}, "gives_resource": {"Clean Water": 2}},
-        {"id": "Sterile Dressing", "time": 5.0, "cost": {"Cloth": 1, "Clean Water": 1}, "gives_component": {"Sterile Dressing": 1}},
+        {"id": "Bandage", "time": 5.0, "cost": {"Cloth": 1, "Clean Water": 1}, "gives_component": {"Bandage": 1}},
     ],
     "Workbench": [
         {"id": "Utility Knife", "time": 6.0, "cost": {"Scrap Metal": 1, "Cloth": 1}, "gives_gear": "Utility Knife"},
@@ -222,7 +233,6 @@ const RECIPES := {
         {"id": "Screwdriver Set", "time": 7.0, "cost": {"Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Screwdriver Set"},
         {"id": "Bolt Cutters", "time": 11.0, "cost": {"Scrap Metal": 3, "Hardware": 2}, "gives_gear": "Bolt Cutters"},
         {"id": "Toolbox", "time": 12.0, "cost": {"Scrap Metal": 2, "Hardware": 3}, "gives_gear": "Toolbox"},
-        {"id": "First Aid Kit", "time": 10.0, "cost": {"Cloth": 2, "Plastic": 1, "Medicine": 1}, "gives_gear": "First Aid Kit"},
         {"id": "Pry Tool", "time": 8.0, "cost": {"Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Pry Tool"},
         {"id": "Framing Kit", "time": 8.0, "cost": {"Wood": 2, "Hardware": 1}, "gives_component": {"Framing Kit": 1}},
     ],
@@ -247,7 +257,7 @@ const BUILDINGS := {
     "Cabin": {"time": 45.0, "cost": {"Wood": 4, "Scrap Metal": 2}, "component_cost": {"Framing Kit": 4, "Weatherproofing Roll": 2}, "requires": ["Workbench", "Sewing Table"], "description": "+4 shelter capacity and better idle recovery."},
     "Water Tank": {"time": 24.0, "cost": {"Scrap Metal": 5, "Plastic": 4, "Hardware": 2}, "requires": ["Rain Catcher", "Workbench"], "description": "Doubles daily Rain Catcher output."},
     "Communal Table": {"time": 18.0, "cost": {"Wood": 5, "Hardware": 2}, "requires": ["Cabin"], "description": "Improves idle stress recovery and enables shared-meal camp events."},
-    "Infirmary": {"time": 32.0, "cost": {"Wood": 5, "Cloth": 3, "Plastic": 3, "Hardware": 3}, "component_cost": {"Sterile Dressing": 2}, "requires": ["Cabin", "Workbench"], "description": "Speeds treatment and wound recovery; reduces untreated critical decline."},
+    "Infirmary": {"time": 32.0, "cost": {"Wood": 5, "Cloth": 3, "Plastic": 3, "Hardware": 3}, "component_cost": {"Bandage": 2}, "requires": ["Cabin", "Workbench"], "description": "Speeds treatment and wound recovery; reduces untreated critical decline."},
     "Watch Post": {"time": 28.0, "cost": {"Wood": 5, "Scrap Metal": 2, "Hardware": 2}, "requires": ["Noise Line", "Workbench"], "description": "Further reduces danger from camp-perimeter disturbances."},
     "Bunkhouse": {"time": 42.0, "cost": {"Wood": 8, "Cloth": 4, "Plastic": 2}, "component_cost": {"Framing Kit": 2, "Weatherproofing Roll": 1}, "requires": ["Cabin", "Sewing Table"], "description": "+6 shelter capacity."},
     "Armory": {"time": 38.0, "cost": {"Wood": 8, "Scrap Metal": 8, "Hardware": 6, "Plastic": 2}, "requires": ["Workbench", "Cabin"], "description": "Secure storage and readiness for field-found firearms."},

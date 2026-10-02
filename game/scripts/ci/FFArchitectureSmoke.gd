@@ -70,9 +70,14 @@ func _init() -> void:
     if not _check(ThreeStatRules.weapon_mag_capacity(long_rifle) == 5 and ThreeStatRules.weapon_optimal_range(long_rifle) == 10 and ThreeStatRules.weapon_projectile_range(long_rifle) == 0, "long rifle has five-round magazine and long accuracy band"): return
     if not _check(int(revolver["gmin"]) >= all_hp_max and int(auto_pistol["gmin"]) >= all_hp_max and int(double_barrel["gmin"]) >= all_hp_max and int(pump_shotgun["gmin"]) >= all_hp_max and int(medium_rifle["gmin"]) >= all_hp_max and int(long_rifle["gmin"]) >= all_hp_max, "all firearms retain one-projectile one-hit infected lethality"): return
     var recipe_ids: Array = []
+    var bandage_recipe: Dictionary = {}
     var hatchet_recipe: Dictionary = {}
     var crossbow_recipe: Dictionary = {}
     var lock_pick_recipe: Dictionary = {}
+    for recipe_value in D.RECIPES.get("Fire Pit", []):
+        var fire_recipe: Dictionary = recipe_value
+        if str(fire_recipe.get("id", "")) == "Bandage":
+            bandage_recipe = fire_recipe
     for recipe_value in D.RECIPES.get("Workbench", []):
         var recipe: Dictionary = recipe_value
         recipe_ids.append(str(recipe.get("id", "")))
@@ -86,6 +91,11 @@ func _init() -> void:
     var found_only_offhand := ["Flashlight", "Firecracker"]
     for gear_name in found_only_guns + found_only_offhand:
         if not _check(not recipe_ids.has(gear_name), "%s is found-only" % gear_name): return
+    if not _check(not bandage_recipe.is_empty() and int(bandage_recipe.get("cost", {}).get("Cloth", 0)) == 1 and int(bandage_recipe.get("cost", {}).get("Clean Water", 0)) == 1 and int(bandage_recipe.get("gives_component", {}).get("Bandage", 0)) == 1, "bandage is craftable at the First Fire"): return
+    if not _check(not recipe_ids.has("First Aid Kit") and not D.GEAR.has("First Aid Kit"), "first aid kit is found-only consumable rather than craftable gear"): return
+    var nearby_medical: Dictionary = D.ZONES["Nearby Streets"]["loot"]
+    var residential_medical: Dictionary = D.ZONES["Residential Blocks"]["loot"]
+    if not _check(int(nearby_medical.get("First Aid Kit", 0)) > 0 and int(nearby_medical.get("Zombie Cure", 0)) == 0 and int(residential_medical.get("First Aid Kit", 0)) > int(residential_medical.get("Zombie Cure", 0)) and int(residential_medical.get("Zombie Cure", 0)) > 0, "first aid is rare and zombie cure is the rarer later medical find"): return
     if not _check(recipe_ids.has("Crossbow") and not Array(crossbow_recipe.get("requires", [])).has("Armory"), "crossbow remains craftable without Armory"): return
     if not _check(not lock_pick_recipe.is_empty() and int(D.GEAR["Lock Pick"].get("uses_min", 0)) == 1 and int(D.GEAR["Lock Pick"].get("uses_max", 0)) == 3, "lock pick is craftable and lasts one to three unlocks"): return
     var pack_names := ["Worn Backpack", "School Backpack", "Improvised Pack", "Hiking Pack", "Reinforced Pack"]
@@ -140,6 +150,7 @@ func _init() -> void:
     if not _check(combat_source.contains("func use_secondary_item") and combat_source.contains("Flashlight") and combat_source.contains("Firecracker") and combat_source.contains("charge_per_tick"), "active off-hand runtime supports flashlight charge lock pick and one-use firecracker"): return
     if not _check(active_combat_source.contains("lead_secondary_item") and active_combat_source.contains("lead_secondary_state"), "tactical result returns persistent off-hand state"): return
     if not _check(base_game_source.contains("inventory_gear_states") and base_game_source.contains("func _default_gear_state") and base_game_source.contains("uses_left") and base_game_source.contains("resources.erase(\"Ammo\")"), "camp persistence retains off-hand durability and removes legacy ammo"): return
+    if not _check(base_game_source.contains("func _normalize_medical_supplies") and base_game_source.contains("resources.erase(\"Medicine\")") and base_game_source.contains("components.erase(\"Sterile Dressing\")") and base_game_source.contains("func _store_loot_item"), "schema-seven medical supplies normalize forward and tactical loot can store components"): return
     if not _check(base_game_source.contains("func survivor_carry_capacity") and base_game_source.contains("return 4") and base_combat_source.contains("func party_carry_capacity") and base_combat_source.contains("func _fit_loot_to_remaining_capacity") and combat_source.contains("CARRY %d/%d"), "tactical carry uses four base slots plus backpack party capacity"): return
     if not _check(combat_source.contains("nearest_exit_distance") and combat_source.contains("LOOT %d/%d"), "route-oriented tactical HUD"): return
     if not _check(not active_game_source.contains("SIM_TIME_SCALE") and base_game_source.contains("const DAY_SECONDS := 300.0") and active_game_source.contains("var camp_delta := float(delta)") and active_game_source.contains("func _advance_settlement_simulation") and active_game_source.contains("\"status\"] = \"Sleeping\"") and active_game_source.contains("func survivor_can_assign") and active_game_source.contains("func start_virus_treatment") and active_game_source.contains("func quarantine_survivor"), "single authoritative five-minute settlement day"): return
@@ -163,9 +174,9 @@ func _init() -> void:
     var infected_plan: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_INFECTED, false)
     var fever_no_infirmary: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_FEVERISH, false)
     var fever_infirmary: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_FEVERISH, true)
-    if not _check(int(early_plan.get("resources", {}).get("Clean Water", 0)) == 1 and int(early_plan.get("components", {}).get("Sterile Dressing", 0)) == 1, "early virus decontamination costs real supplies"): return
-    if not _check(int(infected_plan.get("resources", {}).get("Medicine", 0)) == 1, "established virus uses medicine"): return
-    if not _check(not bool(fever_no_infirmary.get("available", true)) and bool(fever_infirmary.get("available", false)) and int(fever_infirmary.get("resources", {}).get("Medicine", 0)) == 2, "feverish virus requires infirmary emergency care"): return
+    if not _check(int(early_plan.get("resources", {}).get("Clean Water", 0)) == 1 and int(early_plan.get("components", {}).get("Bandage", 0)) == 1, "early virus decontamination uses a crafted bandage plus clean water"): return
+    if not _check(int(infected_plan.get("components", {}).get("Zombie Cure", 0)) == 1, "established virus consumes one zombie cure"): return
+    if not _check(not bool(fever_no_infirmary.get("available", true)) and bool(fever_infirmary.get("available", false)) and int(fever_infirmary.get("components", {}).get("Zombie Cure", 0)) == 1, "feverish virus requires infirmary plus one zombie cure"): return
 
     if not _check(ExpeditionRules.zone_cap("Camp Perimeter") == 3, "perimeter cap"): return
     if not _check(ExpeditionRules.starting_routes() == ["Camp Perimeter", "Nearby Streets", "Residential Blocks", "Commercial Fringe"], "very short through far are available without a vehicle"): return

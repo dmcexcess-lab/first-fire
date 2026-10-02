@@ -74,7 +74,7 @@ Every active `FFData.GEAR` item must be represented in the finished equipment lo
 
 The tactical HUD exposes all five equipment slots: Weapon, Secondary, Tool, Clothing and Pack. Explore objectives also place a real named gear pickup on the board; it is only retained after physical recovery and successful escape. Every current gear catalog entry belongs to a zone-tiered field-loot pool.
 
-Crafting is contextual camp interaction, not a standalone navigation mode. **First Fire / Fire Pit is always present from Day 1** and supplies the default Cook Food, Boil Water, and Sterile Dressing recipes. Built Workbench and Sewing Table objects expose their own recipe sets when tapped.
+Crafting is contextual camp interaction, not a standalone navigation mode. **First Fire / Fire Pit is always present from Day 1** and supplies the default Cook Food, Boil Water, and Bandage recipes. First Aid Kits are rare found-only medical supplies; Zombie Cure is found-only and the rarest medical find. Built Workbench and Sewing Table objects expose their own recipe sets when tapped.
 
 ### Final building tree
 

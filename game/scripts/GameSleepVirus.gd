@@ -912,7 +912,7 @@ func _process_daily_virus() -> void:
                 survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue", 0.0)) + 12.0)
                 survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + 8.0)
                 survivor["history"].append("Day %d — Zombie-virus infection established." % day)
-                toast_requested.emit("%s is now infected. Medicine can still stop it." % survivor["name"])
+                toast_requested.emit("%s is now infected. A Zombie Cure can still stop it." % survivor["name"])
             "feverish":
                 survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue", 0.0)) + 25.0)
                 survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + 15.0)

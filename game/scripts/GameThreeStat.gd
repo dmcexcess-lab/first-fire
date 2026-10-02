@@ -112,19 +112,15 @@ func treat_survivor(sid):
     _clear_camp_activity(s)
     var condition := str(s["condition"])
     if condition == "Hurt":
-        if int(components.get("Sterile Dressing", 0)) <= 0:
-            toast_requested.emit("You need a Sterile Dressing."); return false
-        components["Sterile Dressing"] -= 1
+        if int(components.get("Bandage", 0)) <= 0:
+            toast_requested.emit("You need a Bandage."); return false
+        components["Bandage"] -= 1
         s["injury_remaining"] = minf(float(s["injury_remaining"]), 30.0)
     else:
-        if condition == "Wounded":
-            if int(components.get("Sterile Dressing", 0)) <= 0:
-                toast_requested.emit("You need a Sterile Dressing."); return false
-            components["Sterile Dressing"] -= 1
-        else:
-            if int(resources.get("Medicine", 0)) <= 0:
-                toast_requested.emit("You need Medicine."); return false
-            resources["Medicine"] -= 1
+        var supply_name := "Bandage" if condition == "Wounded" else "First Aid Kit"
+        if int(components.get(supply_name, 0)) <= 0:
+            toast_requested.emit("You need %s." % ("a Bandage" if condition == "Wounded" else "a First Aid Kit")); return false
+        components[supply_name] -= 1
         s["status"] = "Recovering"
         var base: float = 45.0 if condition == "Wounded" else 120.0
         var treatment_time: float = base * CampLifeRules.treatment_time_multiplier(bool(buildings.get("Infirmary", false)))
@@ -144,7 +140,7 @@ func _grant_tactical_explore_reward(exp, lead, searches_completed: int):
     var count := TacticalBalance.explore_reward_rolls(searches_completed, 0)
     var found := {}
     for i in range(count):
-        var key = _weighted_loot_pick(exp["zone"]); resources[key] = int(resources.get(key, 0)) + 1; found[key] = int(found.get(key, 0)) + 1
+        var key = _weighted_loot_pick(exp["zone"]); _store_loot_item(str(key), 1); found[key] = int(found.get(key, 0)) + 1
     var bits := []
     for key in found.keys(): bits.append("+%d %s" % [found[key], key])
     return ", ".join(bits)
@@ -190,8 +186,8 @@ func _roll_gear(exp, party):
     var pool: Array = []
     if zone == "Camp Perimeter": pool = ["Work Gloves"]
     elif zone == "Nearby Streets": pool = ["Kitchen Knife", "Work Gloves", "Heavy Boots", "School Backpack", "Glow Stick"]
-    elif zone == "Residential Blocks": pool = ["Kitchen Knife", "Baseball Bat", "Flashlight", "Lantern", "Glow Stick", "Screwdriver Set", "First Aid Kit", "School Backpack", "Leather Jacket"]
-    elif zone == "Commercial Fringe": pool = ["Crowbar", "Hatchet", "Flashlight", "Headlamp", "Lantern", "Road Flare", "Bolt Cutters", "Toolbox", "First Aid Kit", "Pistol", "Hiking Pack", "Leather Jacket"]
+    elif zone == "Residential Blocks": pool = ["Kitchen Knife", "Baseball Bat", "Flashlight", "Lantern", "Glow Stick", "Screwdriver Set", "School Backpack", "Leather Jacket"]
+    elif zone == "Commercial Fringe": pool = ["Crowbar", "Hatchet", "Flashlight", "Headlamp", "Lantern", "Road Flare", "Bolt Cutters", "Toolbox", "Pistol", "Hiking Pack", "Leather Jacket"]
     else: pool = ["Crowbar", "Hatchet", "Headlamp", "Glow Stick", "Road Flare", "Bolt Cutters", "Toolbox", "Pistol", "Shotgun", "Hiking Pack", "Heavy Boots", "Work Jacket"]
     return pool[rng.randi_range(0, pool.size() - 1)]
 

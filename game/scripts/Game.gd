@@ -96,7 +96,7 @@ func new_game():
     day = 1
     day_elapsed = 0.0
     resources = D.STARTING_RESOURCES.duplicate(true)
-    components = {"Sterile Dressing": 0, "Framing Kit": 0, "Pack Frame": 0, "Weatherproofing Roll": 0}
+    components = D.STARTING_COMPONENTS.duplicate(true)
     inventory_gear = []
     inventory_gear_states = {}
     buildings = {"Fire Pit": true, "Sleeping Bag": true}
@@ -605,193 +605,31 @@ func perform_camp_task_tap(sid:int)->bool:
 
 func treat_survivor(sid):
     var s: Variant = get_survivor(sid)
-    if s == null or s["condition"] == "Healthy" or s["condition"] == "Dead":
-        return false
-    if s["status"] != "Available":
+    if s == null or s["condition"] in ["Healthy", "Dead"] or s["status"] != "Available":
         return false
     _clear_camp_activity(s)
     var condition := str(s["condition"])
     if condition == "Hurt":
-        if int(components.get("Sterile Dressing", 0)) <= 0:
-            toast_requested.emit("You need a Sterile Dressing.")
+        if int(components.get("Bandage", 0)) <= 0:
+            toast_requested.emit("You need a Bandage.")
             return false
-        components["Sterile Dressing"] -= 1
+        components["Bandage"] -= 1
         s["injury_remaining"] = min(float(s["injury_remaining"]), 30.0)
         s["status"] = "Available"
-        s["history"].append("Day %d — Treated a minor injury with a Sterile Dressing." % day)
-        toast_requested.emit("%s treated — Sterile Dressing applied; about %.0fs recovery remains." % [s["name"], float(s["injury_remaining"])])
+        s["history"].append("Day %d — Treated a minor injury with a Bandage." % day)
+        toast_requested.emit("%s treated — Bandage applied; about %.0fs recovery remains." % [s["name"], float(s["injury_remaining"])])
     else:
-        var supply_name := "Sterile Dressing" if condition == "Wounded" else "Medicine"
-        var has_supply := int(components.get("Sterile Dressing", 0)) > 0 if condition == "Wounded" else int(resources.get("Medicine", 0)) > 0
-        if not has_supply:
-            toast_requested.emit("You need %s." % ("a Sterile Dressing" if condition == "Wounded" else "Medicine"))
+        var supply_name := "Bandage" if condition == "Wounded" else "First Aid Kit"
+        if int(components.get(supply_name, 0)) <= 0:
+            toast_requested.emit("You need %s." % ("a Bandage" if condition == "Wounded" else "a First Aid Kit"))
             return false
-        if condition == "Wounded":
-            components["Sterile Dressing"] -= 1
-        else:
-            resources["Medicine"] -= 1
+        components[supply_name] -= 1
         s["status"] = "Recovering"
         var base: float = 45.0 if condition == "Wounded" else 120.0
-        var medical_skill: int = int(_best_available_skill("Medical", sid))
-        var reduction: float = minf(0.35, float(medical_skill) * 0.04)
-        var treatment_time: float = base * (1.0 - reduction) * CampLifeRules.treatment_time_multiplier(bool(buildings.get("Infirmary", false)))
+        var treatment_time: float = base * CampLifeRules.treatment_time_multiplier(bool(buildings.get("Infirmary", false)))
         s["task"] = {"kind": "treatment", "remaining": treatment_time, "duration": base, "target": sid}
-        s["history"].append("Day %d — Began treatment for %s injuries with %s." % [day, condition.to_lower(), supply_name])
-        toast_requested.emit("%s is being treated with %s — about %.0fs of camp time." % [s["name"], supply_name, treatment_time])
-    save_game()
-    state_changed.emit()
-    return true
-
-func _best_available_skill(skill, exclude_id = -1):
-    var best = 0
-    for s in survivors:
-        if int(s["id"]) == int(exclude_id) or s["condition"] == "Dead":
-            continue
-        if s["status"] == "Available":
-            best = max(best, int(s["skills"].get(skill, 0)))
-    return best
-
-func _complete_task(s):
-    var task = s["task"].duplicate(true)
-    s["task"] = {}
-    s["status"] = "Available"
-    var kind = task.get("kind", "")
-    if kind == "craft":
-        var recipe = task["recipe"]
-        if recipe.has("gives_resource"):
-            for key in recipe["gives_resource"].keys():
-                resources[key] = int(resources.get(key, 0)) + int(recipe["gives_resource"][key])
-        if recipe.has("gives_component"):
-            for key in recipe["gives_component"].keys():
-                components[key] = int(components.get(key, 0)) + int(recipe["gives_component"][key])
-        if recipe.has("gives_gear"):
-            inventory_gear.append(recipe["gives_gear"])
-        add_skill_xp(s, "Technical", clamp(int(float(task["duration"]) / 3.0), 2, 12))
-        _add_history("Day %d — %s crafted %s." % [day, s["name"], recipe["id"]])
-        toast_requested.emit("%s finished %s." % [s["name"], recipe["id"]])
-    elif kind == "build":
-        var building = task["building"]
-        buildings[building] = true
-        add_skill_xp(s, "Technical", clamp(int(float(task["duration"]) / 3.0), 2, 12))
-        _change_reputation(s, 2)
-        s["history"].append("Day %d — Helped complete %s." % [day, building])
-        _add_history("Day %d — %s completed %s." % [day, s["name"], building])
-        toast_requested.emit("%s completed." % building)
-    elif kind == "garden":
-        garden_tended_day = day
-        add_skill_xp(s, "Technical", 2)
-        toast_requested.emit("Garden tended for Day %d." % day)
-    elif kind == "chore":
-        var chore:=str(task.get("chore",""))
-        if chore=="stoke_fire": fire_level=clampf(fire_level+CampLifeRules.FIRE_MAINTAIN_GAIN,0.0,100.0)
-        elif chore=="clean_camp":
-            camp_maintenance=CampLifeRules.recover_camp_condition(camp_maintenance,chore)
-            for survivor in survivors:
-                if survivor["condition"]!="Dead" and survivor["status"] not in ["Expedition","Tactical Encounter"]:
-                    var needs:=CampLifeRules.normalize_needs(survivor.get("needs",{})); needs["hygiene"]=clampf(float(needs["hygiene"])+18.0,0.0,100.0); survivor["needs"]=needs
-        elif chore=="repair_perimeter": camp_maintenance=CampLifeRules.recover_camp_condition(camp_maintenance,chore)
-        _add_history("Day %d — %s completed camp duty: %s." % [day,s["name"],task.get("label","Chore")])
-        toast_requested.emit("%s complete." % task.get("label","Chore"))
-    elif kind == "pet_care":
-        var pet:Variant=get_pet(int(task.get("pet_id",-1)))
-        if pet!=null:
-            pet["needs"]=CampLifeRules.apply_pet_care(pet.get("needs",{}),str(task.get("action","")))
-            toast_requested.emit("%s is %s." % [pet["name"],pet_mood_label(pet).to_lower()])
-    elif kind == "treatment":
-        if s["condition"] == "Critical":
-            s["condition"] = "Wounded"
-            s["injury_remaining"] = 180.0
-        elif s["condition"] == "Wounded":
-            s["condition"] = "Hurt"
-            s["injury_remaining"] = 60.0
-        s["status"] = "Available"
-        toast_requested.emit("%s's treatment is complete." % s["name"])
-    save_game()
-    state_changed.emit()
-
-func _can_pay(cost, component_cost = {}):
-    for key in cost.keys():
-        if int(resources.get(key, 0)) < int(cost[key]):
-            return false
-    for key in component_cost.keys():
-        if int(components.get(key, 0)) < int(component_cost[key]):
-            return false
-    return true
-
-func _pay(cost, component_cost = {}):
-    for key in cost.keys():
-        resources[key] = int(resources.get(key, 0)) - int(cost[key])
-    for key in component_cost.keys():
-        components[key] = int(components.get(key, 0)) - int(component_cost[key])
-
-func start_craft(sid, station, recipe_id):
-    var s: Variant = get_survivor(sid)
-    if s == null or s["status"] != "Available":
-        return false
-    if station != "Fire Pit" and not buildings.get(station, false):
-        return false
-    var recipe: Variant = null
-    for r in D.RECIPES.get(station, []):
-        if r["id"] == recipe_id:
-            recipe = r
-            break
-    if recipe == null:
-        return false
-    for req in recipe.get("requires", []):
-        if not buildings.get(req, false):
-            toast_requested.emit("Requires %s." % req)
-            return false
-    var cc = recipe.get("component_cost", {})
-    if not _can_pay(recipe.get("cost", {}), cc):
-        toast_requested.emit("Not enough materials.")
-        return false
-    _pay(recipe.get("cost", {}), cc)
-    _clear_camp_activity(s)
-    var duration = _work_duration(s, float(recipe["time"]))
-    s["status"] = "Crafting"
-    s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(float(recipe["time"]) / 5.0))
-    s["task"] = {"kind": "craft", "station": station, "recipe": recipe.duplicate(true), "remaining": duration, "duration": float(recipe["time"])}
-    save_game()
-    state_changed.emit()
-    return true
-
-func start_build(sid, building):
-    var s: Variant = get_survivor(sid)
-    if s == null or s["status"] != "Available":
-        return false
-    if buildings.get(building, false) or not D.BUILDINGS.has(building):
-        return false
-    var data = D.BUILDINGS[building]
-    for req in data.get("requires", []):
-        if not buildings.get(req, false):
-            toast_requested.emit("Requires %s." % req)
-            return false
-    if not _can_pay(data.get("cost", {}), data.get("component_cost", {})):
-        toast_requested.emit("Not enough materials/components.")
-        return false
-    _pay(data.get("cost", {}), data.get("component_cost", {}))
-    _clear_camp_activity(s)
-    var duration = _work_duration(s, float(data["time"]))
-    s["status"] = "Building"
-    s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(float(data["time"]) / 5.0))
-    s["task"] = {"kind": "build", "building": building, "remaining": duration, "duration": float(data["time"])}
-    save_game()
-    state_changed.emit()
-    return true
-
-func tend_garden(sid):
-    if not buildings.get("Garden Plot", false):
-        return false
-    if garden_tended_day == day:
-        toast_requested.emit("The garden has already been tended today.")
-        return false
-    var s: Variant = get_survivor(sid)
-    if s == null or s["status"] != "Available":
-        return false
-    _clear_camp_activity(s)
-    s["status"] = "Tending"
-    s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(4.0))
-    s["task"] = {"kind": "garden", "remaining": _work_duration(s, 8.0), "duration": 8.0}
+        s["history"].append("Day %d — Began %s treatment using %s." % [day, condition.to_lower(), supply_name])
+        toast_requested.emit("%s treatment started with %s." % [s["name"], supply_name])
     save_game()
     state_changed.emit()
     return true
@@ -1287,26 +1125,34 @@ func _grant_tactical_explore_reward(exp, lead, searches_completed: int):
     var found = {}
     for i in range(count):
         var key = _weighted_loot_pick(exp["zone"])
-        resources[key] = int(resources.get(key, 0)) + 1
-        found[key] = int(found.get(key, 0)) + 1
+        if _store_loot_item(str(key), 1):
+            found[key] = int(found.get(key, 0)) + 1
     var bits = []
     for key in found.keys():
         bits.append("+%d %s" % [found[key], key])
     return ", ".join(bits)
+func _store_loot_item(item_name: String, amount: int = 1) -> bool:
+    if amount <= 0:
+        return false
+    if D.RESOURCE_ORDER.has(item_name):
+        resources[item_name] = int(resources.get(item_name, 0)) + amount
+        return true
+    if D.COMPONENT_ORDER.has(item_name):
+        components[item_name] = int(components.get(item_name, 0)) + amount
+        return true
+    return false
+
 func _grant_tactical_container_loot(value) -> String:
     if not (value is Dictionary):
         return ""
     var found: Dictionary = value
     var bits: Array = []
     for key in found.keys():
-        var resource_name := str(key)
-        if not D.RESOURCE_ORDER.has(resource_name):
-            continue
+        var item_name := str(key)
         var amount := clampi(int(found[key]), 0, 12)
-        if amount <= 0:
+        if amount <= 0 or not _store_loot_item(item_name, amount):
             continue
-        resources[resource_name] = int(resources.get(resource_name, 0)) + amount
-        bits.append("+%d %s" % [amount, resource_name])
+        bits.append("+%d %s" % [amount, item_name])
     bits.sort()
     return ", ".join(bits)
 
@@ -1493,7 +1339,7 @@ func _finish_expedition(eid):
     # only loot physically recovered on that board comes home.
     var loot: Dictionary = {} if bool(exp.get("tactical_resolved", false)) else _roll_loot(exp, living_party)
     for key in loot.keys():
-        resources[key] = int(resources.get(key, 0)) + int(loot[key])
+        _store_loot_item(str(key), int(loot[key]))
     var gear_found = ""
     if not bool(exp.get("tactical_resolved", false)):
         gear_found = _roll_gear(exp, living_party)
@@ -1723,9 +1569,9 @@ func _roll_gear(exp, party):
     elif zone == "Nearby Streets":
         pool = ["Kitchen Knife", "Work Gloves", "Heavy Boots", "School Backpack", "Lock Pick", "Firecracker"]
     elif zone == "Residential Blocks":
-        pool = ["Kitchen Knife", "Baseball Bat", "Crossbow", "Flashlight", "Lock Pick", "Screwdriver Set", "First Aid Kit", "School Backpack", "Leather Jacket"]
+        pool = ["Kitchen Knife", "Baseball Bat", "Crossbow", "Flashlight", "Lock Pick", "Screwdriver Set", "School Backpack", "Leather Jacket"]
     elif zone == "Commercial Fringe":
-        pool = ["Crowbar", "Sledgehammer", "Hatchet", "Flashlight", "Lock Pick", "Firecracker", "Bolt Cutters", "Toolbox", "First Aid Kit", "6-Shot Revolver", "Double-Barrel Shotgun", "Hiking Pack", "Leather Jacket"]
+        pool = ["Crowbar", "Sledgehammer", "Hatchet", "Flashlight", "Lock Pick", "Firecracker", "Bolt Cutters", "Toolbox", "6-Shot Revolver", "Double-Barrel Shotgun", "Hiking Pack", "Leather Jacket"]
     else:
         pool = ["Crowbar", "Sledgehammer", "Hatchet", "Lock Pick", "Firecracker", "Bolt Cutters", "Toolbox", "6-Shot Revolver", "12-Shot Automatic", "Double-Barrel Shotgun", "Pump Shotgun", "Medium Rifle", "Long Rifle", "Hiking Pack", "Heavy Boots", "Work Jacket"]
     return pool[rng.randi_range(0, pool.size() - 1)]
@@ -1977,11 +1823,11 @@ func _build_field_event(key, exp):
         ], context)
 
     if key == "injured_stranger":
-        var can_treat = int(resources.get("Medicine", 0)) > 0 or _party_has_gear_name(exp["survivor_ids"], "First Aid Kit")
+        var can_treat = int(components.get("First Aid Kit", 0)) > 0
         var can_supply = int(resources.get("Cooked Food", 0)) > 0 and int(resources.get("Clean Water", 0)) > 0
         return _event_base(key, "The Injured Stranger", "A survivor sits against a wall with a badly injured leg. They are alert, frightened, and cannot travel far without help.", [
             _choice("Help them all the way back to First Fire", "stranger_help", not _has_room_for_recruit(), "NO SHELTER SPACE"),
-            _choice("Treat the leg here", "stranger_treat", not can_treat, "NEEDS MEDICINE OR FIRST AID KIT"),
+            _choice("Treat the leg here", "stranger_treat", not can_treat, "NEEDS FIRST AID KIT"),
             _choice("Leave food and clean water", "stranger_supply", not can_supply, "NEEDS 1 FOOD + 1 CLEAN WATER"),
             _choice("Tell them you cannot help", "stranger_leave")
         ], context)
@@ -2278,23 +2124,21 @@ func _handle_event_action(event, action):
             else:
                 _queue_field_result(event, "No Safe Bed", "You cannot honestly offer shelter right now. The party helps them get more comfortable, then moves on.")
         "stranger_treat":
-            var used_medicine = false
-            if int(resources.get("Medicine", 0)) > 0:
-                resources["Medicine"] -= 1
-                used_medicine = true
+            if int(components.get("First Aid Kit", 0)) > 0:
+                components["First Aid Kit"] -= 1
             if lead != null:
-                var rt = skill_check(lead, "Medical", 10, 1 if _party_has_gear_name(ids, "First Aid Kit") else 0)
+                var rt = skill_check(lead, "Medical", 10)
                 add_skill_xp(lead, "Medical", 10)
                 if rt >= 1:
                     flags["injured_stranger_return_after"] = 1
                     _change_reputation(lead, 3)
-                    _queue_field_result(event, "Stable", "The leg is cleaned, wrapped and braced well enough for them to move when they are ready. You leave directions to First Fire without demanding anything.", "%s treated an injured stranger in the field." % lead["name"])
+                    _queue_field_result(event, "Stable", "The first-aid kit gets the bleeding controlled and the leg braced well enough for them to move when they are ready. You leave directions to First Fire without demanding anything.", "%s treated an injured stranger in the field." % lead["name"])
                 elif rt == 0:
                     flags["injured_stranger_return_after"] = 2
-                    _queue_field_result(event, "Good Enough for Tonight", "It is not a clean job, but the bleeding is controlled and the leg is supported. They should survive the night if nothing else finds them.")
+                    _queue_field_result(event, "Good Enough for Tonight", "The first-aid kit is enough to control the bleeding and support the leg. They should survive the night if nothing else finds them.")
                 else:
                     lead["stress"] = min(100.0, float(lead["stress"]) + 6.0)
-                    _queue_field_result(event, "Beyond What You Can Do", "The supplies help, but the injury is worse than it looked. You stabilize what you can and have to leave them where they are.")
+                    _queue_field_result(event, "Beyond What You Can Do", "The kit helps, but the injury is worse than it looked. You stabilize what you can and have to leave them where they are.")
         "stranger_supply":
             resources["Cooked Food"] -= 1
             resources["Clean Water"] -= 1
@@ -2396,7 +2240,7 @@ func _handle_event_action(event, action):
                 _queue_recruit_offer(event, "After the Shot", "You find a shaken survivor behind a wrecked car. The shot was theirs. Whatever they fired at is down, and they are not eager to stay alone.", "gunshot_survivor")
             elif gk == "aftermath":
                 resources["Hardware"] = int(resources.get("Hardware", 0)) + rng.randi_range(2, 4)
-                if rng.randf() < 0.35: resources["Medicine"] += 1
+                if rng.randf() < 0.35: components["First Aid Kit"] = int(components.get("First Aid Kit", 0)) + 1
                 _queue_field_result(event, "Too Late for the People", "The fight is already over. There is ammunition left behind, and maybe one medical item worth taking.", "The party scavenged the aftermath of a gunfight.")
             elif gk == "hostile":
                 var rg2 = skill_check(lead, "Combat", 11, _equipment_combat_bonus(lead)) if lead != null else -1
@@ -2550,11 +2394,10 @@ func _handle_event_action(event, action):
             if lead != null:
                 med = 2 + int(lead["skills"]["Medical"] >= 3) + int(lead["skills"]["Medical"] >= 5)
                 add_skill_xp(lead, "Medical", 10)
-            resources["Medicine"] += med
-            if rng.randf() < 0.35: inventory_gear.append("First Aid Kit")
+            components["First Aid Kit"] = int(components.get("First Aid Kit", 0)) + med
             special_sites["Neighborhood Clinic"]["cabinets_looted"] = true
             _finish_special_site_without_clear(event)
-            _queue_closed_result(event, "Cabinets Stripped", "You take the accessible medicine and leave rather than open the noisy storage room today. The clinic remains marked; the storage room is still unresolved.", "The party stripped the accessible medical cabinets at Neighborhood Clinic.")
+            _queue_closed_result(event, "Cabinets Stripped", "You take the accessible first-aid kits and leave rather than open the noisy storage room today. The clinic remains marked; the storage room is still unresolved.", "The party stripped the accessible medical cabinets at Neighborhood Clinic.")
         "site_clinic_call":
             var ck = event.get("context", {}).get("clinic_kind", "empty")
             if ck == "survivor":
@@ -2563,11 +2406,11 @@ func _handle_event_action(event, action):
             elif ck == "zombie":
                 var cr = skill_check(lead, "Combat", 9, _equipment_combat_bonus(lead)) if lead != null else -1
                 if cr < 0 and lead != null: _apply_injury(lead, "Hurt")
-                resources["Medicine"] += 2
+                components["First Aid Kit"] = int(components.get("First Aid Kit", 0)) + 2
                 _clear_site(event, true)
                 _queue_closed_result(event, "The Sound Answers", "An infected former patient lurches from storage. Once it is dealt with, two useful medical items remain.", "Neighborhood Clinic was cleared after contact with an infected occupant.")
             else:
-                resources["Medicine"] += 2
+                components["First Aid Kit"] = int(components.get("First Aid Kit", 0)) + 2
                 _clear_site(event, true)
                 _queue_closed_result(event, "Nobody There", "The sound was loose equipment shifting against a vent. The storage room still contains two useful medical items.")
 
@@ -3135,6 +2978,42 @@ func _add_history(line):
 # SAVE / LOAD
 # -----------------------------------------------------------------------------
 
+func _normalize_medical_supplies() -> void:
+    var legacy_medicine := maxi(0, int(resources.get("Medicine", 0)))
+    if legacy_medicine > 0:
+        components["First Aid Kit"] = int(components.get("First Aid Kit", 0)) + legacy_medicine
+    resources.erase("Medicine")
+
+    var legacy_dressings := maxi(0, int(components.get("Sterile Dressing", 0)))
+    if legacy_dressings > 0:
+        components["Bandage"] = int(components.get("Bandage", 0)) + legacy_dressings
+    components.erase("Sterile Dressing")
+    for key in D.STARTING_COMPONENTS.keys():
+        components[key] = maxi(0, int(components.get(key, 0)))
+
+    var retained_gear: Array = []
+    for gear_value in inventory_gear:
+        var gear_name := str(gear_value)
+        if gear_name == "First Aid Kit":
+            components["First Aid Kit"] = int(components.get("First Aid Kit", 0)) + 1
+        else:
+            retained_gear.append(gear_value)
+    inventory_gear = retained_gear
+    inventory_gear_states.erase("First Aid Kit")
+
+    for survivor in survivors:
+        var equipment: Dictionary = survivor.get("equipment", {})
+        if str(equipment.get("Tool", "")) != "First Aid Kit":
+            continue
+        components["First Aid Kit"] = int(components.get("First Aid Kit", 0)) + 1
+        equipment["Tool"] = ""
+        survivor["equipment"] = equipment
+        var equipment_state_value = survivor.get("equipment_state", {})
+        if equipment_state_value is Dictionary:
+            var equipment_state: Dictionary = equipment_state_value
+            equipment_state.erase("Tool")
+            survivor["equipment_state"] = equipment_state
+
 func save_game():
     if not initialized and survivors.is_empty():
         return
@@ -3182,6 +3061,7 @@ func load_game():
         inventory_gear_states = {}
     buildings = parsed.get("buildings", {})
     survivors = parsed.get("survivors", [])
+    _normalize_medical_supplies()
     next_survivor_id = int(parsed.get("next_survivor_id", 1))
     next_expedition_id = int(parsed.get("next_expedition_id", 1))
     expeditions = parsed.get("expeditions", [])

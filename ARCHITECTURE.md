@@ -37,7 +37,7 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 ## Core owners
 
 ### `FFData.gd`
-Shared declarative catalogs. Item names, recipes, zones, buildings, backgrounds, and gear data live here. Legacy `protect`, old background skill-bonus fields, or other stale catalog metadata are not authoritative when contradicted by active rules; remove them when a focused cleanup safely owns that data.
+Shared declarative catalogs. Item names, recipes, zones, buildings, backgrounds, gear data, and the Bandage / rare First Aid Kit / rarest Zombie Cure medical supply ladder live here. Legacy `protect`, old background skill-bonus fields, or other stale catalog metadata are not authoritative when contradicted by active rules; remove them when a focused cleanup safely owns that data.
 
 ### `Game.gd`
 Persistent state/orchestration foundation: camp ticks, survivor work assignment, camp-maintenance and pet state, expedition sequencing, event/tactical transitions, **gear condition plus 4/6/8 carry-cap data**, and schema-7 state transport shape.
@@ -111,7 +111,7 @@ Shared touch-first presentation/controller for the four daily chore interactions
 ### `FFVirusRules.gd`
 Pure zombie-virus rules. Owns stage names/normalization, contact-to-exposure probability, daily progression, camp-spread probability, and treatment plans/costs. It does not mutate Game state or render UI.
 
-Current virus stages are **Clear → Exposed → Infected → Feverish**. Tactical transmission is Bite-only: every successful Bite gets an independent fixed **3%** exposure roll, while Scratch and generic physical damage have zero virus chance. The probability never increases from prior attacks. Exposed has a 50% natural-clear chance on its next daily progression. Established camp-spread probabilities remain reduced. Exposed can be decontaminated with Clean Water + Sterile Dressing; Infected uses Medicine; Feverish emergency treatment requires Infirmary + 2 Medicine. Quarantine prevents close-contact camp spread. Terminal consequence is applied by Game orchestration after an untreated Feverish daily transition.
+Current virus stages are **Clear → Exposed → Infected → Feverish**. Tactical transmission is Bite-only: every successful Bite gets an independent fixed **3%** exposure roll, while Scratch and generic physical damage have zero virus chance. The probability never increases from prior attacks. Exposed has a 50% natural-clear chance on its next daily progression. Established camp-spread probabilities remain reduced. Exposed can be decontaminated with Clean Water + a crafted Bandage; Infected consumes 1 found-only Zombie Cure; Feverish emergency treatment requires an Infirmary + 1 Zombie Cure. Quarantine prevents close-contact camp spread. Terminal consequence is applied by Game orchestration after an untreated Feverish daily transition.
 
 ### `FFCampSocial.gd`
 Relationships, chatter, political standing, and leadership support. **Leadership** is the active progression stat for candidate standing and social/political checks. Active orchestration passes only assignable/available survivors into ordinary chatter selection.
@@ -129,7 +129,7 @@ Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts ar
 
 The living camp is the primary interaction surface, but it remains a UI layer rather than a second simulation. `FFCampViewSleepVirus.gd` may determine which visible entity/cell was tapped and emit an intent signal. It must not spend resources, assign workers, start expeditions, alter survivor state, or perform crafting/building directly. `MainSleepVirus.gd` routes intent to contextual UI that calls the existing authoritative Game APIs.
 
-The active UI no longer exposes the legacy four-tab bar. A new game visibly starts as wilderness plus four physical essentials: First Fire, a bedroll, communal storage, and a Workbench. First Fire exposes Cook Food, Boil Water, and Sterile Dressing; the Workbench exposes its own recipe catalog. Deliberate survivor work is assigned from the survivor inspector rather than a dedicated management kiosk. Future construction anchors remain invisible until that construction interaction is deliberately reintroduced.
+The active UI no longer exposes the legacy four-tab bar. A new game visibly starts as wilderness plus four physical essentials: First Fire, a bedroll, communal storage, and a Workbench. First Fire exposes Cook Food, Boil Water, and Bandage; the Workbench exposes its own recipe catalog. Deliberate survivor work is assigned from the survivor inspector rather than a dedicated management kiosk. Future construction anchors remain invisible until that construction interaction is deliberately reintroduced.
 
 At-a-glance mood/need/virus indicators are derived presentation from existing survivor state. They do not create a second need or mood model.
 

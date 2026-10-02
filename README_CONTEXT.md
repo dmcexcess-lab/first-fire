@@ -132,20 +132,22 @@ Unassigned survivors remain worth watching: their needs can drive sleep, checkin
 Physical trauma and zombie virus are separate health axes.
 
 Physical wound treatment:
-- **Hurt:** 1 Sterile Dressing; minor recovery capped to 30s.
-- **Wounded:** 1 Sterile Dressing; timed wound care.
-- **Critical:** 1 Medicine; timed emergency stabilization to Wounded, after which normal wound care applies.
+- **Hurt:** 1 Bandage; minor recovery capped to 30s.
+- **Wounded:** 1 Bandage; timed wound care.
+- **Critical:** 1 First Aid Kit; timed emergency stabilization to Wounded, after which normal wound care applies.
+
+Medical supply economy is explicit: **Bandages are crafted** at the First Fire from Cloth + Clean Water; **First Aid Kits are rare found-only supplies**; **Zombie Cure is found-only and the rarest medical find**.
 
 Zombie virus:
 - **Only a successful Bite can create field exposure. Scratches never roll infection.** Generic physical damage does not create exposure either.
 - Every successful Bite gets the same independent **3% exposure roll**. The percentage does not rise, stack, or accumulate because of earlier scratches/bites; multiple bites simply produce multiple separate 3% checks.
 - Exposed survivors have a **50%** natural-clear chance at the next daily progression; established camp spread remains substantially lower than the earlier Alpha tuning.
-- **Exposed:** can be decontaminated with 1 Clean Water + 1 Sterile Dressing; untreated exposure gets the 50% natural-clear check, otherwise becomes Infected at the next daily transition.
-- **Infected:** 1 Medicine starts a timed treatment course; untreated infection becomes Feverish at the next daily transition.
-- **Feverish:** survivor is automatically unavailable; emergency treatment requires a built Infirmary + 2 Medicine. An untreated feverish case can become terminal at the next daily transition.
+- **Exposed:** can be decontaminated with 1 Clean Water + 1 Bandage; untreated exposure gets the 50% natural-clear check, otherwise becomes Infected at the next daily transition.
+- **Infected:** 1 Zombie Cure starts a timed cure course; untreated infection becomes Feverish at the next daily transition.
+- **Feverish:** survivor is automatically unavailable; emergency treatment requires a built Infirmary + 1 Zombie Cure. An untreated feverish case can become terminal at the next daily transition.
 - **Quarantine:** available for any active virus stage when the survivor is otherwise free; it makes the survivor unavailable and prevents close-contact camp spread. Unquarantined Infected/Feverish survivors can expose campmates.
 
-Virus treatment is timed and visible in the survivor inspector/camp view. Completing a virus course clears the virus axis without rewriting the physical wound condition ladder. Medicine therefore has distinct roles in Critical trauma stabilization and established/severe viral treatment.
+Virus treatment is timed and visible in the survivor inspector/camp view. Completing a cure course clears the virus axis without rewriting the physical wound condition ladder. First Aid Kits remain physical-trauma supplies; Zombie Cure is reserved for established/severe viral treatment.
 
 Treatment time does not depend on a removed Medical stat. Craft/build duration does not depend on a removed Technical stat.
 

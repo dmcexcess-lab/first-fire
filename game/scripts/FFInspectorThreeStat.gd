@@ -81,9 +81,9 @@ func _render_survivor() -> void:
     if condition == "Dead":
         body.add_child(_make_label("No actions available.", 13))
     else:
-        if condition == "Hurt": body.add_child(_make_label("Treatment: 1 Sterile Dressing. Cuts minor-injury recovery to at most 30s.", 11))
-        elif condition == "Wounded": body.add_child(_make_label("Treatment: 1 Sterile Dressing. Starts timed wound recovery.", 11))
-        elif condition == "Critical": body.add_child(_make_label("Treatment: 1 Medicine. Stabilizes the critical injury into a wound.", 11))
+        if condition == "Hurt": body.add_child(_make_label("Treatment: 1 Bandage. Cuts minor-injury recovery to at most 30s.", 11))
+        elif condition == "Wounded": body.add_child(_make_label("Treatment: 1 Bandage. Starts timed wound recovery.", 11))
+        elif condition == "Critical": body.add_child(_make_label("Treatment: 1 First Aid Kit. Stabilizes the critical injury into a wound.", 11))
         var actions = HBoxContainer.new()
         var treat = Button.new()
         treat.text = "TREAT"; treat.size_flags_horizontal = Control.SIZE_EXPAND_FILL; treat.custom_minimum_size = Vector2(0, 46)

@@ -29,7 +29,7 @@ func _render_survivor() -> void:
     if stage == VirusRules.STAGE_EXPOSED:
         body.add_child(_make_label("Options: decontaminate now, quarantine and observe, or risk waiting. Untreated exposure has one 50% natural-clear chance before infection establishes.", 11))
     elif stage == VirusRules.STAGE_INFECTED:
-        body.add_child(_make_label("The infection is established. Medicine can still clear it; otherwise it progresses to severe fever at the next daily transition.", 11))
+        body.add_child(_make_label("The infection is established. A Zombie Cure can still clear it; otherwise it progresses to severe fever at the next daily transition.", 11))
     else:
         body.add_child(_make_label("Severe fever is the final treatable stage. Without emergency care, the next untreated daily transition can be fatal.", 11))
     body.add_child(_make_label("Treatment requirement: %s" % str(plan.get("summary", "None")), 12))
@@ -63,7 +63,7 @@ func _quarantine_virus() -> void:
         _render_survivor()
 
 func _render_item() -> void:
-    if current_item not in ["Medicine", "Sterile Dressing"]:
+    if current_item not in ["Bandage", "First Aid Kit", "Zombie Cure"]:
         super._render_item()
         return
     _clear_body()
@@ -74,7 +74,9 @@ func _render_item() -> void:
     back.pressed.connect(_back_from_item)
     body.add_child(back)
     body.add_child(_make_label("Owned in camp: %d" % _owned_count(current_item), 13))
-    if current_item == "Medicine":
-        body.add_child(_make_label("High-grade medical supplies used for Critical trauma stabilization and established zombie-virus treatment. Feverish virus cases require two Medicine in a built Infirmary.", 15))
+    if current_item == "Bandage":
+        body.add_child(_make_label("Craftable wound-care material made at the First Fire from Cloth + Clean Water. Used for Hurt/Wounded injuries and, with Clean Water, early exposure decontamination.", 15))
+    elif current_item == "First Aid Kit":
+        body.add_child(_make_label("Rare, found-only emergency medical supply. Critical physical trauma consumes one First Aid Kit; it cannot be crafted at camp.", 15))
     else:
-        body.add_child(_make_label("Clean wound-care material used for Hurt/Wounded physical injuries and, together with Clean Water, early zombie-virus exposure decontamination.", 15))
+        body.add_child(_make_label("The rarest medical field find. A Zombie Cure clears established infection; Feverish cases still require a built Infirmary for emergency treatment.", 15))
