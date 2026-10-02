@@ -437,9 +437,9 @@ func _consume_secondary_item() -> void:
     player_light_on = false
 
 func _throw_firecracker() -> void:
-    var target := player.pos
+    var target: Vector2i = player.pos
     for step in range(1, 6):
-        var next_cell := player.pos + player.facing * step
+        var next_cell: Vector2i = player.pos + player.facing * step
         if not inside(next_cell) or walls.has(next_cell) or obstacles.has(next_cell) or (doors.has(next_cell) and not bool(doors[next_cell])):
             break
         target = next_cell
@@ -463,7 +463,7 @@ func use_secondary_item() -> void:
         queue_redraw()
         return
     if item == "Lock Pick":
-        var facing_cell := player.pos + player.facing
+        var facing_cell: Vector2i = player.pos + player.facing
         if locked_doors.has(facing_cell):
             try_unlock(facing_cell, false)
             return
