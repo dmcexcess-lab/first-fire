@@ -1,3 +1,13 @@
+## Beta Candidate — Sparse Near-Field Infected Counts — 2026-10-01
+
+- Rebalanced tactical infected populations around expedition scenario type and distance.
+- **Very Short / Camp Perimeter exploration now rolls 0–3 infected** and is the only expedition tier that can produce a lucky 0- or 1-infected map.
+- All longer exploration now has a minimum of **2 infected**; the existing distance curve remains above that floor.
+- **Ambushes use exactly 5 infected**, **pet rescues 3**, and **survivor rescues 5**, regardless of expedition distance.
+- Removed the old global `quiet_explore = 0 infected` shortcut; quiet longer-distance exploration now reduces pressure without bypassing the 2-infected floor.
+- Routed rescue subtype and quiet/explore state through `FFTacticalBalance` as the single owner for tactical population rules.
+- Recorded the next planned tactical completion slice in `ROADMAP.md`: combat/stealth feel, infected AI/perception, sound propagation/feedback, and lighting/graphics polish including a Web/mobile-safe bloom/glow evaluation.
+
 ## Beta Candidate — Lean Start & Instant Tactical Travel — 2026-10-01
 
 - Reduced founder starting carried loot to **one item total: Utility Knife**. The starter Flashlight and Worn Backpack are no longer granted; the communal starting food/water runway is unchanged.

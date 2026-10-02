@@ -137,6 +137,10 @@ jobs:
           if grep -q 'KEY_G: guard()' game/scripts/FFCombatThreeStat.gd; then exit 1; fi
           if grep -Fq 'draw_button(btn_guard,"GUARD"' game/scripts/FFCombatThreeStat.gd; then exit 1; fi
           grep -q 'func search_explore_cell' game/scripts/FFCombat.gd
+          grep -q 'func zombie_count_range' game/scripts/FFTacticalBalance.gd
+          grep -Fq 'return Vector2i(0, 3)' game/scripts/FFTacticalBalance.gd
+          grep -Fq 'return Vector2i(3, 3) if rescue_is_pet else Vector2i(5, 5)' game/scripts/FFTacticalBalance.gd
+          if grep -Fq '0 if kind == "explore" and bool(context.get("quiet", false))' game/scripts/FFCombat.gd; then exit 1; fi
           grep -q 'const Environments = preload' game/scripts/FFTacticalScenarios.gd
           grep -q 'var current_combat := {}' game/scripts/Game.gd
           grep -q 'func resolve_combat' game/scripts/Game.gd

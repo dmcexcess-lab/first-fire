@@ -76,7 +76,7 @@ Current combat rules: Combat/Agility attack and movement behavior, Stealth, Spri
 Thin active tactical wrapper. Counts successful direct infected attacks against the controlled survivor, persists/returns that count, and prevents a contacted living rescue from being failed merely because the player reaches the exit before the escort's next scheduled movement. It must not treat generic physical damage as virus exposure.
 
 ### `FFTacticalBalance.gd`
-Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected counts/HP/damage, container search/loot tuning, Shove resistance/stagger, and infected hit chance.
+Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected encounter population/HP/damage, container search/loot tuning, Shove resistance/stagger, and infected hit chance. Current population contract: Very Short exploration rolls 0–3 infected and is the only route that may produce 0–1; longer exploration floors at 2; ambushes use 5, pet rescues 3, and survivor rescues 5.
 
 ### `FFTacticalTime.gd`
 Low-level tactical timeline utilities for load, fatigue, condition, stance, weapon timing, and infected pace. `FFThreeStatRules.gd` applies current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.

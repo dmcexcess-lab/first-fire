@@ -4,7 +4,7 @@ First Fire is now in **feature freeze** and shelved for Beta testing/release wor
 
 ## Final game loop
 
-**Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare a one- or two-survivor expedition → choose a distance → pay its travel time and any party-scaled supplies → tactical field situation → escape with physically recovered resources/rescues → return to a visibly changing camp → repeat.**
+**Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare a one- or two-survivor expedition → choose a distance and commit any party-scaled supplies → tactical field situation immediately → escape with physically recovered resources/rescues → advance the authored route hours on return → come back to a visibly changing camp → repeat.**
 
 The living camp is the primary home/menu surface. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. On phones the camp is zoomed and pannable so structures and people remain readable instead of shrinking the full 18×11 settlement into one strip. Normal management starts by touching the camp itself: survivors open inspection and deliberate assignments, the communal stash opens inventory/resources, the First Fire and starter Workbench provide physical crafting, built structures expose contextual interactions, and the camp edge/gate owns expedition dispatch. The starter scene is mostly wilderness; future construction locations are not shown as empty placeholders. Contextual sheets may reuse mature underlying UI logic, but they are entered from physical camp objects and return to the camp.
 
@@ -53,8 +53,13 @@ The core presentation goal is **watch, prioritize, assign, prepare, grow**. The 
 
 Outside-world events remain physical/tactical. Standard Send Out is now always a tactical map, including previously discovered special sites; there is no routine passive expedition-result branch. Finish retiring any remaining legacy field-text path so camp narrative is the only routine text-event space.
 
-Keep deepening the existing tactical language rather than adding another combat system:
+Keep deepening the existing tactical language rather than adding another combat system.
 
+**Next tactical overhaul slice:** treat combat/stealth, infected AI, sound, and presentation as one cohesive pass. Rework melee/firearm/stealth readability and decision quality; improve infected perception, investigation, pursuit and local behavior; upgrade sound propagation and player-facing sound feedback; then raise visual atmosphere/readability with stronger lighting/effects and evaluate restrained bloom/glow where Godot Web/mobile performance supports it. Preserve portrait touch usability and extraction-first play throughout.
+
+Current encounter-population contract is intentionally sparse at the nearest tier: **Very Short exploration rolls 0–3 infected and is the only place that can roll 0 or 1**. Ambushes use 5 infected, pet rescues 3, survivor rescues 5, and every longer exploration has at least 2.
+
+Continue completion work around:
 - recognizable locations;
 - day/night/power/lighting;
 - vision, sound, stealth and action timing;

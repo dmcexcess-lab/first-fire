@@ -435,7 +435,13 @@ func spawn_zombies():
     zombies.clear()
     var zone := str(context.get("zone", "Nearby Streets"))
     var kind := str(context.get("kind", "ambush"))
-    var count: int = 0 if kind == "explore" and bool(context.get("quiet", false)) else TacticalBalance.zombie_count(zone, kind)
+    var count: int = TacticalBalance.zombie_count(
+        zone,
+        kind,
+        bool(context.get("rescue_is_pet", false)),
+        bool(context.get("quiet", false)),
+        rng
+    )
     var candidates := []
     for y in range(1, H - 1):
         for x in range(1, W - 1):

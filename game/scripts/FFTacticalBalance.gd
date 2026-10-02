@@ -43,13 +43,28 @@ const CONTAINER_BIASES := {
 static func explore_site_count(zone: String) -> int:
     return int(EXPLORE_SITE_COUNTS.get(zone, 3))
 
-static func zombie_count(zone: String, kind: String) -> int:
-    var count := int(ZOMBIE_BASE_COUNTS.get(zone, 4))
+static func zombie_count_range(zone: String, kind: String, rescue_is_pet: bool = false, quiet: bool = false) -> Vector2i:
+    if kind == "ambush":
+        return Vector2i(5, 5)
     if kind == "rescue":
+        return Vector2i(3, 3) if rescue_is_pet else Vector2i(5, 5)
+    if zone == "Camp Perimeter":
+        # Very Short is the only route where the party can get lucky enough
+        # to encounter zero or one infected.
+        return Vector2i(0, 3)
+    var count := int(ZOMBIE_BASE_COUNTS.get(zone, 4))
+    if quiet:
         count -= 1
-    elif kind == "ambush":
-        count += 1
-    return maxi(2, count)
+    count = maxi(2, count)
+    return Vector2i(count, count)
+
+static func zombie_count(zone: String, kind: String, rescue_is_pet: bool = false, quiet: bool = false, rng: RandomNumberGenerator = null) -> int:
+    var count_range := zombie_count_range(zone, kind, rescue_is_pet, quiet)
+    if count_range.x >= count_range.y:
+        return count_range.x
+    if rng == null:
+        return count_range.y
+    return rng.randi_range(count_range.x, count_range.y)
 
 static func explore_reward_rolls(searches: int, unused_skill: int = 0) -> int:
     if searches <= 0:
