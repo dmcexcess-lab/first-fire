@@ -35,7 +35,11 @@ Finish tuning the systems that already exist:
 - keep mood/need/virus state glanceable on the camp through compact floating indicators rather than forcing routine roster-panel inspection;
 - autonomous relationship/politics-based chatter in the living camp;
 - survivor moodlets driven by hunger, thirst, sleep, fun, safety, and hygiene; eating/drinking/sleep/fun remain autonomous idle behavior while productive labor is player-assigned;
-- an active camp work loop covering survivor training, fire tending, cleaning/maintenance, crafting, treatment, pet care and expeditions; routine chores only surface after visible fire/maintenance problems create a reason to act, and assignments play out as timed survivor behavior in the living camp;
+- an active camp work loop covering camp chores/maintenance, crafting/building, treatment or forced rest, pet care, training and expeditions; eating, drinking, normal sleep, fire-watching, socializing and fun remain autonomous, while assigned work can make survivors miss normal meal/sleep windows if the player overworks them;
+- player-assigned camp jobs resolve through short touch-first minigames/direct interactions rather than assign-and-wait timers; prefer a compact reusable chore vocabulary such as chopping/stacking wood, stacking supplies, moving rocks/debris, clearing work areas and hauling materials, and allow the same chore to be used for multiple survivors;
+- persistent camp condition/cleanliness/maintenance that degrades when neglected, visibly affects the living camp, grants a mood bonus when well kept, is neutral when merely acceptable, and applies escalating negative mood pressure at neglected bands (target 0/-1/-2/-3);
+- each survivor should have at least one meaningful daily activity, whether a player-assigned productive action or autonomous life behavior, without turning meals/sleep/fun into manual scheduling;
+- occasional touch-first camp emergency minigames (for example containing a spreading camp fire) layered alongside authored camp social/political events, with low enough frequency to avoid popup spam;
 - rescued dogs/cats as persistent Tamagotchi-style camp pets whose affection is maintained through PLAY/LOVE assignments; pets consume no camp food/water, can leave if neglected, and each retained pet contributes exactly one random material or Raw Food per day;
 - relationship drift from meaningful positive/negative interactions;
 - shortages and repeated expedition duty feeding camp opinion;
