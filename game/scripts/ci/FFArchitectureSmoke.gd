@@ -80,6 +80,8 @@ func _init() -> void:
     if not _check(active_game_source.contains("const SIM_TIME_SCALE := 1.0") and base_game_source.contains("const DAY_SECONDS := 120.0") and active_game_source.contains("\"status\"] = \"Sleeping\"") and active_game_source.contains("func survivor_can_assign") and active_game_source.contains("func start_virus_treatment") and active_game_source.contains("func quarantine_survivor"), "authoritative sleep virus and five-seconds-per-hour orchestration"): return
     if not _check(active_camp_source.contains("status == \"Sleeping\"") and active_camp_source.contains("_sleep_cell_for_survivor") and active_camp_source.contains("QUARANTINE"), "camp reflects sleep and isolation"): return
     if not _check(active_game_source.contains("func camp_chore_needed") and active_game_source.contains("func start_training") and active_game_source.contains("\"Training\"") and active_main_source.contains("LEAVE CAMP") and active_camp_source.contains("MENU_VISIBLE_GRID_WIDTH := 8.5") and active_camp_source.contains("_continue_pan_drag"), "camp focus routing timed work and survivor training"): return
+    if not _check(active_game_source.contains("func camp_condition_summary") and active_game_source.contains("previous_daily_activity") and active_game_source.contains("CampLifeRules.record_daily_activity") and active_game_source.contains("if not initialized or sim_paused or game_over"), "camp condition and daily activity stay behind settlement pause boundary"): return
+    if not _check(active_main_source.contains("Camp condition: %s") and active_main_source.contains("condition_mood_text"), "work board exposes camp condition mood effect"): return
     if not _check(base_game_source.contains("buildings[\"Storage Crate\"] = true") and base_game_source.contains("buildings[\"Workbench\"] = true"), "starter camp physical essentials"): return
     if not _check(active_camp_source.contains("func _draw_wilderness") and active_camp_source.contains("remain code/data only") and not active_camp_source.contains("build_plot_pressed.emit"), "sparse wilderness hides future build placeholders"): return
     if not _check(inspector_source.contains("CAMP LIFE") and inspector_source.contains("_start_training") and inspector_source.contains("_start_camp_work"), "survivor inspector owns deliberate camp assignments"): return
@@ -114,6 +116,24 @@ func _init() -> void:
     if not _check(int(D.STARTING_RESOURCES.get("Cooked Food", 0)) >= 3 and int(D.STARTING_RESOURCES.get("Clean Water", 0)) >= 3, "new game basic supply runway"): return
     var base_needs := CampLifeRules.default_needs()
     if not _check(base_needs.has("hunger") and base_needs.has("safety") and base_needs.has("hygiene"), "camp needs"): return
+    if not _check(CampLifeRules.camp_condition_band(90.0) == "Well Kept" and CampLifeRules.camp_condition_mood_modifier(90.0) == 1, "well-kept camp mood bonus"): return
+    if not _check(CampLifeRules.camp_condition_band(70.0) == "Acceptable" and CampLifeRules.camp_condition_mood_modifier(70.0) == 0, "acceptable camp is mood neutral"): return
+    if not _check(CampLifeRules.camp_condition_mood_modifier(50.0) == -1 and CampLifeRules.camp_condition_mood_modifier(30.0) == -2 and CampLifeRules.camp_condition_mood_modifier(10.0) == -3, "neglected camp mood bands"): return
+    if not _check(CampLifeRules.degrade_camp_condition(50.0, 10.0) < 50.0 and CampLifeRules.degrade_camp_condition(0.0, 999.0) == 0.0, "camp condition degrades within bounds"): return
+    if not _check(CampLifeRules.recover_camp_condition(50.0, "clean_camp") > 50.0 and CampLifeRules.recover_camp_condition(90.0, "repair_perimeter") == 100.0, "camp maintenance recovery is bounded"): return
+    var busy_activity := CampLifeRules.default_daily_activity(4)
+    busy_activity = CampLifeRules.record_daily_activity(busy_activity, 4, "Crafting", "craft", 19.0, 12.0)
+    busy_activity = CampLifeRules.record_daily_activity(busy_activity, 4, "Building", "build", 23.0, 30.0)
+    busy_activity = CampLifeRules.finalize_daily_activity(busy_activity, 4)
+    if not _check(bool(busy_activity["missed_meal"]) and bool(busy_activity["missed_sleep"]) and CampLifeRules.daily_workload_pressure(busy_activity, 4) == 3, "assigned work can crowd out meal and sleep windows"): return
+    var free_activity := CampLifeRules.default_daily_activity(4)
+    free_activity = CampLifeRules.record_daily_activity(free_activity, 4, "Available", "", 19.0, 12.0)
+    free_activity = CampLifeRules.record_daily_activity(free_activity, 4, "Available", "", 23.0, 30.0)
+    free_activity = CampLifeRules.finalize_daily_activity(free_activity, 4)
+    if not _check(not bool(free_activity["missed_meal"]) and not bool(free_activity["missed_sleep"]) and bool(free_activity["ate_normally"]) and bool(free_activity["slept_normally"]) and bool(free_activity["autonomous"]), "free survivor keeps autonomous daily life"): return
+    if not _check(int(CampLifeRules.normalize_daily_activity(busy_activity, 5).get("day", -1)) == 5 and not bool(CampLifeRules.normalize_daily_activity(busy_activity, 5).get("assigned_work", true)), "daily activity resets at day transition"): return
+    var missed_result := CampLifeRules.apply_missed_schedule_consequences(base_needs, 10.0, true, true)
+    if not _check(float(missed_result["needs"]["hunger"]) < float(base_needs["hunger"]) and float(missed_result["fatigue"]) > 10.0, "missed schedule uses existing hunger and fatigue axes"): return
     var pet_rng:=RandomNumberGenerator.new(); pet_rng.seed=7
     var pet_find:=CampLifeRules.pet_forage_resource("Dog",pet_rng)
     if not _check(CampLifeRules.default_pet_needs().size()==1 and CampLifeRules.default_pet_needs().has("affection"), "affection-only pet needs"): return

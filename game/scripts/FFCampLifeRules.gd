@@ -15,6 +15,18 @@ const FIRE_MAINTAIN_GAIN := 58.0
 const FIRE_MAINTAIN_SECONDS := 5.0
 const CAMP_MAINTENANCE_START := 82.0
 const CAMP_MAINTENANCE_DECAY_PER_SECOND := 0.035
+const CAMP_CONDITION_WELL_KEPT := 85.0
+const CAMP_CONDITION_ACCEPTABLE := 60.0
+const CAMP_CONDITION_NEGLECTED := 40.0
+const CAMP_CONDITION_POOR := 20.0
+const DAILY_MEAL_WINDOW_START := 18.0
+const DAILY_MEAL_WINDOW_END := 21.0
+const DAILY_SLEEP_WINDOW_START := 22.0
+const DAILY_SLEEP_WINDOW_END := 6.0
+const DAILY_WINDOW_MISS_RATIO := 0.60
+const DAILY_AUTONOMOUS_SECONDS := 4.0
+const MISSED_MEAL_HUNGER_PENALTY := 24.0
+const MISSED_SLEEP_FATIGUE_PENALTY := 18.0
 const MAX_PETS := 3
 const PET_LEAVE_AFFECTION := 14.0
 const PET_NEED_KEYS := ["affection"]
@@ -23,6 +35,110 @@ const NEED_KEYS := ["hunger", "thirst", "sleep", "fun", "safety", "hygiene"]
 
 static func default_needs() -> Dictionary:
     return {"hunger":82.0,"thirst":84.0,"sleep":95.0,"fun":72.0,"safety":70.0,"hygiene":76.0}
+
+static func degrade_camp_condition(value: float, delta: float) -> float:
+    return clampf(value - CAMP_MAINTENANCE_DECAY_PER_SECOND * maxf(0.0, delta), 0.0, 100.0)
+
+static func camp_condition_band(value: float) -> String:
+    var score := clampf(value, 0.0, 100.0)
+    if score >= CAMP_CONDITION_WELL_KEPT: return "Well Kept"
+    if score >= CAMP_CONDITION_ACCEPTABLE: return "Acceptable"
+    if score >= CAMP_CONDITION_NEGLECTED: return "Neglected"
+    if score >= CAMP_CONDITION_POOR: return "Poor"
+    return "Severe"
+
+static func camp_condition_mood_modifier(value: float) -> int:
+    match camp_condition_band(value):
+        "Well Kept": return 1
+        "Neglected": return -1
+        "Poor": return -2
+        "Severe": return -3
+    return 0
+
+static func camp_condition_stress_rate(value: float) -> float:
+    return -0.012 * float(camp_condition_mood_modifier(value))
+
+static func camp_condition_recovery(chore: String) -> float:
+    match chore:
+        "clean_camp": return 22.0
+        "repair_perimeter": return 38.0
+    return 0.0
+
+static func recover_camp_condition(value: float, chore: String) -> float:
+    return clampf(value + camp_condition_recovery(chore), 0.0, 100.0)
+
+static func settlement_hour(day_elapsed_value: float, day_seconds: float) -> float:
+    if day_seconds <= 0.0: return 8.0
+    var wrapped := fmod(maxf(0.0, day_elapsed_value), day_seconds)
+    return fmod(8.0 + (wrapped / day_seconds) * 24.0, 24.0)
+
+static func _hour_in_window(hour: float, start_hour: float, end_hour: float) -> bool:
+    var h := fmod(hour + 24.0, 24.0)
+    if start_hour <= end_hour: return h >= start_hour and h < end_hour
+    return h >= start_hour or h < end_hour
+
+static func default_daily_activity(day_value: int) -> Dictionary:
+    return {"day":day_value,"assigned_work":false,"expedition":false,"care":false,"autonomous":false,"ate_normally":false,"slept_normally":false,"missed_meal":false,"missed_sleep":false,"meal_window_total":0.0,"meal_window_blocked":0.0,"meal_window_free":0.0,"sleep_window_total":0.0,"sleep_window_blocked":0.0,"sleep_window_free":0.0,"sleep_seconds":0.0,"autonomous_seconds":0.0}
+
+static func normalize_daily_activity(value, day_value: int) -> Dictionary:
+    var incoming: Dictionary = value.duplicate(true) if value is Dictionary else {}
+    if int(incoming.get("day", day_value)) != day_value: return default_daily_activity(day_value)
+    var result := default_daily_activity(day_value)
+    for key in result.keys():
+        if incoming.has(key): result[key] = incoming[key]
+    for key in ["assigned_work","expedition","care","autonomous","ate_normally","slept_normally","missed_meal","missed_sleep"]: result[key]=bool(result[key])
+    for key in ["meal_window_total","meal_window_blocked","meal_window_free","sleep_window_total","sleep_window_blocked","sleep_window_free","sleep_seconds","autonomous_seconds"]: result[key]=maxf(0.0,float(result[key]))
+    return result
+
+static func record_daily_activity(value, day_value: int, status: String, task_kind: String, hour: float, delta: float) -> Dictionary:
+    var result := normalize_daily_activity(value, day_value)
+    var dt := maxf(0.0, delta)
+    var assigned := status in ["Crafting","Building","Tending","Chore","Pet Care","Training","Expedition","Pending Expedition Event"] or task_kind in ["craft","build","garden","chore","pet_care","training"]
+    if assigned: result["assigned_work"]=true
+    if status in ["Expedition","Pending Expedition Event"]: result["expedition"]=true
+    if status=="Recovering" or task_kind in ["treatment","virus_treatment"]:
+        result["care"]=true; assigned=true; result["assigned_work"]=true
+    if status=="Sleeping" or task_kind=="sleep":
+        result["autonomous"]=true; result["slept_normally"]=true; result["sleep_seconds"]=float(result["sleep_seconds"])+dt
+    elif status=="Available":
+        result["autonomous_seconds"]=float(result["autonomous_seconds"])+dt
+        if float(result["autonomous_seconds"])>=DAILY_AUTONOMOUS_SECONDS: result["autonomous"]=true
+    if _hour_in_window(hour,DAILY_MEAL_WINDOW_START,DAILY_MEAL_WINDOW_END):
+        result["meal_window_total"]=float(result["meal_window_total"])+dt
+        if assigned: result["meal_window_blocked"]=float(result["meal_window_blocked"])+dt
+        elif status=="Available": result["meal_window_free"]=float(result["meal_window_free"])+dt
+    if _hour_in_window(hour,DAILY_SLEEP_WINDOW_START,DAILY_SLEEP_WINDOW_END):
+        result["sleep_window_total"]=float(result["sleep_window_total"])+dt
+        if assigned: result["sleep_window_blocked"]=float(result["sleep_window_blocked"])+dt
+        elif status in ["Available","Sleeping"]: result["sleep_window_free"]=float(result["sleep_window_free"])+dt
+    return result
+
+static func finalize_daily_activity(value, day_value: int) -> Dictionary:
+    var result := normalize_daily_activity(value, day_value)
+    var meal_total := float(result["meal_window_total"])
+    var sleep_total := float(result["sleep_window_total"])
+    var meal_ratio := float(result["meal_window_blocked"])/meal_total if meal_total>0.0 else 0.0
+    var sleep_ratio := float(result["sleep_window_blocked"])/sleep_total if sleep_total>0.0 else 0.0
+    result["missed_meal"]=bool(result["assigned_work"]) and meal_ratio>=DAILY_WINDOW_MISS_RATIO
+    result["missed_sleep"]=bool(result["assigned_work"]) and sleep_ratio>=DAILY_WINDOW_MISS_RATIO
+    result["ate_normally"]=not bool(result["missed_meal"]) and float(result["meal_window_free"])>0.0
+    result["slept_normally"]=bool(result["slept_normally"]) or (not bool(result["missed_sleep"]) and float(result["sleep_window_free"])>0.0)
+    return result
+
+static func apply_missed_schedule_consequences(needs: Dictionary, fatigue: float, missed_meal: bool, missed_sleep: bool) -> Dictionary:
+    var n:=normalize_needs(needs); var f:=maxf(0.0,fatigue)
+    if missed_meal: n["hunger"]=clampf(float(n["hunger"])-MISSED_MEAL_HUNGER_PENALTY,0.0,100.0)
+    if missed_sleep:
+        f=clampf(f+MISSED_SLEEP_FATIGUE_PENALTY,0.0,100.0)
+        n["sleep"]=clampf(100.0-f,0.0,100.0)
+    return {"needs":n,"fatigue":f}
+
+static func daily_workload_pressure(value, day_value: int) -> int:
+    var a:=normalize_daily_activity(value,day_value); var pressure:=0
+    if bool(a["assigned_work"]): pressure+=1
+    if bool(a["missed_meal"]): pressure+=1
+    if bool(a["missed_sleep"]): pressure+=1
+    return pressure
 
 static func normalize_needs(value) -> Dictionary:
     var d:=default_needs()
@@ -61,16 +177,19 @@ static func safety_target(buildings:Dictionary,population_count:int,shelter_capa
     elif camp_maintenance >= 85.0: v += 3.0
     return clampf(v,5.0,95.0)
 
-static func need_stress_rate(needs:Dictionary)->float:
-    var n:=normalize_needs(needs)
-    var pressure:=0.0
+static func need_stress_rate(needs:Dictionary,camp_condition_value:float=70.0)->float:
+    var n:=normalize_needs(needs); var pressure:=0.0
     for k in NEED_KEYS:
         var v:=float(n[k])
         if v<25.0: pressure+=(25.0-v)/25.0
-    if pressure>0.0: return pressure*0.035
-    for k in NEED_KEYS:
-        if float(n[k])<62.0: return 0.0
-    return -0.018
+    var rate:=0.0
+    if pressure>0.0: rate=pressure*0.035
+    else:
+        var all_good:=true
+        for k in NEED_KEYS:
+            if float(n[k])<62.0: all_good=false; break
+        if all_good: rate=-0.018
+    return rate+camp_condition_stress_rate(camp_condition_value)
 
 static func moodlets(needs:Dictionary)->Array:
     var n:=normalize_needs(needs); var r:Array=[]

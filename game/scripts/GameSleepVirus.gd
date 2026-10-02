@@ -7,7 +7,10 @@ func new_game():
     super.new_game()
     for survivor in survivors:
         survivor["virus"] = VirusRules.default_state()
+        survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
+        survivor["previous_daily_activity"] = {}
     flags["virus_model"] = "zombie-virus-v1"
+    flags["camp_condition_model"] = "camp-condition-activity-v1"
     save_game()
 
 func load_game():
@@ -19,15 +22,21 @@ func load_game():
     buildings["Workbench"] = true
     for survivor in survivors:
         survivor["virus"] = VirusRules.normalize(survivor.get("virus", {}))
+        survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
+        if not survivor.has("previous_daily_activity"):
+            survivor["previous_daily_activity"] = {}
         _migrate_passive_sleep(survivor)
         _normalize_health_status(survivor)
     flags["virus_model"] = "zombie-virus-v1"
+    flags["camp_condition_model"] = "camp-condition-activity-v1"
     sim_paused = true
     state_changed.emit()
 
 func _generate_survivor(founder = false, preferred_background = ""):
     var survivor: Dictionary = super._generate_survivor(founder, preferred_background)
     survivor["virus"] = VirusRules.default_state()
+    survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
+    survivor["previous_daily_activity"] = {}
     return survivor
 
 func _process(delta):
@@ -42,7 +51,7 @@ func _process(delta):
         camp_event_cooldown = maxf(0.0, camp_event_cooldown - sim_delta)
 
     fire_level = maxf(0.0, fire_level - CampLifeRules.FIRE_DECAY_PER_SECOND * sim_delta)
-    camp_maintenance = maxf(0.0, camp_maintenance - CampLifeRules.CAMP_MAINTENANCE_DECAY_PER_SECOND * sim_delta)
+    camp_maintenance = CampLifeRules.degrade_camp_condition(camp_maintenance, sim_delta)
     _process_pets(sim_delta)
     _process_survivors(sim_delta)
     _process_camp_chatter(sim_delta)
@@ -75,6 +84,28 @@ func virus_state(survivor) -> Dictionary:
 
 func virus_stage(survivor) -> String:
     return str(virus_state(survivor).get("stage", VirusRules.STAGE_CLEAR))
+
+func camp_condition_summary() -> Dictionary:
+    return {
+        "score": camp_maintenance,
+        "band": CampLifeRules.camp_condition_band(camp_maintenance),
+        "mood": CampLifeRules.camp_condition_mood_modifier(camp_maintenance),
+    }
+
+func survivor_activity_today(sid: int) -> Dictionary:
+    var survivor: Variant = get_survivor(sid)
+    if survivor == null:
+        return CampLifeRules.default_daily_activity(day)
+    return CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
+
+func survivor_recent_activity(sid: int) -> Dictionary:
+    var survivor: Variant = get_survivor(sid)
+    if survivor == null:
+        return {}
+    return survivor.get("previous_daily_activity", {}).duplicate(true)
+
+func survivor_workload_pressure(sid: int) -> int:
+    return CampLifeRules.daily_workload_pressure(survivor_activity_today(sid), day)
 
 func camp_chore_needed(chore: String) -> bool:
     match chore:
@@ -194,6 +225,9 @@ func _normalize_health_status(survivor) -> void:
         survivor["task"] = {}
     if not survivor.has("camp_activity"):
         survivor["camp_activity"] = {}
+    survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
+    if not survivor.has("previous_daily_activity"):
+        survivor["previous_daily_activity"] = {}
     var status := str(survivor.get("status", "Available"))
     if status in ["Available", "Quarantined", "Sick"] and survivor.get("task", {}).is_empty():
         survivor["status"] = _home_idle_status(survivor)
@@ -225,9 +259,18 @@ func _process_survivors(delta):
         _normalize_health_status(survivor)
         var status := str(survivor.get("status", "Available"))
         var away := status in ["Expedition", "Pending Expedition Event", "Tactical Encounter"]
+        var task_kind := str(survivor.get("task", {}).get("kind", ""))
+        survivor["daily_activity"] = CampLifeRules.record_daily_activity(
+            survivor.get("daily_activity", {}),
+            day,
+            status,
+            task_kind,
+            CampLifeRules.settlement_hour(day_elapsed, DAY_SECONDS),
+            float(delta)
+        )
         var safety := CampLifeRules.safety_target(buildings, pop, capacity, fire_level, away, camp_maintenance)
         survivor["needs"] = CampLifeRules.update_needs(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), float(delta), safety, hygiene_support, away)
-        survivor["stress"] = clampf(float(survivor.get("stress", 0.0)) + CampLifeRules.need_stress_rate(survivor["needs"]) * float(delta), 0.0, 100.0)
+        survivor["stress"] = clampf(float(survivor.get("stress", 0.0)) + CampLifeRules.need_stress_rate(survivor["needs"], camp_maintenance) * float(delta), 0.0, 100.0)
 
         var caretaker := false
         if leader_id != -1:
@@ -451,7 +494,41 @@ func _daily_tick():
         save_game()
         state_changed.emit()
         return
+
+    var completed_activity := {}
+    for survivor in survivors:
+        if survivor["condition"] == "Dead":
+            continue
+        completed_activity[str(survivor["id"])] = CampLifeRules.finalize_daily_activity(survivor.get("daily_activity", {}), day)
+
     super._daily_tick()
+    if game_over:
+        return
+
+    for survivor in survivors:
+        if survivor["condition"] == "Dead":
+            continue
+        var summary: Dictionary = completed_activity.get(str(survivor["id"]), {})
+        survivor["previous_daily_activity"] = summary.duplicate(true)
+        var missed_meal := bool(summary.get("missed_meal", false))
+        var missed_sleep := bool(summary.get("missed_sleep", false))
+        if missed_meal or missed_sleep:
+            var consequence := CampLifeRules.apply_missed_schedule_consequences(
+                survivor.get("needs", {}),
+                float(survivor.get("fatigue", 0.0)),
+                missed_meal,
+                missed_sleep
+            )
+            survivor["needs"] = consequence.get("needs", survivor.get("needs", {}))
+            survivor["fatigue"] = float(consequence.get("fatigue", survivor.get("fatigue", 0.0)))
+            survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + (4.0 if missed_meal else 0.0) + (6.0 if missed_sleep else 0.0))
+            var misses: Array = []
+            if missed_meal: misses.append("meal")
+            if missed_sleep: misses.append("sleep")
+            survivor["history"].append("Day %d — Assigned work crowded out normal %s time." % [day - 1, " and ".join(misses)])
+        survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
+    save_game()
+    state_changed.emit()
 
 func _process_daily_virus() -> void:
     for survivor in survivors:

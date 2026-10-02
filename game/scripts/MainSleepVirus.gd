@@ -612,7 +612,11 @@ func _draw_camp_work_board() -> void:
             button.disabled = selected_worker_id < 0 or not bool(entry[2])
             button.pressed.connect(Game.start_camp_chore.bind(selected_worker_id, str(entry[1])))
             content_box.add_child(button)
-    content_box.add_child(_make_label("Fire %.0f%%  •  Maintenance %.0f%%" % [Game.fire_level, Game.camp_maintenance], 12))
+    var condition_summary: Dictionary = Game.camp_condition_summary()
+    var condition_mood := int(condition_summary.get("mood", 0))
+    var condition_mood_text := "+%d" % condition_mood if condition_mood > 0 else str(condition_mood)
+    content_box.add_child(_make_label("Camp condition: %s  •  Mood %s  •  %.0f%%" % [str(condition_summary.get("band", "Acceptable")).to_upper(), condition_mood_text, float(condition_summary.get("score", Game.camp_maintenance))], 12))
+    content_box.add_child(_make_label("First Fire %.0f%%" % Game.fire_level, 12))
 
     content_box.add_child(_separator())
     content_box.add_child(_heading("Pets", 19))

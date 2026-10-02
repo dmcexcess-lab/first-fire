@@ -161,7 +161,7 @@ func _process(delta):
         camp_event_cooldown = max(0.0, camp_event_cooldown - delta)
 
     fire_level = maxf(0.0, fire_level - CampLifeRules.FIRE_DECAY_PER_SECOND * float(delta))
-    camp_maintenance = maxf(0.0, camp_maintenance - CampLifeRules.CAMP_MAINTENANCE_DECAY_PER_SECOND * float(delta))
+    camp_maintenance = CampLifeRules.degrade_camp_condition(camp_maintenance, float(delta))
     _process_pets(float(delta))
     _process_survivors(delta)
     _process_camp_chatter(delta)
@@ -684,11 +684,11 @@ func _complete_task(s):
         var chore:=str(task.get("chore",""))
         if chore=="stoke_fire": fire_level=clampf(fire_level+CampLifeRules.FIRE_MAINTAIN_GAIN,0.0,100.0)
         elif chore=="clean_camp":
-            camp_maintenance=clampf(camp_maintenance+22.0,0.0,100.0)
+            camp_maintenance=CampLifeRules.recover_camp_condition(camp_maintenance,chore)
             for survivor in survivors:
                 if survivor["condition"]!="Dead" and survivor["status"] not in ["Expedition","Tactical Encounter"]:
                     var needs:=CampLifeRules.normalize_needs(survivor.get("needs",{})); needs["hygiene"]=clampf(float(needs["hygiene"])+18.0,0.0,100.0); survivor["needs"]=needs
-        elif chore=="repair_perimeter": camp_maintenance=clampf(camp_maintenance+38.0,0.0,100.0)
+        elif chore=="repair_perimeter": camp_maintenance=CampLifeRules.recover_camp_condition(camp_maintenance,chore)
         _add_history("Day %d — %s completed camp duty: %s." % [day,s["name"],task.get("label","Chore")])
         toast_requested.emit("%s complete." % task.get("label","Chore"))
     elif kind == "pet_care":

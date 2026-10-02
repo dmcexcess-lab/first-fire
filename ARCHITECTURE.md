@@ -103,7 +103,7 @@ Persistent survivor appearances, infected visual families, rescued-pet rendering
 Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and haul-count distributions. Agility is the active survivor stat passed into travel timing.
 
 ### `FFCampLifeRules.gd`
-Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, pet affection/retention/daily reward, fire/maintenance decay, recovery/treatment modifiers, defense-building effects, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
+Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, pet affection/retention/daily reward, authoritative camp-condition degradation/recovery/bands, daily activity and meal/sleep-window accounting, recovery/treatment modifiers, defense-building effects, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
 
 ### `FFVirusRules.gd`
 Pure zombie-virus rules. Owns stage names/normalization, contact-to-exposure probability, daily progression, camp-spread probability, and treatment plans/costs. It does not mutate Game state or render UI.

@@ -1,3 +1,12 @@
+## Beta Candidate — Camp Condition & Daily Activity Foundation — 2026-10-01
+
+- Promoted the existing persistent camp-maintenance score into the authoritative camp-condition model with derived **Well Kept +1 / Acceptable 0 / Neglected -1 / Poor -2 / Severe -3** mood bands.
+- Centralized camp-condition degradation and cleaning/perimeter recovery in `FFCampLifeRules.gd`; the work board now shows condition, mood effect and score directly.
+- Added additive schema-7-safe daily survivor activity accounting for assigned work, expeditions, care, autonomous life, and normal meal/sleep opportunities, plus one bounded previous-day summary for future camp events.
+- Assigned productive work can now crowd out the authored evening meal and overnight sleep windows. Sustained overlap records missed meals/sleep and feeds consequences back through existing Hunger, Fatigue and Stress rather than creating duplicate needs.
+- Tactical pause continues to freeze camp degradation and daily-activity accounting. Existing valid schema-7 saves normalize the new survivor fields without a reset.
+- Added deterministic architecture smoke coverage for condition bounds/recovery/bands, daily reset, work-vs-autonomous schedule pressure, and pause-boundary source contracts.
+
 ## Beta Candidate — Living Wilderness Camp — 2026-10-01
 
 - Reframed the camp as the Sims-style home screen: a sparse wilderness start with First Fire, one bedroll, communal storage, and a starter Workbench rather than visible future-building placeholders.
