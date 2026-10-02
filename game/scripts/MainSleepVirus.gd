@@ -8,15 +8,15 @@ const CampData = preload("res://scripts/FFData.gd")
 const CAMP_TUTORIAL_STEPS := [
     {
         "title": "YOUR CAMP IS THE MENU",
-        "body": "Watch First Fire directly. Drag the camp to look around. Tap survivors for stats and gear, the stash for communal inventory, structures for their work, empty plots to build, and the gate to leave camp."
+        "body": "Watch First Fire directly. Drag the wilderness camp to look around. Tap survivors to inspect and assign them, the storage box for communal inventory, the fire or workbench to craft, and the camp edge to leave."
     },
     {
         "title": "CRAFT AT THE FIRE",
-        "body": "The First Fire is your starter crafting station from Day 1. Tap it to cook food, boil water, and make sterile dressings. Later, built Workbench and Sewing Table stations add their own recipes."
+        "body": "The First Fire handles basic survival crafting. The starter Workbench handles tools and gear. Both are physical objects in camp—there is no separate Craft menu."
     },
     {
         "title": "ASSIGN FROM THE CAMP",
-        "body": "The work board stays quiet until something actually needs attention. Tap it when an alert appears. Sleeping, eating, drinking, fun, recovery, and social downtime happen on their own."
+        "body": "Tap a survivor to assign training, maintenance, treatment, or an expedition. Sleeping, eating, drinking, fun, wandering, recovery, and social downtime happen on their own while you watch."
     },
     {
         "title": "LEAVE THROUGH THE GATE",
