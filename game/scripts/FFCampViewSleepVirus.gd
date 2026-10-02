@@ -8,7 +8,7 @@ signal communal_inventory_pressed
 signal duties_pressed
 signal gate_pressed
 
-const CAMP_CHEST_CELL := Vector2i(8, 6)
+const CAMP_CHEST_CELL := Vector2i(9, 6)
 const WORK_BOARD_CELL := Vector2i(5, 3)
 const MENU_VISIBLE_GRID_WIDTH := 8.5
 const PAN_DRAG_THRESHOLD := 8.0
@@ -73,15 +73,11 @@ func _draw() -> void:
     var map_size: Vector2 = geometry["map_size"]
     draw_rect(Rect2(Vector2.ZERO, size), Color("050b09"))
     _draw_ground_layer(origin, tile)
-    _draw_camp_zones(origin, tile)
-    _draw_perimeter(origin, tile)
-    _draw_build_plots(origin, tile)
-    _draw_camp_details(origin, tile)
+    _draw_wilderness(origin, tile)
     _draw_structure_shadows(origin, tile)
     _draw_structures(origin, tile)
     _draw_construction(origin, tile)
     _draw_communal_chest(origin, tile)
-    _draw_work_board(origin, tile)
     _draw_night(origin, tile)
     _draw_ambient_life(origin, tile)
     _draw_survivors(origin, tile)
@@ -94,19 +90,24 @@ func _draw() -> void:
     var title_origin := Vector2(7.0, float(title_size) + 4.0) if menu_mode else origin + Vector2(7.0, float(title_size) + 4.0)
     draw_string(font, title_origin, "FIRST FIRE CAMP  •  DAY %d" % Game.day, HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.94, 0.94, 0.86, 0.95))
 
-func _draw_build_plots(origin: Vector2, tile: float) -> void:
-    if not menu_mode:
-        return
-    for building_value in BUILDING_CELLS.keys():
-        var building_name := str(building_value)
-        if bool(Game.buildings.get(building_name, false)):
-            continue
-        var cell: Vector2i = BUILDING_CELLS[building_value]
-        var rect := _cell_rect(cell, origin, tile).grow(-tile * 0.14)
-        draw_rect(rect, Color(0.78, 0.70, 0.45, 0.04))
-        draw_rect(rect, Color(0.82, 0.74, 0.48, 0.32), false, maxf(1.0, tile * 0.025))
-        draw_line(rect.position + Vector2(rect.size.x * 0.34, rect.size.y * 0.50), rect.position + Vector2(rect.size.x * 0.66, rect.size.y * 0.50), Color(0.93, 0.84, 0.58, 0.58), maxf(1.0, tile * 0.04))
-        draw_line(rect.position + Vector2(rect.size.x * 0.50, rect.size.y * 0.34), rect.position + Vector2(rect.size.x * 0.50, rect.size.y * 0.66), Color(0.93, 0.84, 0.58, 0.58), maxf(1.0, tile * 0.04))
+func _draw_wilderness(origin: Vector2, tile: float) -> void:
+    # Starter camp is intentionally mostly wilderness. Future build locations
+    # remain code/data only until a real construction interaction is authored.
+    var tree_cells := [
+        Vector2i(0, 1), Vector2i(1, 0), Vector2i(3, 1), Vector2i(5, 0),
+        Vector2i(12, 0), Vector2i(15, 1), Vector2i(17, 0), Vector2i(17, 4),
+        Vector2i(0, 7), Vector2i(2, 10), Vector2i(14, 10), Vector2i(17, 9)
+    ]
+    for cell in tree_cells:
+        var center := _cell_center(cell, origin, tile)
+        draw_circle(center + Vector2(tile * 0.08, tile * 0.10), tile * 0.30, Color(0.04, 0.12, 0.07, 0.78))
+        draw_circle(center + Vector2(-tile * 0.10, -tile * 0.03), tile * 0.24, Color(0.08, 0.22, 0.11, 0.90))
+        draw_circle(center + Vector2(tile * 0.12, -tile * 0.11), tile * 0.20, Color(0.10, 0.27, 0.13, 0.86))
+        draw_line(center + Vector2(0, tile * 0.12), center + Vector2(0, tile * 0.42), Color(0.28, 0.19, 0.11, 0.92), maxf(2.0, tile * 0.08))
+    for cell in [Vector2i(2,3), Vector2i(4,2), Vector2i(13,3), Vector2i(15,7), Vector2i(4,8), Vector2i(11,9)]:
+        var c := _cell_center(cell, origin, tile)
+        draw_circle(c, tile * 0.12, Color(0.16, 0.31, 0.14, 0.70))
+        draw_circle(c + Vector2(tile * 0.14, tile * 0.03), tile * 0.09, Color(0.20, 0.37, 0.16, 0.64))
 
 func _draw_communal_chest(origin: Vector2, tile: float) -> void:
     var rect := _cell_rect(CAMP_CHEST_CELL, origin, tile).grow(-tile * 0.14)
@@ -125,7 +126,6 @@ func _draw_work_board(origin: Vector2, tile: float) -> void:
 func _draw_menu_affordances(origin: Vector2, tile: float) -> void:
     _draw_interaction_ring(_cell_center(CAMP_CHEST_CELL, origin, tile), tile * 0.42)
     _draw_interaction_ring(_cell_center(FIRE_CELL, origin, tile), tile * 0.48)
-    _draw_interaction_ring(_cell_center(WORK_BOARD_CELL, origin, tile), tile * 0.42)
     if bool(Game.buildings.get("Workbench", false)):
         _draw_interaction_ring(_cell_center(building_cell("Workbench"), origin, tile), tile * 0.42)
     if bool(Game.buildings.get("Sewing Table", false)):
@@ -138,7 +138,7 @@ func _draw_menu_affordances(origin: Vector2, tile: float) -> void:
     var clean_needed := Game.camp_chore_needed("clean_camp")
     var repair_needed := Game.camp_chore_needed("repair_perimeter")
     if clean_needed or repair_needed:
-        _draw_alert_badge(_cell_center(WORK_BOARD_CELL, origin, tile) + Vector2(tile * 0.38, -tile * 0.38), tile)
+        _draw_alert_badge(_cell_center(building_cell("Workbench"), origin, tile) + Vector2(tile * 0.38, -tile * 0.38), tile)
     if clean_needed:
         for dirt_cell in [Vector2i(6, 8), Vector2i(9, 9), Vector2i(11, 8)]:
             var dirt_center := _cell_center(dirt_cell, origin, tile)
@@ -244,9 +244,6 @@ func _handle_camp_press(local_pos: Vector2) -> void:
     if cell == FIRE_CELL:
         craft_station_pressed.emit("Fire Pit")
         return
-    if cell == WORK_BOARD_CELL:
-        duties_pressed.emit()
-        return
     if cell == building_cell("Workbench") and bool(Game.buildings.get("Workbench", false)):
         craft_station_pressed.emit("Workbench")
         return
@@ -263,8 +260,6 @@ func _handle_camp_press(local_pos: Vector2) -> void:
             continue
         if bool(Game.buildings.get(building_name, false)):
             building_pressed.emit(building_name)
-        else:
-            build_plot_pressed.emit(building_name)
         return
 
 func _sleep_slots() -> Array:
@@ -316,9 +311,19 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
     if status == "Pet Care":
         return FIRE_CELL + Vector2i(1, 1)
 
+    if status == "Training":
+        match str(task.get("stat", "Combat")):
+            "Combat": return Vector2i(14, 5)
+            "Agility": return Vector2i(3, 8)
+            "Leadership": return FIRE_CELL + Vector2i(1, 0)
+
     var activity: Dictionary = survivor.get("camp_activity", {})
     match str(activity.get("kind", "")):
         "maintain_fire", "watch_fire": return FIRE_CELL + Vector2i(0, 1)
+        "check_food": return CAMP_CHEST_CELL + Vector2i(-1, 0)
+        "check_water": return CAMP_CHEST_CELL + Vector2i(0, 1)
+        "keep_watch": return Vector2i(15, 5)
+        "wander": return IDLE_CELLS[posmod(int(survivor.get("id", 0)) + int(floor(float(Game.day_elapsed) / 5.0)), IDLE_CELLS.size())]
         "wash": return building_cell("Water Tank") + Vector2i(1, 0) if bool(Game.buildings.get("Water Tank", false)) else building_cell("Rain Catcher") + Vector2i(1, 0)
     if float(survivor.get("stress", 0.0)) >= 68.0:
         return FIRE_CELL + Vector2i(0, 1)
@@ -442,6 +447,9 @@ func _activity_short(survivor: Dictionary) -> String:
         "Recovering":
             if str(survivor.get("task", {}).get("kind", "")) == "virus_treatment":
                 return "VIRUS CARE"
+        "Training": return "TRAINING"
+        "Chore": return str(survivor.get("task", {}).get("label", "WORK")).to_upper()
+        "Pet Care": return "PET CARE"
     var base := super._activity_short(survivor)
     if base != "":
         return base
