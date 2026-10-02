@@ -94,8 +94,6 @@ jobs:
           grep -q 'const SAVE_SCHEMA_VERSION := 7' game/scripts/Game.gd
           grep -q 'const DAY_SECONDS := 300.0' game/scripts/Game.gd
           grep -q 'const MAX_POPULATION := 18' game/scripts/Game.gd
-          grep -Fq 'func start_expedition(primary_id, zone):' game/scripts/Game.gd
-          grep -Fq 'func start_special_site(primary_id, site):' game/scripts/Game.gd
           grep -Fq 'func start_expedition(primary_id, zone, companion_id = -1):' game/scripts/Game.gd
           grep -Fq 'ally = make_actor(companion, ally_spawn, false)' game/scripts/FFCombat.gd
           grep -Fq 'founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight"' game/scripts/Game.gd
