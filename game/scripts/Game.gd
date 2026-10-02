@@ -100,6 +100,9 @@ func new_game():
     buildings = {"Fire Pit": true, "Sleeping Bag": true}
     for b in D.BUILD_ORDER:
         buildings[b] = false
+    # Sparse wilderness start: only the physical starter campsite exists.
+    buildings["Storage Crate"] = true
+    buildings["Workbench"] = true
     survivors = []
     next_survivor_id = 1
     next_expedition_id = 1
