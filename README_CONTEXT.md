@@ -87,7 +87,7 @@ The **camp gate** owns expedition preparation end-to-end. Tapping it opens one c
 
 The persistent 2D tactical-style living camp is both the final camp presentation **and the primary menu/home screen**. `FFCampView.gd` remains the presentation foundation; active camp rendering and interaction route through `FFCampViewSleepVirus.gd` for authoritative sleep/treatment/quarantine placement plus camp touch targets.
 
-The living camp uses connected dirt paths, distinct sleeping/work/service areas, a fenced perimeter and gate, purpose-specific structures, and a resource-reflective First Fire. These graphics read authoritative `Game` state and do not create separate camp simulation or pathfinding.
+The starter camp is intentionally sparse wilderness rather than a pre-laid settlement: grass/brush/trees around a single First Fire, bedroll, communal storage box, and starter Workbench. Future building locations remain code/data only until construction presentation is deliberately reintroduced; there are no visible empty plot placeholders. These graphics read authoritative `Game` state and do not create separate camp simulation or pathfinding.
 
 The active screen no longer presents the legacy CAMP / CRAFT / BUILD / SURVIVORS tab bar. The camp stays touch-active even while a contextual sheet is open. Current in-world routes are:
 
@@ -100,7 +100,7 @@ The active screen no longer presents the legacy CAMP / CRAFT / BUILD / SURVIVORS
 - tap the **camp work board** → chores, maintenance and pet-care assignment;
 - tap the **gate** → survivor/send-out chooser.
 
-The First Fire is guaranteed from a new game and therefore serves as the default crafting system before any construction. Its current recipes are Cook Food, Boil Water, and Sterile Dressing. Later crafting depth is unlocked physically by building the Workbench and Sewing Table rather than by unlocking a separate Craft screen.
+The First Fire, communal storage box, sleeping bag, and Workbench are guaranteed in a new game. The fire handles basic survival conversions while the Workbench provides the starter tool/gear crafting surface. Crafting remains physical camp interaction rather than a separate Craft screen.
 Crafting cards show explicit owned/required shortages (for example `Raw Food 0/1`) when a recipe cannot be paid, so a disabled action explains itself without requiring a stash detour.
 
 The top camp HUD is the authoritative clock/resource readout. The map title stays intentionally short (`FIRST FIRE CAMP • DAY N`), the idle `RUNNING` label is hidden, and the secondary status line only appears for meaningful states such as an away survivor, tactical encounter, active work, illness, or pause. Routine expedition returns are promoted from transient toast text into a persistent tap-to-dismiss camp return notice carrying the exact haul/empty-handed result.
@@ -109,7 +109,7 @@ Survivors carry floating at-a-glance state in the camp: existing need pips remai
 
 Sleep is a real availability state rather than a passive visual label. When autonomous sleep triggers, the survivor enters **Sleeping**, receives a timed sleep task, walks to a deterministic bed/sleep slot in the camp view, lies down visually, and is excluded from worker/expedition/equipment assignment until waking. Existing productive work, treatment, chores, pet care, crafting, building, garden work, expeditions, quarantine, and severe sickness likewise keep survivors unavailable through authoritative statuses/tasks.
 
-`FFCampLifeRules.gd` owns six survivor needs plus pet affection/retention/reward rules, fire/maintenance tuning, idle recovery/downtime, and camp cadence. Pets do not consume camp food or water: Bond/Affection falls without attention, PLAY/LOVE restore it, neglected pets can leave camp, and each pet that stays brings back exactly one random material or Raw Food per in-game day. Productive work is player-directed: fire tending, cleaning, perimeter repair, crafting, building, garden work, pet care, and expeditions require assignment. Routine chore buttons stay quiet until the fire or maintenance actually crosses an attention threshold; visible dirt/damage/alert cues in camp explain why work is needed before assignment. Camp chores and pet care use short touch-first WORK interactions.
+`FFCampLifeRules.gd` owns six survivor needs plus pet affection/retention/reward rules, fire/maintenance tuning, idle recovery/downtime, and camp cadence. Pets do not consume camp food or water: Bond/Affection falls without attention, PLAY/LOVE restore it, neglected pets can leave camp, and each pet that stays brings back exactly one random material or Raw Food per in-game day. Productive work is player-directed: training, fire tending, cleaning/maintenance, crafting, treatment, pet care, and expeditions require assignment. Assigned work is timed survivor activity rather than a repeated tap minigame. Unassigned survivors remain worth watching: their needs can drive sleep, checking food/water, washing, watching the treeline, wandering, watching the fire, and autonomous social chatter.
 
 Physical trauma and zombie virus are separate health axes.
 
@@ -152,7 +152,7 @@ Current survivor-model marker is **`combat-agility-leadership-v1`**. The zombie-
 
 The filename remains `user://first_fire_alpha01.json` intentionally.
 
-`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with half-speed camp simulation, authoritative sleep availability, zombie-virus state/treatment/quarantine, and tactical exposure integration.
+`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with the five-seconds-per-hour camp clock, authoritative sleep/work availability, survivor training, zombie-virus state/treatment/quarantine, and tactical exposure integration.
 
 ## Canonical technical reality
 
