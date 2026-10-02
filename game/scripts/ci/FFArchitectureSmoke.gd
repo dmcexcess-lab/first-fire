@@ -40,7 +40,7 @@ func _init() -> void:
     if not _check(TacticalBalance.zombie_hit_chance(baseline_actor) >= 0.70 and TacticalBalance.zombie_damage_range("HEAVY").y >= 7, "infected pressure tuning"): return
     if not _check(TacticalBalance.shove_chance(actor, "LIGHT", 1) > TacticalBalance.shove_chance(actor, "HEAVY", 1), "mass resists shove"): return
     if not _check(TacticalBalance.search_cost(actor) > 0 and TacticalBalance.search_noise(actor) > 0, "search remains bounded"): return
-    if not _check(TacticalBalance.zombie_count("Camp Perimeter", "rescue") < TacticalBalance.zombie_count("Camp Perimeter", "ambush"), "objective zombie balance"): return
+    if not _check(TacticalBalance.zombie_count("Camp Perimeter", "rescue", true) < TacticalBalance.zombie_count("Camp Perimeter", "rescue", false) and TacticalBalance.zombie_count("Camp Perimeter", "rescue", false) == TacticalBalance.zombie_count("Camp Perimeter", "ambush"), "objective zombie balance"): return
     if not _check(TacticalBalance.zombie_hp_range("HEAVY").x > TacticalBalance.zombie_hp_range("LIGHT").x, "mass-aware infected HP"): return
 
     # UI/autoload scripts intentionally refer to the global Game singleton, which
