@@ -332,7 +332,12 @@ func build_map(new_environment_id: String, variant: int):
         var loot_pos: Vector2i = loot_entry[0]
         var container_kind := str(loot_entry[1])
         loot_containers[loot_pos] = container_kind
-        container_contents[loot_pos] = TacticalBalance.roll_container_loot(str(context.get("zone", "Nearby Streets")), container_kind, rng)
+        container_contents[loot_pos] = TacticalBalance.roll_container_loot(
+            str(context.get("zone", "Nearby Streets")),
+            container_kind,
+            rng,
+            int(context.get("zone_pressure", 0))
+        )
     for entry_value in spec.get("lights", []):
         var light_entry: Array = entry_value
         var light_pos: Vector2i = light_entry[0]
@@ -393,8 +398,19 @@ func _container_kind_from_prop(prop_kind: String) -> String:
 func supplement_distance_loot_containers() -> void:
     var zone := str(context.get("zone", "Nearby Streets"))
     var target := TacticalBalance.loot_container_target(zone, rng)
+    var pressure := int(context.get("zone_pressure", 0))
+
+    # Authored maps describe plausible search points. Route scarcity decides
+    # which of those points are worth searching on this particular visit.
+    while loot_containers.size() > target:
+        var authored_cells: Array = loot_containers.keys()
+        var remove_cell: Vector2i = authored_cells[rng.randi_range(0, authored_cells.size() - 1)]
+        loot_containers.erase(remove_cell)
+        container_contents.erase(remove_cell)
+
     if loot_containers.size() >= target:
         return
+
     var candidates: Array = []
     for cell_value in props.keys():
         var cell: Vector2i = cell_value
@@ -417,7 +433,7 @@ func supplement_distance_loot_containers() -> void:
         var cell: Vector2i = entry["cell"]
         var kind := str(entry["kind"])
         loot_containers[cell] = kind
-        container_contents[cell] = TacticalBalance.roll_container_loot(zone, kind, rng)
+        container_contents[cell] = TacticalBalance.roll_container_loot(zone, kind, rng, pressure)
 
 func _door_lock_is_safe(lock_cell: Vector2i) -> bool:
     var visited := {player_spawn: true}

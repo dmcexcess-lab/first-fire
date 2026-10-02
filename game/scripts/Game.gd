@@ -1234,6 +1234,7 @@ func _begin_tactical_encounter(exp):
         "expedition_id": int(exp["id"]),
         "survivor_ids": ids.duplicate(true),
         "zone": str(exp["zone"]),
+        "zone_pressure": int(zone_pressure.get(str(exp["zone"]), 0)),
         "kind": combat_kind,
         "outing": str(exp.get("outing", combat_kind)),
         "quiet": bool(exp.get("quiet_explore", false)),

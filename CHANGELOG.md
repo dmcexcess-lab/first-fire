@@ -1,3 +1,14 @@
+## Beta Candidate — Tactical Loot Scarcity & Container Identity — 2026-10-02
+
+- Made **Very Short / Camp Perimeter intentionally scarce at 1–2 searchable containers** and **Short / Nearby Streets 2–3**, rising to 3–5 / 4–6 / 5–7 through Medium / Far / Very Far.
+- Route scarcity now trims the authored search points on each tactical visit instead of merely adding containers. The same Gas Station can expose a different subset of its car, shelf, ice box, or other plausible search points on different outings.
+- Added real empty-container rolls. Baseline empty odds are highest near camp and decrease with distance; repeated zone depletion raises those odds further, making Rich / Good / Sparse / Picked Over materially affect physical tactical scavenging.
+- Replaced broad global-container loot mixing with **container-specific loot families**. Fridges/ice boxes/vending favor food-water, cars/crates/debris favor salvage, washers favor cloth, and cabinets are the medical-capable container family. A fridge can no longer casually roll Scrap Metal and a salvage crate cannot roll dinner.
+- Reduced extra-item rolls in early zones while allowing farther dangerous zones to produce richer multi-item containers. This preserves the 4/6/8 carry decision while making early expeditions about finding enough rather than automatically filling every slot.
+- Existing empty searches already report **“nothing useful”**, so the player receives explicit feedback rather than a silent/no-op search.
+- Passed current zone pressure into tactical encounter generation so the depletion system now affects the physical loot path instead of only the retired abstract haul path.
+- Save schema remains **8**; tactical pressure/context and loot-generation behavior are additive.
+
 ## Beta Candidate — Progressive Tavern — 2026-10-02
 
 - Rebuilt the hearth into a self-contained three-stage progression: **Tavern → Tavern Kitchen → Tavern Brewery**. Later Tavern visuals no longer appear automatically because unrelated housing/water buildings were completed.

@@ -6,11 +6,13 @@ const D = preload("res://scripts/FFData.gd")
 # Beta tuning owner for the tactical layer. Combat is intentionally built on
 # only three survivor stats: Combat, Agility, and Leadership.
 const EXPLORE_SITE_COUNT_RANGES := {
-    "Camp Perimeter": Vector2i(3, 5),
-    "Nearby Streets": Vector2i(4, 6),
-    "Residential Blocks": Vector2i(5, 7),
-    "Commercial Fringe": Vector2i(6, 8),
-    "Industrial Edge": Vector2i(7, 9),
+    # Very Short / Short are intentionally picked-over and sparse. Farther
+    # travel buys more search opportunities rather than simply larger numbers.
+    "Camp Perimeter": Vector2i(1, 2),
+    "Nearby Streets": Vector2i(2, 3),
+    "Residential Blocks": Vector2i(3, 5),
+    "Commercial Fringe": Vector2i(4, 6),
+    "Industrial Edge": Vector2i(5, 7),
 }
 
 const ZOMBIE_BASE_COUNTS := {
@@ -25,19 +27,34 @@ const RESCUE_SURVIVOR_HP := 14
 const RESCUE_CONTACT_TICKS := 55
 const RESCUE_PACE_PENALTY := 12
 
+const CONTAINER_POOLS := {
+    "fridge": ["Raw Food", "Dirty Water", "Clean Water", "Cooked Food"],
+    "ice_box": ["Raw Food", "Dirty Water", "Clean Water", "Cooked Food"],
+    "shelf": ["Raw Food", "Dirty Water", "Clean Water", "Plastic", "Cloth"],
+    "vending": ["Raw Food", "Clean Water", "Plastic"],
+    "cabinet": ["Cloth", "Plastic", "Hardware", "First Aid Kit", "Zombie Cure"],
+    "crate": ["Scrap Metal", "Hardware", "Plastic", "Cloth", "Wood"],
+    "washer": ["Cloth", "Hardware", "Plastic"],
+    "car": ["Scrap Metal", "Hardware", "Cloth", "Plastic"],
+    "dumpster": ["Scrap Metal", "Plastic", "Cloth", "Wood"],
+    "trash": ["Plastic", "Cloth", "Scrap Metal"],
+    "cart": ["Scrap Metal", "Cloth", "Plastic", "Raw Food"],
+    "debris": ["Scrap Metal", "Wood", "Hardware", "Plastic"],
+}
+
 const CONTAINER_BIASES := {
-    "fridge": {"Raw Food": 18, "Dirty Water": 10, "Clean Water": 6},
-    "ice_box": {"Raw Food": 14, "Dirty Water": 10, "Clean Water": 5},
-    "shelf": {"Raw Food": 8, "Plastic": 8, "Cloth": 5, "Medicine": 2},
-    "vending": {"Raw Food": 8, "Dirty Water": 12, "Plastic": 5},
-    "cabinet": {"Cloth": 8, "Plastic": 7, "Hardware": 5, "Medicine": 2},
-    "crate": {"Scrap Metal": 12, "Hardware": 10, "Plastic": 7, "Cloth": 5},
-    "washer": {"Cloth": 14, "Hardware": 4, "Plastic": 4},
-    "car": {"Scrap Metal": 10, "Hardware": 9, "Cloth": 5},
-    "dumpster": {"Scrap Metal": 9, "Plastic": 9, "Cloth": 7, "Wood": 5},
-    "trash": {"Plastic": 10, "Cloth": 7, "Scrap Metal": 5},
-    "cart": {"Scrap Metal": 7, "Cloth": 6, "Plastic": 5},
-    "debris": {"Scrap Metal": 10, "Wood": 8, "Hardware": 5},
+    "fridge": {"Raw Food": 18, "Dirty Water": 10, "Clean Water": 8, "Cooked Food": 2},
+    "ice_box": {"Raw Food": 16, "Dirty Water": 10, "Clean Water": 7, "Cooked Food": 2},
+    "shelf": {"Raw Food": 9, "Plastic": 8, "Cloth": 5, "Clean Water": 4},
+    "vending": {"Raw Food": 10, "Clean Water": 10, "Plastic": 5},
+    "cabinet": {"Cloth": 8, "Plastic": 7, "Hardware": 6, "First Aid Kit": 3, "Zombie Cure": 1},
+    "crate": {"Scrap Metal": 14, "Hardware": 12, "Plastic": 7, "Cloth": 5, "Wood": 6},
+    "washer": {"Cloth": 16, "Hardware": 4, "Plastic": 4},
+    "car": {"Scrap Metal": 12, "Hardware": 10, "Cloth": 5, "Plastic": 4},
+    "dumpster": {"Scrap Metal": 10, "Plastic": 10, "Cloth": 7, "Wood": 6},
+    "trash": {"Plastic": 11, "Cloth": 8, "Scrap Metal": 5},
+    "cart": {"Scrap Metal": 7, "Cloth": 6, "Plastic": 5, "Raw Food": 3},
+    "debris": {"Scrap Metal": 12, "Wood": 9, "Hardware": 6, "Plastic": 4},
 }
 
 static func explore_site_count_range(zone: String) -> Vector2i:
@@ -133,17 +150,61 @@ static func container_search_noise(container_kind: String) -> int:
     if container_kind in ["crate", "washer"]: return 22
     return 17
 
-static func roll_container_loot(zone: String, container_kind: String, rng: RandomNumberGenerator) -> Dictionary:
+static func container_empty_chance(zone: String, container_kind: String, zone_pressure: int = 0) -> float:
+    var base := float({
+        "Camp Perimeter": 0.42,
+        "Nearby Streets": 0.32,
+        "Residential Blocks": 0.22,
+        "Commercial Fringe": 0.15,
+        "Industrial Edge": 0.10,
+    }.get(zone, 0.25))
+    if container_kind in ["trash", "dumpster"]:
+        base += 0.06
+    elif container_kind in ["car", "vending"]:
+        base += 0.03
+    if zone_pressure >= 85:
+        base += 0.28
+    elif zone_pressure >= 60:
+        base += 0.18
+    elif zone_pressure >= 30:
+        base += 0.08
+    return clampf(base, 0.05, 0.82)
+
+static func container_allows_item(container_kind: String, item_name: String) -> bool:
+    var pool: Array = CONTAINER_POOLS.get(container_kind, [])
+    return pool.has(item_name)
+
+static func roll_container_loot(zone: String, container_kind: String, rng: RandomNumberGenerator, zone_pressure: int = 0) -> Dictionary:
+    if rng.randf() < container_empty_chance(zone, container_kind, zone_pressure):
+        return {}
+
     var zone_data: Dictionary = D.ZONES.get(zone, D.ZONES["Nearby Streets"])
-    var weights: Dictionary = zone_data.get("loot", {}).duplicate(true)
+    var zone_weights: Dictionary = zone_data.get("loot", {})
+    var allowed: Array = CONTAINER_POOLS.get(container_kind, [])
     var bias: Dictionary = CONTAINER_BIASES.get(container_kind, {})
-    for key in bias.keys():
-        weights[key] = int(weights.get(key, 0)) + int(bias[key])
+    var weights: Dictionary = {}
+    for item_value in allowed:
+        var item_name := str(item_value)
+        var zone_weight := maxi(0, int(zone_weights.get(item_name, 0)))
+        if zone_weight <= 0:
+            continue
+        weights[item_name] = zone_weight + maxi(0, int(bias.get(item_name, 0)))
+
     var rolls := 1
-    if rng.randf() < 0.38:
+    var extra_roll_chance := float({
+        "Camp Perimeter": 0.10,
+        "Nearby Streets": 0.16,
+        "Residential Blocks": 0.24,
+        "Commercial Fringe": 0.32,
+        "Industrial Edge": 0.40,
+    }.get(zone, 0.20))
+    if rng.randf() < extra_roll_chance:
         rolls += 1
-    if zone in ["Commercial Fringe", "Industrial Edge"] and rng.randf() < 0.22:
+    if zone == "Commercial Fringe" and rng.randf() < 0.10:
         rolls += 1
+    elif zone == "Industrial Edge" and rng.randf() < 0.18:
+        rolls += 1
+
     var found: Dictionary = {}
     for _roll in range(rolls):
         var key := _weighted_pick(weights, rng)
