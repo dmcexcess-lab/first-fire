@@ -95,7 +95,7 @@ func _draw_ground_layer(origin: Vector2, tile: float) -> void:
         for x in range(GRID_W):
             var cell := Vector2i(x, y)
             var rect := _cell_rect(cell, origin, tile)
-            var near_fire := abs(cell.x - FIRE_CELL.x) <= 1 and abs(cell.y - FIRE_CELL.y) <= 1
+            var near_fire: bool = abs(cell.x - FIRE_CELL.x) <= 1 and abs(cell.y - FIRE_CELL.y) <= 1
             Tiles.draw_ground(self, rect, "dirt" if near_fire else "grass")
             if not near_fire and _cell_variation(cell, 2) > 0.58:
                 var tuft := rect.get_center() + Vector2((_cell_variation(cell, 4) - 0.5) * tile * 0.5, (_cell_variation(cell, 7) - 0.5) * tile * 0.5)
