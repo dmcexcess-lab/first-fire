@@ -934,6 +934,12 @@ func _process_expeditions(delta):
     for exp in expeditions:
         if exp.get("state", "") != "traveling":
             continue
+        if bool(exp.get("tactical_resolved", false)):
+            var provisioned_ids: Array = exp.get("survivor_ids", []).duplicate()
+            for returning_id in exp.get("return_recruit_ids", []):
+                if not provisioned_ids.has(int(returning_id)):
+                    provisioned_ids.append(int(returning_id))
+            _credit_expedition_provisions(provisioned_ids, str(exp.get("zone", "")))
         exp["remaining"] = max(0.0, float(exp["remaining"]) - delta)
         var tactical_due = exp.get("combat_kind", "") != "" and not exp.get("combat_triggered", false) and float(exp["remaining"]) <= float(exp.get("combat_trigger_remaining", -1.0))
         if tactical_due:
@@ -1063,7 +1069,7 @@ func start_expedition(primary_id, zone, companion_id = -1):
         "survivor_ids": party_ids.duplicate(),
         "zone": zone,
         "duration": duration,
-        "remaining": 0.0,
+        "remaining": duration,
         "state": "departing",
         "event_key": "",
         "event_triggered": true,
@@ -1077,6 +1083,10 @@ func start_expedition(primary_id, zone, companion_id = -1):
         "outing": str(outing.get("outing", "infected_explore")),
         "time_cost_paid": false,
         "special_site": "",
+        "recovered_loot": {},
+        "recovered_gear": "",
+        "return_recruit_ids": [],
+        "return_pet": {},
     }
     next_expedition_id += 1
     expeditions.append(exp)
@@ -1096,25 +1106,35 @@ func start_expedition(primary_id, zone, companion_id = -1):
     state_changed.emit()
     return not current_combat.is_empty()
 
-func _advance_settlement_time_for_expedition_return(seconds: float) -> void:
-    # Compatibility fallback for base-only callers. The active GameSleepVirus
-    # override advances the full settlement simulation in one return-time jump.
-    day_elapsed += maxf(0.0, seconds)
-    while day_elapsed >= DAY_SECONDS and not game_over:
-        day_elapsed -= DAY_SECONDS
-        _daily_tick()
-
-func _settle_expedition_time_cost(exp) -> void:
-    if exp == null or bool(exp.get("time_cost_paid", false)):
-        return
-    var duration := maxf(0.0, float(exp.get("duration", 0.0)))
-    var party_ids: Array = exp.get("survivor_ids", [])
-    var zone := str(exp.get("zone", ""))
-    _credit_expedition_provisions(party_ids, zone)
-    if duration > 0.0:
-        _advance_settlement_time_for_expedition_return(duration)
-    _credit_expedition_provisions(party_ids, zone)
+func _commit_expedition_return_payload(exp) -> String:
+    if exp == null:
+        return ""
+    var bits: Array = []
+    var recovered_value = exp.get("recovered_loot", {})
+    var recovered: Dictionary = recovered_value if recovered_value is Dictionary else {}
+    var keys: Array = recovered.keys()
+    keys.sort()
+    for key_value in keys:
+        var item_name := str(key_value)
+        var amount := maxi(0, int(recovered.get(key_value, 0)))
+        if amount <= 0:
+            continue
+        if _store_loot_item(item_name, amount):
+            bits.append("+%d %s" % [amount, item_name])
+    var recovered_gear := str(exp.get("recovered_gear", ""))
+    if recovered_gear != "" and D.GEAR.has(recovered_gear):
+        inventory_gear.append(recovered_gear)
+        bits.append(recovered_gear)
+    var returning_pet_value = exp.get("return_pet", {})
+    var returning_pet: Dictionary = returning_pet_value if returning_pet_value is Dictionary else {}
+    if not returning_pet.is_empty():
+        _add_pet(returning_pet)
+        bits.append("%s rescued" % str(returning_pet.get("name", "Pet")))
+    exp["recovered_loot"] = {}
+    exp["recovered_gear"] = ""
+    exp["return_pet"] = {}
     exp["time_cost_paid"] = true
+    return ", ".join(bits)
 
 func start_special_site(primary_id, site, companion_id = -1):
     if not special_sites.has(site) or not bool(special_sites[site].get("discovered", false)) or bool(special_sites[site].get("cleared", false)):
@@ -1138,7 +1158,7 @@ func start_special_site(primary_id, site, companion_id = -1):
         "survivor_ids": party_ids.duplicate(),
         "zone": zone,
         "duration": duration,
-        "remaining": 0.0,
+        "remaining": duration,
         "state": "departing",
         "event_key": "",
         "event_triggered": true,
@@ -1152,6 +1172,10 @@ func start_special_site(primary_id, site, companion_id = -1):
         "outing": "special_site",
         "time_cost_paid": false,
         "special_site": site,
+        "recovered_loot": {},
+        "recovered_gear": "",
+        "return_recruit_ids": [],
+        "return_pet": {},
     }
     next_expedition_id += 1
     expeditions.append(exp)
@@ -1326,18 +1350,6 @@ func _prepare_rescue_candidate(candidate_value, hp: int, max_hp: int) -> Diction
         candidate["history"] = candidate_history
     return candidate
 
-func _grant_tactical_explore_reward(exp, lead, searches_completed: int):
-    var scavenging := int(lead["skills"].get("Scavenging", 0)) if lead != null else 0
-    var count := TacticalBalance.explore_reward_rolls(searches_completed, scavenging)
-    var found = {}
-    for i in range(count):
-        var key = _weighted_loot_pick(exp["zone"])
-        if _store_loot_item(str(key), 1):
-            found[key] = int(found.get(key, 0)) + 1
-    var bits = []
-    for key in found.keys():
-        bits.append("+%d %s" % [found[key], key])
-    return ", ".join(bits)
 func _store_loot_item(item_name: String, amount: int = 1) -> bool:
     if amount <= 0:
         return false
@@ -1349,7 +1361,7 @@ func _store_loot_item(item_name: String, amount: int = 1) -> bool:
         return true
     return false
 
-func _grant_tactical_container_loot(value) -> String:
+func _format_tactical_container_loot(value) -> String:
     if not (value is Dictionary):
         return ""
     var found: Dictionary = value
@@ -1357,9 +1369,8 @@ func _grant_tactical_container_loot(value) -> String:
     for key in found.keys():
         var item_name := str(key)
         var amount := clampi(int(found[key]), 0, 12)
-        if amount <= 0 or not _store_loot_item(item_name, amount):
-            continue
-        bits.append("+%d %s" % [amount, item_name])
+        if amount > 0:
+            bits.append("+%d %s" % [amount, item_name])
     bits.sort()
     return ", ".join(bits)
 
@@ -1406,7 +1417,8 @@ func resolve_combat(result):
     if exp == null:
         save_game(); state_changed.emit(); return
     exp["tactical_resolved"] = true
-    _settle_expedition_time_cost(exp)
+    if float(exp.get("remaining", 0.0)) <= 0.0:
+        exp["remaining"] = maxf(0.0, float(exp.get("duration", 0.0)))
     var living = []
     for sid in exp["survivor_ids"]:
         var s: Variant = get_survivor(sid)
@@ -1429,14 +1441,17 @@ func resolve_combat(result):
     var event = _event_base("tactical_result", "Tactical Encounter", "", [], event_context)
     var kind = str(encounter.get("kind", "ambush"))
     var place = str(encounter.get("location_name", "the area"))
-    var container_reward := _grant_tactical_container_loot(result.get("container_loot", {}))
-    var loot_note := " Container loot: %s." % container_reward if container_reward != "" else ""
+    var recovered_value = result.get("container_loot", {})
+    var recovered_loot: Dictionary = recovered_value.duplicate(true) if recovered_value is Dictionary else {}
+    exp["recovered_loot"] = recovered_loot
+    var container_reward := _format_tactical_container_loot(recovered_loot)
+    var loot_note := " Carrying: %s." % container_reward if container_reward != "" else ""
     if container_reward != "":
-        _add_history("Day %d — Recovered from field containers at %s: %s." % [day, place, container_reward])
+        _add_history("Day %d — Physically recovered at %s and carried on the return trip: %s." % [day, place, container_reward])
     if kind == "rescue" and bool(result.get("rescued", false)) and bool(encounter.get("rescue_is_pet",false)):
         var pet_candidate:Dictionary=encounter.get("rescue_candidate",{}).duplicate(true)
-        _add_pet(pet_candidate)
-        _queue_field_result(event,"%s Rescued" % str(pet_candidate.get("name","Pet")),"You get the stranded %s out of %s alive. It follows you all the way back to First Fire.%s" % [str(pet_candidate.get("species","animal")).to_lower(),place,loot_note],"A rescued pet made it back to First Fire.")
+        exp["return_pet"] = pet_candidate
+        _queue_field_result(event,"%s Rescued" % str(pet_candidate.get("name","Pet")),"You get the stranded %s out of %s alive. It stays with the expedition for the return to First Fire.%s" % [str(pet_candidate.get("species","animal")).to_lower(),place,loot_note],"A rescued pet joined the return trip to First Fire.")
     elif kind == "rescue" and bool(result.get("rescued", false)):
         var rescue_candidate: Dictionary = _prepare_rescue_candidate(encounter.get("rescue_candidate", {}), int(result.get("rescue_survivor_hp", 1)), int(result.get("rescue_survivor_max_hp", TacticalBalance.RESCUE_SURVIVOR_HP)))
         var rescue_name := str(rescue_candidate.get("name", "The survivor"))
@@ -1447,7 +1462,7 @@ func resolve_combat(result):
         var reward: String = container_reward
         var recovered_gear := str(result.get("field_gear", "")) if bool(result.get("objective_done", false)) else ""
         if recovered_gear != "" and D.GEAR.has(recovered_gear):
-            inventory_gear.append(recovered_gear)
+            exp["recovered_gear"] = recovered_gear
             reward = (reward + ", " if reward != "" else "") + recovered_gear
         if bool(result.get("objective_done", false)):
             if recovered_gear != "":
@@ -1488,8 +1503,7 @@ func _resume_expedition(eid):
     var exp: Variant = _find_expedition(eid)
     if exp == null:
         return
-    if bool(exp.get("tactical_resolved", false)) and float(exp.get("remaining", 0.0)) <= 0.0:
-        _settle_expedition_time_cost(exp)
+    if float(exp.get("remaining", 0.0)) <= 0.0:
         _finish_expedition(eid)
         return
     exp["state"] = "traveling"
@@ -1497,13 +1511,16 @@ func _resume_expedition(eid):
         var s: Variant = get_survivor(sid)
         if s != null and s["condition"] != "Dead":
             s["status"] = "Expedition"
+    for sid_value in exp.get("return_recruit_ids", []):
+        var returning_recruit: Variant = get_survivor(int(sid_value))
+        if returning_recruit != null and returning_recruit["condition"] != "Dead":
+            returning_recruit["status"] = "Expedition"
+            returning_recruit["task"] = {"expedition_id": int(exp["id"])}
 
 func _abort_expedition(eid, return_loot = false):
     var exp: Variant = _find_expedition(eid)
     if exp == null:
         return
-    if bool(exp.get("tactical_resolved", false)):
-        _settle_expedition_time_cost(exp)
     if return_loot:
         _finish_expedition(eid)
         return
@@ -1520,8 +1537,7 @@ func _finish_expedition(eid):
     var exp: Variant = _find_expedition(eid)
     if exp == null:
         return
-    if bool(exp.get("tactical_resolved", false)):
-        _settle_expedition_time_cost(exp)
+    var carried_return := _commit_expedition_return_payload(exp) if bool(exp.get("tactical_resolved", false)) else ""
     if exp.get("special_site", "") != "" and bool(exp.get("tactical_resolved", false)):
         var resolved_site := str(exp.get("special_site", ""))
         if special_sites.has(resolved_site):
@@ -1564,6 +1580,12 @@ func _finish_expedition(eid):
         add_skill_xp(s, "Scavenging", sxp)
         add_skill_xp(s, "Survival", survxp)
         s["history"].append("Day %d — Returned from %s." % [day, zone])
+    for sid_value in exp.get("return_recruit_ids", []):
+        var returning_recruit: Variant = get_survivor(int(sid_value))
+        if returning_recruit != null and returning_recruit["condition"] != "Dead":
+            returning_recruit["status"] = "Available"
+            returning_recruit["task"] = {}
+    exp["return_recruit_ids"] = []
     if living_party.size() == 2:
         _change_relationship(living_party[0], living_party[1], 2)
         _change_relationship(living_party[1], living_party[0], 2)
@@ -1576,8 +1598,9 @@ func _finish_expedition(eid):
         loot_text.append("Found %s" % gear_found)
     var names = _party_names(exp["survivor_ids"])
     if bool(exp.get("tactical_resolved", false)):
-        _add_history("Day %d — %s returned from the tactical outing to %s." % [day, names, zone])
-        toast_requested.emit("%s returned from %s." % [names, zone])
+        var haul_suffix := " (%s)" % carried_return if carried_return != "" else ""
+        _add_history("Day %d — %s returned from the tactical outing to %s%s." % [day, names, zone, haul_suffix])
+        toast_requested.emit("%s returned from %s%s." % [names, zone, haul_suffix])
     elif loot_text.is_empty():
         _add_history("Day %d — %s returned from %s empty-handed." % [day, names, zone])
         toast_requested.emit("%s returned empty-handed." % names)
@@ -1980,7 +2003,7 @@ func _record_event_history(event, note):
 func _queue_field_result(event, title, body, note = ""):
     _record_event_history(event, note)
     var is_tactical_return := str(event.get("key", "")) == "tactical_result" or bool(event.get("context", {}).get("return_after_tactical", false))
-    var continue_text := "Return to First Fire" if is_tactical_return else "Continue the expedition"
+    var continue_text := "Begin return to First Fire" if is_tactical_return else "Continue the expedition"
     _queue_event(_event_base("field_result", title, body, [
         _choice(continue_text, "resume")
     ], event.get("context", {})))
@@ -2213,7 +2236,17 @@ func _handle_event_action(event, action):
                         var helper: Variant = get_survivor(sid)
                         if helper != null:
                             helper["fatigue"] = min(100.0, float(helper["fatigue"]) + CampLifeRules.fatigue_gain(8.0))
-                _queue_field_result(event, "%s Joins First Fire" % recruit["name"], "%s accepts. They follow you back to First Fire." % recruit["name"], "%s agreed to join First Fire." % recruit["name"])
+                if bool(event.get("context", {}).get("return_after_tactical", false)):
+                    var return_eid := int(event.get("context", {}).get("expedition_id", -1))
+                    var return_exp: Variant = _find_expedition(return_eid)
+                    if return_exp != null:
+                        recruit["status"] = "Expedition"
+                        recruit["task"] = {"expedition_id": return_eid}
+                        var returning_ids: Array = return_exp.get("return_recruit_ids", [])
+                        if not returning_ids.has(int(recruit["id"])):
+                            returning_ids.append(int(recruit["id"]))
+                        return_exp["return_recruit_ids"] = returning_ids
+                _queue_field_result(event, "%s Joins First Fire" % recruit["name"], "%s accepts and joins the return trip to First Fire." % recruit["name"], "%s agreed to join First Fire." % recruit["name"])
             else:
                 _queue_field_result(event, "No Room", "There is nowhere safe to put another person yet. You exchange directions and part ways.")
         "recruit_offer_info":
@@ -2790,9 +2823,9 @@ func _handle_event_action(event, action):
         "camp_meal_share":
             if int(resources.get("Cooked Food", 0)) >= 2:
                 resources["Cooked Food"] -= 2
-                for survivor in survivors:
-                    if survivor["condition"] != "Dead":
-                        survivor["stress"] = max(0.0, float(survivor["stress"]) - 6.0)
+                for survivor_value in _camp_present_survivors():
+                    var survivor: Dictionary = survivor_value
+                    survivor["stress"] = max(0.0, float(survivor["stress"]) - 6.0)
                 var meal_pair := CampSocial.pick_pair(survivors, rng)
                 if meal_pair.size() == 2:
                     _change_relationship(meal_pair[0], meal_pair[1], 4)
@@ -2800,13 +2833,14 @@ func _handle_event_action(event, action):
         "camp_meal_save":
             pass
         "camp_shortage_back_leader":
-            for survivor in survivors:
-                if survivor["condition"] != "Dead": survivor["leader_support"] = int(survivor.get("leader_support", 0)) + 2
+            for survivor_value in _camp_present_survivors():
+                var survivor: Dictionary = survivor_value
+                survivor["leader_support"] = int(survivor.get("leader_support", 0)) + 2
         "camp_shortage_open_floor":
-            for survivor in survivors:
-                if survivor["condition"] != "Dead":
-                    survivor["stress"] = max(0.0, float(survivor["stress"]) - 2.0)
-                    survivor["leader_support"] = int(survivor.get("leader_support", 0)) + rng.randi_range(-2, 1)
+            for survivor_value in _camp_present_survivors():
+                var survivor: Dictionary = survivor_value
+                survivor["stress"] = max(0.0, float(survivor["stress"]) - 2.0)
+                survivor["leader_support"] = int(survivor.get("leader_support", 0)) + rng.randi_range(-2, 1)
         "politics_support_a", "politics_support_b", "politics_neutral":
             _resolve_coordinator_vote(event, action)
         "election_support_a", "election_support_b", "election_neutral":
@@ -3147,13 +3181,13 @@ func _resolve_crowd_night(event: Dictionary, approach: String) -> void:
 func _consider_camp_event():
     if camp_event_cooldown > 0.0 or population() < 1 or game_over or not current_event.is_empty() or not event_queue.is_empty():
         return
+    if _camp_present_survivors().is_empty():
+        return
     var avg_stress := 0.0
     var living := 0
     var tense := false
-    for survivor_value in survivors:
+    for survivor_value in _camp_present_survivors():
         var survivor: Dictionary = survivor_value
-        if str(survivor.get("condition", "Dead")) == "Dead":
-            continue
         avg_stress += float(survivor.get("stress", 0.0))
         living += 1
         for relationship_value in survivor.get("relationships", {}).values():
@@ -3168,7 +3202,7 @@ func _consider_camp_event():
         chance += 0.05
     if camp_maintenance < CampLifeRules.CAMP_CONDITION_NEGLECTED:
         chance += 0.05
-    if population() >= 5:
+    if _camp_present_survivors().size() >= 5:
         chance += 0.04
     if tense:
         chance += 0.04
@@ -3181,7 +3215,7 @@ func _consider_camp_event():
         camp_event_cooldown = 60.0
 
 func _select_camp_event() -> Dictionary:
-    var pop := population()
+    var pop: int = int(_camp_present_survivors().size())
     var candidates: Array = ["attack"]
     if pop == 1:
         candidates.append("solo_night")
@@ -3252,7 +3286,7 @@ func _select_camp_event() -> Dictionary:
                 {"text":"Let it go","action":"camp_missing_ignore"},
             ])
         "fight":
-            var pair := _tense_pair()
+            var pair: Array = _tense_pair()
             return _event_base("camp_fight", "Fight at the Fire", "%s and %s finally come to blows beside the fire." % [pair[0]["name"], pair[1]["name"]], [
                 {"text":"Separate them","action":"camp_fight_separate"},
                 {"text":"Have someone mediate","action":"camp_fight_mediated"},
@@ -3286,27 +3320,30 @@ func _select_camp_event() -> Dictionary:
 func _repeated_runner() -> Variant:
     if recent_expedition_ids.size() < 4:
         return null
+    var present_ids: Array = []
+    for survivor_value in _camp_present_survivors():
+        present_ids.append(int(survivor_value.get("id", -1)))
     var counts = {}
     for sid in recent_expedition_ids:
         counts[str(sid)] = int(counts.get(str(sid), 0)) + 1
     for key in counts.keys():
         if int(counts[key]) >= 3:
             var s: Variant = get_survivor(int(key))
-            if s != null and population() >= 2:
+            if s != null and present_ids.has(int(s["id"])) and present_ids.size() >= 2:
                 return s
     return null
 
-func _tense_pair():
-    return CampSocial.tense_pair(survivors)
+func _tense_pair() -> Array:
+    return CampSocial.tense_pair(_camp_present_survivors())
 
 func _high_stress_survivor() -> Variant:
-    return CampSocial.high_stress_survivor(survivors)
+    return CampSocial.high_stress_survivor(_camp_present_survivors())
 
 func _highest_stress_survivor() -> Variant:
-    return CampSocial.highest_stress_survivor(survivors)
+    return CampSocial.highest_stress_survivor(_camp_present_survivors())
 
 func _highest_skill_survivor(skill) -> Variant:
-    return CampSocial.highest_skill_survivor(survivors, str(skill))
+    return CampSocial.highest_skill_survivor(_camp_present_survivors(), str(skill))
 
 func _resolve_sleep_event(event, mode):
     var living = []

@@ -24,7 +24,7 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 
 `GameThreeStat.gd` remains the three-stat compatibility/specialization layer over `Game.gd`. It owns survivor generation, progression, three-stat expedition checks, treatment specialization, abstract danger, loot hooks, politics specialization, and the `combat-agility-leadership-v1` compatibility marker.
 
-`GameSleepVirus.gd` is the **active Game autoload**. It extends `GameThreeStat.gd` with the direct five-minute settlement day, one-shot expedition return-time advancement, authoritative sleep/work availability, timed survivor training/chores, a separate zombie-virus survivor axis, quarantine/treatment, camp spread, and tactical infected-contact integration. Save schema is 8 after the deliberate camp-progression reset.
+`GameSleepVirus.gd` is the **active Game autoload**. It extends `GameThreeStat.gd` with the direct five-minute settlement day, live post-tactical Away timers, authoritative sleep/work availability, timed survivor training/chores, a separate zombie-virus survivor axis, quarantine/treatment, camp spread, and tactical infected-contact integration. Save schema is 8 after the deliberate camp-progression reset.
 
 `MainThreeStat.gd` remains the three-stat UI specialization over `Main.gd`. `MainSleepVirus.gd` is the **active main-scene script** and routes the living camp, inspector, and tactical runtime to their sleep/virus-aware wrappers.
 
@@ -46,7 +46,7 @@ Persistent state/orchestration foundation: camp ticks, survivor work assignment,
 Three-stat specialization and compatibility boundary. It keeps the base orchestration usable while ensuring the live survivor model contains only Combat, Agility, and Leadership.
 
 ### `GameSleepVirus.gd`
-Active settlement orchestration layer. Owns the single direct settlement clock, one-shot expedition return-time advancement through the same camp simulation, authoritative Sleeping and **Exhausted 3–5h forced-rest** status/tasks, **natural idle fatigue recovery**, centralized assignment availability, zombie-virus state progression, quarantine, timed virus treatment, camp spread, and handoff of tactical infected-contact results into persistent survivor state.
+Active settlement orchestration layer. Owns the single direct settlement clock, normal resumed camp simulation while post-tactical expeditions remain Away on their route timers, authoritative Sleeping and **Exhausted 3–5h forced-rest** status/tasks, **natural idle fatigue recovery**, centralized assignment availability, zombie-virus state progression, quarantine, timed virus treatment, camp spread, and handoff of tactical infected-contact results into persistent survivor state.
 
 ### `Main.gd`
 Top-level UI/input foundation: legacy navigation shells, overlays, work board primitives, expedition modal, and shared interaction flow. The active runtime may reuse these mature UI functions without exposing their old standalone tab navigation.
@@ -129,7 +129,7 @@ Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts ar
 
 `Game.gd` owns the existing camp narrative event queue, including event candidate selection, pre-rolled hidden luck stored in event context, choice resolution, and persistent building/resource/survivor mutation. Zombie breaches are explicitly **luck + infrastructure**, not survivor-stat or tactical-player-skill checks. `FFCampSocial.gd` remains the owner of relationships/chatter/political standing rather than absorbing destructive event rules.
 
-Expedition return is not a loot generator. `Game.resolve_combat()` commits only tactical loot already reported by the board; `_finish_expedition()` must not call abstract loot/gear rollers. Legacy outside-world text reward catalogs may remain as compatibility source temporarily, but production expedition flow must not enter them.
+Expedition return is not a loot generator. `Game.resolve_combat()` records only tactical loot already reported by the board onto the expedition's persisted return payload; it does **not** immediately add that haul to communal inventory. After tactical resolution, `_resume_expedition()` starts/resumes the real Away timer, and `_finish_expedition()` commits that carried payload only when the timer reaches zero. It must not call abstract loot/gear rollers. Legacy outside-world text reward catalogs may remain as compatibility source temporarily, but production expedition flow must not enter them.
 
 ## Camp interaction boundary
 
@@ -147,7 +147,7 @@ Sleeping, treatment/recovery, crafting, building, garden work, chores, pet care,
 
 ## Tactical pause boundary
 
-Tactical encounters pause settlement simulation. Tactical action ticks and settlement time are different scales. Tactical thinking must not consume camp resources, advance building/recovery/virus progression, or trigger unrelated camp events. After tactical resolution, the currently authored route duration may advance settlement synchronously; **new choice-based camp events/maintenance incidents are suppressed during that hidden return-time jump** so the player is never forced through an unseen destructive decision. Already-visible timed maintenance may still expire because elapsed time remains real.
+Tactical encounters pause settlement simulation. Tactical action ticks and settlement time are different scales. Tactical thinking must not consume camp resources, advance building/recovery/virus progression, or trigger unrelated camp events. After tactical resolution, settlement resumes normally and the expedition stays **Away** until its authored route timer reaches zero. Camp pressure events and fresh maintenance incidents require at least one living survivor physically home; an empty camp cannot generate an interaction nobody can answer.
 
 Detailed survivor/item inspection also pauses settlement simulation while open and restores the prior pause state on close.
 

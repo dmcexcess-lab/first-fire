@@ -110,14 +110,6 @@ func _advance_settlement_simulation(amount: float, include_expeditions: bool = t
         _check_settlement_mature()
         remaining -= step
 
-func _advance_settlement_time_for_expedition_return(seconds: float) -> void:
-    # Expeditions open the tactical board immediately. When tactical play ends,
-    # apply the authored route duration in one settlement jump while the party
-    # is still marked away. Existing timed maintenance can expire during that
-    # elapsed time, but new choice-based camp events/maintenance incidents are
-    # not spawned invisibly while the player cannot respond.
-    _advance_settlement_simulation(maxf(0.0, seconds), false, false)
-
 func _process(delta):
     if not initialized or sim_paused or game_over:
         return
@@ -222,7 +214,7 @@ func _process_maintenance_incidents(allow_spawn: bool) -> void:
         if not bool(chore.get("complete", false)) and _camp_clock() >= float(chore.get("deadline_at", 0.0)):
             _fail_maintenance_incident(chore)
         return
-    if allow_spawn and _camp_clock() >= float(flags.get("next_chore_at", 999999999.0)):
+    if allow_spawn and not _camp_present_survivors().is_empty() and _camp_clock() >= float(flags.get("next_chore_at", 999999999.0)):
         _spawn_maintenance_incident()
 
 func daily_chore_deadline_seconds(chore_id: String) -> float:

@@ -97,13 +97,20 @@ jobs:
           grep -Fq 'func start_expedition(primary_id, zone, companion_id = -1):' game/scripts/Game.gd
           grep -Fq 'ally = make_actor(companion, ally_spawn, false)' game/scripts/FFCombat.gd
           grep -Fq 'founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "", "Clothing": "", "Pack": "", "Tool": ""}' game/scripts/Game.gd
-          grep -Fq 'func _settle_expedition_time_cost(exp)' game/scripts/Game.gd
-          grep -Fq 'func _advance_settlement_time_for_expedition_return(seconds: float)' game/scripts/GameSleepVirus.gd
+          if grep -q 'func _settle_expedition_time_cost' game/scripts/Game.gd; then exit 1; fi
+          if grep -q 'func _advance_settlement_time_for_expedition_return' game/scripts/Game.gd game/scripts/GameSleepVirus.gd; then exit 1; fi
+          grep -Fq '"remaining": duration' game/scripts/Game.gd
+          grep -q 'func _commit_expedition_return_payload' game/scripts/Game.gd
+          grep -Fq 'exp["recovered_loot"] = recovered_loot' game/scripts/Game.gd
+          grep -Fq 'exp["recovered_gear"] = recovered_gear' game/scripts/Game.gd
+          grep -q 'func _format_tactical_container_loot' game/scripts/Game.gd
+          if grep -q 'func _grant_tactical_explore_reward' game/scripts/Game.gd; then exit 1; fi
           grep -Fq 'var loot: Dictionary = {}' game/scripts/Game.gd
           if grep -Fq '_queue_event(_build_field_event(exp["event_key"], exp))' game/scripts/Game.gd; then exit 1; fi
           if grep -Fq '_queue_event(_build_special_site_event(exp["special_site"], exp))' game/scripts/Game.gd; then exit 1; fi
           grep -Fq 'nothing new is added to the haul' game/scripts/Game.gd
-          grep -Fq '_advance_settlement_simulation(maxf(0.0, seconds), false, false)' game/scripts/GameSleepVirus.gd
+          grep -Fq 'if _camp_present_survivors().is_empty():' game/scripts/Game.gd
+          grep -Fq 'not _camp_present_survivors().is_empty()' game/scripts/GameSleepVirus.gd
           if grep -q '_advance_settlement_time_for_departure' game/scripts/Game.gd game/scripts/GameSleepVirus.gd; then exit 1; fi
           grep -q 'TACTICAL_GEAR_UNLOCKS_BY_ZONE' game/scripts/FFData.gd
           grep -Fq '"duration": 37.5, "danger": "Minimal"' game/scripts/FFData.gd
