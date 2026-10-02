@@ -1,3 +1,13 @@
+## Beta Candidate — Daily Camp Chores & Minigames — 2026-10-01
+
+- Replaced threshold-based active maintenance buttons with a persisted daily work-board loop that rolls exactly **1–2 required chores** from **Poke Fire, Chop Wood, Clear Area, Stack Supplies**.
+- Made the physical camp work board visible/clickable and the single active chore entry point; survivor inspectors now point players back to the board instead of exposing a competing chore path.
+- Added one reusable portrait/touch chore-minigame overlay. Its deterministic target sequence varies by persisted chore seed/progress, pauses settlement time while the player interacts, and can be safely closed/reopened without rerolling or duplicating rewards.
+- Poke Fire restores First Fire without Wood cost; Chop Wood yields exactly +1 Wood; Clear Area restores 12 camp condition; Stack Supplies restores 9. Each unfinished daily chore costs 4 additional camp condition at rollover.
+- Chore assignments remain real timed survivor tasks (5.0–10.0 settlement seconds), feed Slice 1 assigned-work meal/sleep pressure, and cannot use unavailable survivors.
+- Added bounded five-day duty participation/eligibility state and a read-only fairness snapshot so later camp events can notice repeated overuse while excluding survivors who were not eligible to contribute.
+- Kept save schema 7: current chores, progress, completion/reward state, and duty rotation normalize additively and today's chores do not reroll on load.
+
 ## Beta Candidate — Camp Condition & Daily Activity Foundation — 2026-10-01
 
 - Promoted the existing persistent camp-maintenance score into the authoritative camp-condition model with derived **Well Kept +1 / Acceptable 0 / Neglected -1 / Poor -2 / Severe -3** mood bands.

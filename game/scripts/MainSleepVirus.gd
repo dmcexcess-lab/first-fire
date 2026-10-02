@@ -3,6 +3,7 @@ extends "res://scripts/MainThreeStat.gd"
 const CombatVirus = preload("res://scripts/FFCombatVirus.gd")
 const InspectorVirus = preload("res://scripts/FFInspectorVirus.gd")
 const CampViewSleepVirus = preload("res://scripts/FFCampViewSleepVirus.gd")
+const CampChoreMinigame = preload("res://scripts/FFCampChoreMinigame.gd")
 const CampData = preload("res://scripts/FFData.gd")
 
 const CAMP_TUTORIAL_STEPS := [
@@ -31,6 +32,8 @@ var gate_survivor_index := 0
 var gate_zone_names: Array = []
 var gate_zone_index := 0
 var expedition_return_notice: Button
+var chore_minigame: Control
+var chore_pause_before := false
 
 func _build_ui():
     super._build_ui()
@@ -40,6 +43,7 @@ func _build_ui():
     _hide_development_placeholder()
     _apply_camp_menu_layout()
     _build_expedition_return_notice()
+    _build_chore_minigame()
     if not Game.toast_requested.is_connected(_on_return_toast):
         Game.toast_requested.connect(_on_return_toast)
 
@@ -105,6 +109,42 @@ func _build_expedition_return_notice() -> void:
     expedition_return_notice.add_theme_font_size_override("font_size", 13)
     expedition_return_notice.pressed.connect(_dismiss_return_notice)
     add_child(expedition_return_notice)
+
+func _build_chore_minigame() -> void:
+    chore_minigame = CampChoreMinigame.new()
+    chore_minigame.action_requested.connect(_on_chore_minigame_action)
+    chore_minigame.closed.connect(_close_chore_minigame)
+    add_child(chore_minigame)
+
+func _open_chore_minigame(chore_id: String) -> void:
+    var chore: Dictionary = Game.get_daily_chore(chore_id)
+    if chore.is_empty() or bool(chore.get("complete", false)):
+        return
+    var sid := int(chore.get("assigned_survivor_id", -1))
+    var worker: Variant = Game.get_survivor(sid)
+    if worker == null:
+        return
+    chore_pause_before = Game.sim_paused
+    Game.set_paused(true)
+    chore_minigame.configure(chore, str(worker.get("name", "Survivor")), Game.daily_chore_target(chore_id))
+    chore_minigame.visible = true
+
+func _close_chore_minigame() -> void:
+    if chore_minigame == null or not chore_minigame.visible:
+        return
+    chore_minigame.visible = false
+    Game.set_paused(chore_pause_before)
+    call_deferred("_refresh_content")
+
+func _on_chore_minigame_action(chore_id: String, target_index: int) -> void:
+    if not Game.perform_daily_chore_action(chore_id, target_index):
+        return
+    var chore: Dictionary = Game.get_daily_chore(chore_id)
+    if chore.is_empty() or bool(chore.get("interaction_complete", false)) or bool(chore.get("complete", false)):
+        _close_chore_minigame()
+        return
+    var worker: Variant = Game.get_survivor(int(chore.get("assigned_survivor_id", -1)))
+    chore_minigame.configure(chore, str(worker.get("name", "Survivor")) if worker != null else "Survivor", Game.daily_chore_target(chore_id))
 
 func _on_return_toast(message) -> void:
     if expedition_return_notice == null:
@@ -565,7 +605,11 @@ func _refresh_status():
             var label := "virus care" if str(task.get("kind", "")) == "virus_treatment" else status.to_lower()
             active.append("%s %s: %.0fs" % [s["name"], label, float(task.get("remaining", 0.0))])
         elif status in ["Chore", "Pet Care"] and not s.get("task", {}).is_empty():
-            active.append("%s %s %d/%d" % [s["name"], s["task"].get("label", "work"), int(s["task"].get("progress", 0)), int(s["task"].get("goal", 1))])
+            var camp_task: Dictionary = s["task"]
+            if str(camp_task.get("kind", "")) == "daily_chore" and not bool(camp_task.get("minigame_complete", false)):
+                active.append("%s %s: PLAY" % [s["name"], camp_task.get("label", "camp duty")])
+            else:
+                active.append("%s %s: %.0fs" % [s["name"], camp_task.get("label", "work"), float(camp_task.get("remaining", 0.0))])
         elif status in ["Quarantined", "Sick"]:
             active.append("%s: %s" % [s["name"], _activity_text(s)])
     var timer_text := "PAUSED" if Game.sim_paused else ""
@@ -576,42 +620,53 @@ func _refresh_status():
 
 func _draw_camp_work_board() -> void:
     content_box.add_child(_separator())
-    content_box.add_child(_heading("Camp Work", 19))
-    for survivor_value in Game.survivors:
-        var survivor: Dictionary = survivor_value
-        if str(survivor.get("status", "")) in ["Chore", "Pet Care"] and not survivor.get("task", {}).is_empty():
-            var task: Dictionary = survivor["task"]
-            var row := HBoxContainer.new()
-            row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-            row.add_child(_make_label("%s — %s  %d/%d" % [survivor["name"], task.get("label", "Work"), int(task.get("progress", 0)), int(task.get("goal", 1))], 12))
-            var work := Button.new()
-            work.text = "WORK"
-            work.custom_minimum_size = Vector2(92, 44)
-            work.pressed.connect(Game.perform_camp_task_tap.bind(int(survivor["id"])))
-            row.add_child(work)
-            content_box.add_child(row)
+    content_box.add_child(_heading("TODAY'S CAMP WORK", 19))
+    var chores: Array = Game.daily_chores()
+    var complete_count := chores.size() - Game.daily_chore_incomplete_count()
+    content_box.add_child(_make_label("%d / %d COMPLETE  •  Only one or two chores are needed each day." % [complete_count, chores.size()], 12))
 
-    var needed: Array = []
-    if Game.camp_chore_needed("stoke_fire"):
-        needed.append(["STOKE FIRE", "stoke_fire", int(Game.resources.get("Wood", 0)) > 0, "needs 1 Wood"])
-    if Game.camp_chore_needed("clean_camp"):
-        needed.append(["CLEAN CAMP", "clean_camp", true, ""])
-    if Game.camp_chore_needed("repair_perimeter"):
-        var repair_material := int(Game.resources.get("Scrap Metal", 0)) > 0 or int(Game.resources.get("Wood", 0)) > 0
-        needed.append(["REPAIR PERIMETER", "repair_perimeter", repair_material, "needs Scrap Metal or Wood"])
-
-    if needed.is_empty():
-        content_box.add_child(_make_label("Nothing urgent right now. Watch the camp; the board will call for work when something actually needs attention.", 12))
-    else:
+    var has_unassigned := false
+    for chore_value in chores:
+        var chore: Dictionary = chore_value
+        if not bool(chore.get("complete", false)) and int(chore.get("assigned_survivor_id", -1)) < 0:
+            has_unassigned = true
+            break
+    if has_unassigned:
         content_box.add_child(_worker_picker())
-        for entry_value in needed:
-            var entry: Array = entry_value
-            var button := Button.new()
-            button.text = str(entry[0]) + ("" if bool(entry[2]) else " — " + str(entry[3]))
-            button.custom_minimum_size = Vector2(0, 44)
-            button.disabled = selected_worker_id < 0 or not bool(entry[2])
-            button.pressed.connect(Game.start_camp_chore.bind(selected_worker_id, str(entry[1])))
-            content_box.add_child(button)
+
+    for chore_value in chores:
+        var chore: Dictionary = chore_value
+        var panel := PanelContainer.new()
+        var column := VBoxContainer.new()
+        panel.add_child(column)
+        var sid := int(chore.get("assigned_survivor_id", -1))
+        var worker: Variant = Game.get_survivor(sid)
+        var state_text := "COMPLETE"
+        if not bool(chore.get("complete", false)):
+            state_text = "UNASSIGNED" if sid < 0 else (str(worker.get("name", "Assigned")) if worker != null else "ASSIGNED")
+        column.add_child(_make_label("%s — %s" % [str(chore.get("label", "Camp Chore")).to_upper(), state_text], 15))
+        if not bool(chore.get("complete", false)):
+            if sid < 0:
+                var assign := Button.new()
+                assign.text = "ASSIGN & PLAY"
+                assign.custom_minimum_size = Vector2(0, 46)
+                assign.disabled = selected_worker_id < 0
+                assign.pressed.connect(_assign_daily_chore.bind(str(chore.get("id", ""))))
+                column.add_child(assign)
+            elif not bool(chore.get("interaction_complete", false)):
+                var play := Button.new()
+                play.text = "PLAY %s" % str(chore.get("label", "CHORE")).to_upper()
+                play.custom_minimum_size = Vector2(0, 46)
+                play.pressed.connect(_open_chore_minigame.bind(str(chore.get("id", ""))))
+                column.add_child(play)
+            else:
+                column.add_child(_make_label("Interaction done  •  %.0fs camp work remaining" % Game.daily_chore_remaining(str(chore.get("id", ""))), 12))
+        content_box.add_child(panel)
+
+    var fairness: Dictionary = Game.duty_fairness_snapshot()
+    if int(fairness.get("spread", 0)) >= 2 or not fairness.get("overdue_survivor_ids", []).is_empty():
+        content_box.add_child(_make_label("Duty rotation is getting uneven. Survivors notice who keeps taking turns and who does not.", 11))
+
     var condition_summary: Dictionary = Game.camp_condition_summary()
     var condition_mood := int(condition_summary.get("mood", 0))
     var condition_mood_text := "+%d" % condition_mood if condition_mood > 0 else str(condition_mood)
@@ -644,3 +699,10 @@ func _draw_camp_work_board() -> void:
             buttons.add_child(button)
         v.add_child(buttons)
         content_box.add_child(panel)
+
+func _assign_daily_chore(chore_id: String) -> void:
+    if selected_worker_id < 0:
+        return
+    if Game.assign_daily_chore(chore_id, selected_worker_id):
+        _open_chore_minigame(chore_id)
+

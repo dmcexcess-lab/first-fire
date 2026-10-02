@@ -78,6 +78,7 @@ func _draw() -> void:
     _draw_structures(origin, tile)
     _draw_construction(origin, tile)
     _draw_communal_chest(origin, tile)
+    _draw_work_board(origin, tile)
     _draw_night(origin, tile)
     _draw_ambient_life(origin, tile)
     _draw_survivors(origin, tile)
@@ -146,21 +147,9 @@ func _draw_menu_affordances(origin: Vector2, tile: float) -> void:
     var gate_center := (_cell_center(Vector2i(7, GRID_H - 1), origin, tile) + _cell_center(Vector2i(8, GRID_H - 1), origin, tile)) * 0.5
     _draw_interaction_ring(gate_center, tile * 0.55)
 
-    if Game.camp_chore_needed("stoke_fire"):
-        _draw_alert_badge(_cell_center(FIRE_CELL, origin, tile) + Vector2(tile * 0.42, -tile * 0.38), tile)
-    var clean_needed := Game.camp_chore_needed("clean_camp")
-    var repair_needed := Game.camp_chore_needed("repair_perimeter")
-    if clean_needed or repair_needed:
-        _draw_alert_badge(_cell_center(building_cell("Workbench"), origin, tile) + Vector2(tile * 0.38, -tile * 0.38), tile)
-    if clean_needed:
-        for dirt_cell in [Vector2i(6, 8), Vector2i(9, 9), Vector2i(11, 8)]:
-            var dirt_center := _cell_center(dirt_cell, origin, tile)
-            draw_circle(dirt_center, tile * 0.09, Color(0.33, 0.24, 0.14, 0.48))
-            draw_circle(dirt_center + Vector2(tile * 0.12, tile * 0.05), tile * 0.05, Color(0.25, 0.19, 0.12, 0.42))
-    if repair_needed:
-        var debris := _cell_center(Vector2i(12, 3), origin, tile)
-        draw_line(debris + Vector2(-tile * 0.28, -tile * 0.12), debris + Vector2(tile * 0.30, tile * 0.16), Color(0.60, 0.36, 0.20, 0.90), maxf(2.0, tile * 0.08))
-        draw_line(debris + Vector2(-tile * 0.24, tile * 0.18), debris + Vector2(tile * 0.24, -tile * 0.16), Color(0.50, 0.31, 0.19, 0.88), maxf(2.0, tile * 0.07))
+    _draw_interaction_ring(_cell_center(WORK_BOARD_CELL, origin, tile), tile * 0.42)
+    if Game.daily_chore_incomplete_count() > 0:
+        _draw_alert_badge(_cell_center(WORK_BOARD_CELL, origin, tile) + Vector2(tile * 0.40, -tile * 0.36), tile)
 
 func _draw_interaction_ring(center: Vector2, radius: float) -> void:
     draw_arc(center, radius, 0.0, TAU, 22, Color(0.83, 0.73, 0.46, 0.42), maxf(1.0, radius * 0.05))
@@ -257,6 +246,9 @@ func _handle_camp_press(local_pos: Vector2) -> void:
     if cell == FIRE_CELL:
         craft_station_pressed.emit("Fire Pit")
         return
+    if cell == WORK_BOARD_CELL:
+        duties_pressed.emit()
+        return
     if cell == building_cell("Workbench") and bool(Game.buildings.get("Workbench", false)):
         craft_station_pressed.emit("Workbench")
         return
@@ -318,9 +310,11 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
         return building_cell("Infirmary") + Vector2i(1, 0) if bool(Game.buildings.get("Infirmary", false)) else Vector2i(16, 7)
     if status == "Chore":
         match str(task.get("chore", "")):
-            "stoke_fire": return FIRE_CELL + Vector2i(0, 1)
+            "poke_fire", "stoke_fire": return FIRE_CELL + Vector2i(0, 1)
+            "chop_wood": return Vector2i(2, 3)
+            "clear_area", "clean_camp": return Vector2i(9, 9)
+            "stack_supplies": return CAMP_CHEST_CELL + Vector2i(-1, 0)
             "repair_perimeter": return Vector2i(16, 5)
-            "clean_camp": return Vector2i(9, 9)
     if status == "Pet Care":
         return FIRE_CELL + Vector2i(1, 1)
 

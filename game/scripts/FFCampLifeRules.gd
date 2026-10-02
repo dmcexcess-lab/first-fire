@@ -27,6 +27,16 @@ const DAILY_WINDOW_MISS_RATIO := 0.60
 const DAILY_AUTONOMOUS_SECONDS := 4.0
 const MISSED_MEAL_HUNGER_PENALTY := 24.0
 const MISSED_SLEEP_FATIGUE_PENALTY := 18.0
+const DAILY_CHORE_KINDS := ["poke_fire", "chop_wood", "clear_area", "stack_supplies"]
+const DAILY_CHORE_NEGLECT_LOSS := 4.0
+const DUTY_ROTATION_DAYS := 5
+const CHORE_TARGET_COUNT := 6
+const DAILY_CHORE_CATALOG := {
+    "poke_fire": {"label":"Poke Fire","duration":5.0,"goal_min":4,"goal_max":5,"instruction":"Tap the hot spot to settle the logs and wake the coals."},
+    "chop_wood": {"label":"Chop Wood","duration":7.5,"goal_min":4,"goal_max":6,"instruction":"Tap CHOP as the target shifts across the log."},
+    "clear_area": {"label":"Clear Area","duration":10.0,"goal_min":4,"goal_max":6,"instruction":"Tap the marked debris until the work area is clear."},
+    "stack_supplies": {"label":"Stack Supplies","duration":7.5,"goal_min":4,"goal_max":5,"instruction":"Tap the marked crate to build a stable supply stack."},
+}
 const MAX_PETS := 3
 const PET_LEAVE_AFFECTION := 14.0
 const PET_NEED_KEYS := ["affection"]
@@ -62,6 +72,8 @@ static func camp_condition_recovery(chore: String) -> float:
     match chore:
         "clean_camp": return 22.0
         "repair_perimeter": return 38.0
+        "clear_area": return 12.0
+        "stack_supplies": return 9.0
     return 0.0
 
 static func recover_camp_condition(value: float, chore: String) -> float:
@@ -139,6 +151,108 @@ static func daily_workload_pressure(value, day_value: int) -> int:
     if bool(a["missed_meal"]): pressure+=1
     if bool(a["missed_sleep"]): pressure+=1
     return pressure
+
+static func daily_chore_data(kind: String) -> Dictionary:
+    return DAILY_CHORE_CATALOG.get(kind, {}).duplicate(true)
+
+static func daily_chore_label(kind: String) -> String:
+    return str(DAILY_CHORE_CATALOG.get(kind, {}).get("label", kind.replace("_", " ").capitalize()))
+
+static func daily_chore_duration(kind: String) -> float:
+    return float(DAILY_CHORE_CATALOG.get(kind, {}).get("duration", 7.5))
+
+static func daily_chore_goal(kind: String, seed: int) -> int:
+    var data: Dictionary = DAILY_CHORE_CATALOG.get(kind, {})
+    var low := int(data.get("goal_min", 4))
+    var high := maxi(low, int(data.get("goal_max", low)))
+    return low + posmod(seed, high - low + 1)
+
+static func daily_chore_instruction(kind: String) -> String:
+    return str(DAILY_CHORE_CATALOG.get(kind, {}).get("instruction", "Complete the camp chore."))
+
+static func daily_chore_target_index(kind: String, seed: int, progress: int) -> int:
+    var kind_index := maxi(0, DAILY_CHORE_KINDS.find(kind))
+    return posmod(seed + progress * 17 + kind_index * 11, CHORE_TARGET_COUNT)
+
+static func generate_daily_chores(day_value: int, rng: RandomNumberGenerator) -> Array:
+    var result: Array = []
+    var count := 1 + (1 if rng.randf() < 0.5 else 0)
+    for index in range(count):
+        var kind := str(DAILY_CHORE_KINDS[rng.randi_range(0, DAILY_CHORE_KINDS.size() - 1)])
+        var seed := rng.randi_range(1, 2147483000)
+        result.append({
+            "id":"%d-%d-%s" % [day_value, index, kind],
+            "day":day_value,
+            "kind":kind,
+            "label":daily_chore_label(kind),
+            "assigned_survivor_id":-1,
+            "eligible_ids":[],
+            "minigame_seed":seed,
+            "minigame_progress":0,
+            "minigame_goal":daily_chore_goal(kind, seed),
+            "interaction_complete":false,
+            "complete":false,
+            "rewarded":false,
+        })
+    return result
+
+static func normalize_daily_chores(value, day_value: int) -> Array:
+    if not (value is Array): return []
+    var incoming: Array = value
+    if incoming.size() < 1 or incoming.size() > 2: return []
+    var result: Array = []
+    for item_value in incoming:
+        if not (item_value is Dictionary): return []
+        var item: Dictionary = item_value.duplicate(true)
+        var kind := str(item.get("kind", ""))
+        if kind not in DAILY_CHORE_KINDS or int(item.get("day", -1)) != day_value: return []
+        var seed := maxi(1, int(item.get("minigame_seed", 1)))
+        var goal := clampi(int(item.get("minigame_goal", daily_chore_goal(kind, seed))), 1, 8)
+        item["label"] = daily_chore_label(kind)
+        item["assigned_survivor_id"] = int(item.get("assigned_survivor_id", -1))
+        item["eligible_ids"] = item.get("eligible_ids", []).duplicate(true) if item.get("eligible_ids", []) is Array else []
+        item["minigame_seed"] = seed
+        item["minigame_goal"] = goal
+        item["minigame_progress"] = clampi(int(item.get("minigame_progress", 0)), 0, goal)
+        item["interaction_complete"] = bool(item.get("interaction_complete", false)) or int(item["minigame_progress"]) >= goal
+        item["complete"] = bool(item.get("complete", false))
+        item["rewarded"] = bool(item.get("rewarded", false))
+        result.append(item)
+    return result
+
+static func unfinished_daily_chore_count(chores: Array) -> int:
+    var count := 0
+    for chore_value in chores:
+        if chore_value is Dictionary and not bool(chore_value.get("complete", false)): count += 1
+    return count
+
+static func apply_unfinished_chore_neglect(value: float, chores: Array) -> float:
+    return clampf(value - float(unfinished_daily_chore_count(chores)) * DAILY_CHORE_NEGLECT_LOSS, 0.0, 100.0)
+
+static func daily_chore_effect(kind: String) -> Dictionary:
+    match kind:
+        "poke_fire": return {"fire_gain":28.0}
+        "chop_wood": return {"wood_gain":1}
+        "clear_area": return {"condition_gain":camp_condition_recovery("clear_area")}
+        "stack_supplies": return {"condition_gain":camp_condition_recovery("stack_supplies")}
+    return {}
+
+static func normalize_duty_days(value, current_day: int) -> Array:
+    var incoming: Array = value.duplicate() if value is Array else []
+    var result: Array = []
+    var minimum_day := current_day - DUTY_ROTATION_DAYS + 1
+    for day_value in incoming:
+        var duty_day := int(day_value)
+        if duty_day >= minimum_day and duty_day <= current_day and not result.has(duty_day):
+            result.append(duty_day)
+    result.sort()
+    return result
+
+static func duty_fairness_pressure(completed_days, eligible_days, current_day: int) -> int:
+    var completed := normalize_duty_days(completed_days, current_day)
+    var eligible := normalize_duty_days(eligible_days, current_day)
+    if eligible.is_empty(): return 0
+    return maxi(0, eligible.size() - completed.size())
 
 static func normalize_needs(value) -> Dictionary:
     var d:=default_needs()

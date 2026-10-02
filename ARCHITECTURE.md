@@ -105,6 +105,9 @@ Pure single-survivor expedition/logistics rules: travel duration, recruit protec
 ### `FFCampLifeRules.gd`
 Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, pet affection/retention/daily reward, authoritative camp-condition degradation/recovery/bands, daily activity and meal/sleep-window accounting, recovery/treatment modifiers, defense-building effects, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
 
+### `FFCampChoreMinigame.gd`
+Shared touch-first presentation/controller for the four daily chore interactions. It renders one reusable six-target interaction surface with chore-specific instructions and labels, emits action intents only, and never awards resources or mutates camp state. `MainSleepVirus.gd` pauses/restores settlement simulation around the overlay and forwards intents to authoritative `GameSleepVirus.gd` chore APIs.
+
 ### `FFVirusRules.gd`
 Pure zombie-virus rules. Owns stage names/normalization, contact-to-exposure probability, daily progression, camp-spread probability, and treatment plans/costs. It does not mutate Game state or render UI.
 

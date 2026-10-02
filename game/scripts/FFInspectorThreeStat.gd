@@ -97,19 +97,7 @@ func _render_survivor() -> void:
             train_row.add_child(train)
         body.add_child(train_row)
 
-        var work_buttons: Array = []
-        if Game.camp_chore_needed("stoke_fire"): work_buttons.append(["STOKE FIRE", "stoke_fire"])
-        if Game.camp_chore_needed("clean_camp"): work_buttons.append(["CLEAN CAMP", "clean_camp"])
-        if Game.camp_chore_needed("repair_perimeter"): work_buttons.append(["MAINTAIN CAMP", "repair_perimeter"])
-        if not work_buttons.is_empty():
-            body.add_child(_make_label("Camp needs attention:", 12))
-            for work in work_buttons:
-                var duty := Button.new()
-                duty.text = str(work[0])
-                duty.custom_minimum_size = Vector2(0, 44)
-                duty.disabled = status != "Available"
-                duty.pressed.connect(_start_camp_work.bind(str(work[1])))
-                body.add_child(duty)
+        body.add_child(_make_label("Required daily chores are assigned at the physical camp work board.", 11))
 
         if not Game.pets.is_empty():
             body.add_child(_make_label("Pets:", 12))
@@ -179,10 +167,6 @@ func _render_item() -> void:
 
 func _start_training(stat_name: String) -> void:
     if Game.start_training(current_survivor_id, stat_name):
-        _render_survivor()
-
-func _start_camp_work(chore: String) -> void:
-    if Game.start_camp_chore(current_survivor_id, chore):
         _render_survivor()
 
 func _start_pet_care(pet_id: int, action: String) -> void:

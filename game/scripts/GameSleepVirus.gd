@@ -9,8 +9,12 @@ func new_game():
         survivor["virus"] = VirusRules.default_state()
         survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
         survivor["previous_daily_activity"] = {}
+        survivor["duty_days"] = []
+        survivor["duty_eligible_days"] = []
     flags["virus_model"] = "zombie-virus-v1"
     flags["camp_condition_model"] = "camp-condition-activity-v1"
+    flags["daily_chores"] = _generate_daily_chore_set()
+    flags["previous_daily_chores"] = []
     save_game()
 
 func load_game():
@@ -25,11 +29,18 @@ func load_game():
         survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
         if not survivor.has("previous_daily_activity"):
             survivor["previous_daily_activity"] = {}
+        survivor["duty_days"] = CampLifeRules.normalize_duty_days(survivor.get("duty_days", []), day)
+        survivor["duty_eligible_days"] = CampLifeRules.normalize_duty_days(survivor.get("duty_eligible_days", []), day)
         _migrate_passive_sleep(survivor)
         _normalize_health_status(survivor)
     flags["virus_model"] = "zombie-virus-v1"
     flags["camp_condition_model"] = "camp-condition-activity-v1"
+    var normalized_chores := CampLifeRules.normalize_daily_chores(flags.get("daily_chores", []), day)
+    flags["daily_chores"] = normalized_chores if not normalized_chores.is_empty() else _generate_daily_chore_set()
+    if not flags.has("previous_daily_chores"):
+        flags["previous_daily_chores"] = []
     sim_paused = true
+    save_game()
     state_changed.emit()
 
 func _generate_survivor(founder = false, preferred_background = ""):
@@ -37,6 +48,8 @@ func _generate_survivor(founder = false, preferred_background = ""):
     survivor["virus"] = VirusRules.default_state()
     survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
     survivor["previous_daily_activity"] = {}
+    survivor["duty_days"] = []
+    survivor["duty_eligible_days"] = []
     return survivor
 
 func _process(delta):
@@ -107,52 +120,172 @@ func survivor_recent_activity(sid: int) -> Dictionary:
 func survivor_workload_pressure(sid: int) -> int:
     return CampLifeRules.daily_workload_pressure(survivor_activity_today(sid), day)
 
-func camp_chore_needed(chore: String) -> bool:
-    match chore:
-        "stoke_fire": return fire_level <= 48.0
-        "clean_camp": return camp_maintenance <= 68.0
-        "repair_perimeter": return camp_maintenance <= 42.0
-    return false
+func daily_chores() -> Array:
+    return CampLifeRules.normalize_daily_chores(flags.get("daily_chores", []), day)
 
-func start_camp_chore(sid: int, chore: String) -> bool:
-    if not camp_chore_needed(chore):
-        toast_requested.emit("That part of camp does not need attention yet.")
+func _generate_daily_chore_set() -> Array:
+    return CampLifeRules.generate_daily_chores(day, rng)
+
+func _find_daily_chore_index(chore_id: String) -> int:
+    var chores := daily_chores()
+    for index in range(chores.size()):
+        if str(chores[index].get("id", "")) == chore_id:
+            return index
+    return -1
+
+func get_daily_chore(chore_id: String) -> Dictionary:
+    for chore_value in daily_chores():
+        var chore: Dictionary = chore_value
+        if str(chore.get("id", "")) == chore_id:
+            return chore.duplicate(true)
+    return {}
+
+func daily_chore_incomplete_count() -> int:
+    return CampLifeRules.unfinished_daily_chore_count(daily_chores())
+
+func daily_chore_target(chore_id: String) -> int:
+    var chore := get_daily_chore(chore_id)
+    if chore.is_empty(): return -1
+    return CampLifeRules.daily_chore_target_index(
+        str(chore.get("kind", "")),
+        int(chore.get("minigame_seed", 1)),
+        int(chore.get("minigame_progress", 0))
+    )
+
+func daily_chore_remaining(chore_id: String) -> float:
+    var chore := get_daily_chore(chore_id)
+    if chore.is_empty(): return 0.0
+    var sid := int(chore.get("assigned_survivor_id", -1))
+    var survivor: Variant = get_survivor(sid)
+    if survivor == null: return 0.0
+    var task: Dictionary = survivor.get("task", {})
+    if str(task.get("kind", "")) != "daily_chore" or str(task.get("chore_id", "")) != chore_id:
+        return 0.0
+    return maxf(0.0, float(task.get("remaining", 0.0)))
+
+func assign_daily_chore(chore_id: String, sid: int) -> bool:
+    var chores := daily_chores()
+    var index := -1
+    for i in range(chores.size()):
+        if str(chores[i].get("id", "")) == chore_id:
+            index = i
+            break
+    if index < 0: return false
+    var chore: Dictionary = chores[index]
+    if bool(chore.get("complete", false)) or int(chore.get("assigned_survivor_id", -1)) >= 0:
         return false
     var survivor: Variant = get_survivor(sid)
     if not survivor_can_assign(survivor):
         return false
-    var label := ""
-    var duration := 8.0
-    match chore:
-        "stoke_fire":
-            if int(resources.get("Wood", 0)) <= 0:
-                toast_requested.emit("Stoking the fire needs 1 Wood.")
-                return false
-            resources["Wood"] = int(resources.get("Wood", 0)) - 1
-            label = "Stoking First Fire"
-            duration = 6.0
-        "clean_camp":
-            label = "Cleaning Camp"
-            duration = 8.0
-        "repair_perimeter":
-            if int(resources.get("Scrap Metal", 0)) > 0:
-                resources["Scrap Metal"] = int(resources.get("Scrap Metal", 0)) - 1
-            elif int(resources.get("Wood", 0)) > 0:
-                resources["Wood"] = int(resources.get("Wood", 0)) - 1
-            else:
-                toast_requested.emit("Camp repairs need 1 Scrap Metal or Wood.")
-                return false
-            label = "Maintaining Camp"
-            duration = 10.0
-        _:
-            return false
+
+    var eligible_ids: Array = []
+    for candidate_value in available_survivors():
+        var candidate: Dictionary = candidate_value
+        eligible_ids.append(int(candidate.get("id", -1)))
+        candidate["duty_eligible_days"] = CampLifeRules.normalize_duty_days(candidate.get("duty_eligible_days", []), day)
+        if not candidate["duty_eligible_days"].has(day):
+            candidate["duty_eligible_days"].append(day)
+
+    chore["assigned_survivor_id"] = sid
+    chore["eligible_ids"] = eligible_ids
+    chores[index] = chore
+    flags["daily_chores"] = chores
+
     _clear_camp_activity(survivor)
+    var kind := str(chore.get("kind", ""))
+    var duration := CampLifeRules.daily_chore_duration(kind)
     survivor["status"] = "Chore"
-    survivor["task"] = {"kind":"chore","chore":chore,"label":label,"remaining":duration,"duration":duration}
-    survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue",0.0)) + CampLifeRules.fatigue_gain(duration / 4.0))
+    survivor["task"] = {
+        "kind":"daily_chore",
+        "chore_id":chore_id,
+        "chore":kind,
+        "label":CampLifeRules.daily_chore_label(kind),
+        "remaining":duration,
+        "duration":duration,
+        "minigame_complete":false,
+    }
+    survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
+    survivor["daily_activity"]["assigned_work"] = true
+    survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue", 0.0)) + CampLifeRules.fatigue_gain(duration / 5.0))
     save_game()
     state_changed.emit()
     return true
+
+func perform_daily_chore_action(chore_id: String, target_index: int) -> bool:
+    var chores := daily_chores()
+    var index := -1
+    for i in range(chores.size()):
+        if str(chores[i].get("id", "")) == chore_id:
+            index = i
+            break
+    if index < 0: return false
+    var chore: Dictionary = chores[index]
+    if bool(chore.get("complete", false)) or bool(chore.get("interaction_complete", false)):
+        return false
+    var sid := int(chore.get("assigned_survivor_id", -1))
+    var survivor: Variant = get_survivor(sid)
+    if survivor == null: return false
+    var task: Dictionary = survivor.get("task", {})
+    if str(task.get("kind", "")) != "daily_chore" or str(task.get("chore_id", "")) != chore_id:
+        return false
+    var expected := CampLifeRules.daily_chore_target_index(str(chore.get("kind", "")), int(chore.get("minigame_seed", 1)), int(chore.get("minigame_progress", 0)))
+    if target_index != expected:
+        return false
+
+    chore["minigame_progress"] = mini(int(chore.get("minigame_goal", 1)), int(chore.get("minigame_progress", 0)) + 1)
+    if int(chore["minigame_progress"]) >= int(chore.get("minigame_goal", 1)):
+        chore["interaction_complete"] = true
+        survivor["task"]["minigame_complete"] = true
+    chores[index] = chore
+    flags["daily_chores"] = chores
+    if bool(chore.get("interaction_complete", false)) and float(survivor["task"].get("remaining", 0.0)) <= 0.0:
+        _complete_task(survivor)
+    else:
+        save_game()
+        state_changed.emit()
+    return true
+
+func _record_duty_completion(survivor: Dictionary, eligible_ids: Array) -> void:
+    survivor["duty_days"] = CampLifeRules.normalize_duty_days(survivor.get("duty_days", []), day)
+    if not survivor["duty_days"].has(day):
+        survivor["duty_days"].append(day)
+    for sid_value in eligible_ids:
+        var candidate: Variant = get_survivor(int(sid_value))
+        if candidate == null or candidate["condition"] == "Dead": continue
+        candidate["duty_eligible_days"] = CampLifeRules.normalize_duty_days(candidate.get("duty_eligible_days", []), day)
+        if not candidate["duty_eligible_days"].has(day):
+            candidate["duty_eligible_days"].append(day)
+
+func duty_fairness_snapshot() -> Dictionary:
+    var overdue: Array = []
+    var overused_id := -1
+    var max_completed := -1
+    var min_completed := 999
+    for survivor in survivors:
+        if survivor["condition"] == "Dead": continue
+        var completed := CampLifeRules.normalize_duty_days(survivor.get("duty_days", []), day)
+        var eligible := CampLifeRules.normalize_duty_days(survivor.get("duty_eligible_days", []), day)
+        if eligible.is_empty(): continue
+        var pressure := CampLifeRules.duty_fairness_pressure(completed, eligible, day)
+        if pressure >= 2: overdue.append(int(survivor["id"]))
+        if completed.size() > max_completed:
+            max_completed = completed.size()
+            overused_id = int(survivor["id"])
+        min_completed = mini(min_completed, completed.size())
+    return {
+        "overused_survivor_id":overused_id,
+        "overdue_survivor_ids":overdue,
+        "spread":maxi(0, max_completed - (0 if min_completed == 999 else min_completed)),
+    }
+
+# Compatibility facade for stale callers/saves. New daily chores are assigned only
+# through assign_daily_chore() from the physical camp work board.
+func camp_chore_needed(_chore: String) -> bool:
+    return false
+
+func start_camp_chore(_sid: int, _chore: String) -> bool:
+    toast_requested.emit("Daily camp chores are assigned from the camp work board.")
+    return false
 
 func start_training(sid: int, stat: String) -> bool:
     if stat not in ["Combat", "Agility", "Leadership"]:
@@ -228,6 +361,8 @@ func _normalize_health_status(survivor) -> void:
     survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
     if not survivor.has("previous_daily_activity"):
         survivor["previous_daily_activity"] = {}
+    survivor["duty_days"] = CampLifeRules.normalize_duty_days(survivor.get("duty_days", []), day)
+    survivor["duty_eligible_days"] = CampLifeRules.normalize_duty_days(survivor.get("duty_eligible_days", []), day)
     var status := str(survivor.get("status", "Available"))
     if status in ["Available", "Quarantined", "Sick"] and survivor.get("task", {}).is_empty():
         survivor["status"] = _home_idle_status(survivor)
@@ -348,6 +483,42 @@ func _complete_task(survivor):
         return
     var task: Dictionary = survivor["task"].duplicate(true)
     var kind := str(task.get("kind", ""))
+    if kind == "daily_chore":
+        if not bool(task.get("minigame_complete", false)):
+            return
+        var chores := daily_chores()
+        var chore_index := -1
+        for index in range(chores.size()):
+            if str(chores[index].get("id", "")) == str(task.get("chore_id", "")):
+                chore_index = index
+                break
+        if chore_index < 0:
+            survivor["task"] = {}
+            survivor["status"] = _home_idle_status(survivor)
+            save_game()
+            state_changed.emit()
+            return
+        var chore: Dictionary = chores[chore_index]
+        if not bool(chore.get("rewarded", false)):
+            var effect := CampLifeRules.daily_chore_effect(str(chore.get("kind", "")))
+            fire_level = clampf(fire_level + float(effect.get("fire_gain", 0.0)), 0.0, 100.0)
+            resources["Wood"] = int(resources.get("Wood", 0)) + int(effect.get("wood_gain", 0))
+            if float(effect.get("condition_gain", 0.0)) > 0.0:
+                camp_maintenance = CampLifeRules.recover_camp_condition(camp_maintenance, str(chore.get("kind", "")))
+            chore["rewarded"] = true
+        chore["complete"] = true
+        chore["interaction_complete"] = true
+        chores[chore_index] = chore
+        flags["daily_chores"] = chores
+        _record_duty_completion(survivor, chore.get("eligible_ids", []))
+        survivor["task"] = {}
+        survivor["status"] = _home_idle_status(survivor)
+        survivor["history"].append("Day %d — Took a turn on camp duty: %s." % [day, str(chore.get("label", "Camp chore"))])
+        _add_history("Day %d — %s completed %s." % [day, survivor["name"], str(chore.get("label", "camp duty")).to_lower()])
+        toast_requested.emit("%s finished %s." % [survivor["name"], str(chore.get("label", "camp duty"))])
+        save_game()
+        state_changed.emit()
+        return
     if kind == "sleep":
         survivor["task"] = {}
         var result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), "rest")
@@ -501,10 +672,26 @@ func _daily_tick():
             continue
         completed_activity[str(survivor["id"])] = CampLifeRules.finalize_daily_activity(survivor.get("daily_activity", {}), day)
 
+    var ending_chores := daily_chores()
+    var unfinished := CampLifeRules.unfinished_daily_chore_count(ending_chores)
+    if unfinished > 0:
+        camp_maintenance = CampLifeRules.apply_unfinished_chore_neglect(camp_maintenance, ending_chores)
+        _add_history("Day %d — %d required camp chore%s went unfinished." % [day, unfinished, "" if unfinished == 1 else "s"])
+    flags["previous_daily_chores"] = ending_chores.duplicate(true)
+    for chore_value in ending_chores:
+        var chore: Dictionary = chore_value
+        if bool(chore.get("complete", false)): continue
+        var sid := int(chore.get("assigned_survivor_id", -1))
+        var worker: Variant = get_survivor(sid)
+        if worker != null and str(worker.get("task", {}).get("kind", "")) == "daily_chore" and str(worker.get("task", {}).get("chore_id", "")) == str(chore.get("id", "")):
+            worker["task"] = {}
+            worker["status"] = _home_idle_status(worker)
+
     super._daily_tick()
     if game_over:
         return
 
+    flags["daily_chores"] = _generate_daily_chore_set()
     for survivor in survivors:
         if survivor["condition"] == "Dead":
             continue
@@ -527,6 +714,8 @@ func _daily_tick():
             if missed_sleep: misses.append("sleep")
             survivor["history"].append("Day %d — Assigned work crowded out normal %s time." % [day - 1, " and ".join(misses)])
         survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
+        survivor["duty_days"] = CampLifeRules.normalize_duty_days(survivor.get("duty_days", []), day)
+        survivor["duty_eligible_days"] = CampLifeRules.normalize_duty_days(survivor.get("duty_eligible_days", []), day)
     save_game()
     state_changed.emit()
 

@@ -57,6 +57,7 @@ func _init() -> void:
     var inspector_source := FileAccess.get_file_as_string("res://scripts/FFInspectorThreeStat.gd")
     var active_inspector_source := FileAccess.get_file_as_string("res://scripts/FFInspectorVirus.gd")
     var active_camp_source := FileAccess.get_file_as_string("res://scripts/FFCampViewSleepVirus.gd")
+    var chore_minigame_source := FileAccess.get_file_as_string("res://scripts/FFCampChoreMinigame.gd")
     var project_source := FileAccess.get_file_as_string("res://project.godot")
     var scene_source := FileAccess.get_file_as_string("res://main.tscn")
     if not _check(game_source.contains("const THREE_STAT_MODEL := \"%s\"" % THREE_STAT_MODEL), "three-stat save reset marker"): return
@@ -81,10 +82,13 @@ func _init() -> void:
     if not _check(active_camp_source.contains("status == \"Sleeping\"") and active_camp_source.contains("_sleep_cell_for_survivor") and active_camp_source.contains("QUARANTINE"), "camp reflects sleep and isolation"): return
     if not _check(active_game_source.contains("func camp_chore_needed") and active_game_source.contains("func start_training") and active_game_source.contains("\"Training\"") and active_main_source.contains("LEAVE CAMP") and active_camp_source.contains("MENU_VISIBLE_GRID_WIDTH := 8.5") and active_camp_source.contains("_continue_pan_drag"), "camp focus routing timed work and survivor training"): return
     if not _check(active_game_source.contains("func camp_condition_summary") and active_game_source.contains("previous_daily_activity") and active_game_source.contains("CampLifeRules.record_daily_activity") and active_game_source.contains("if not initialized or sim_paused or game_over"), "camp condition and daily activity stay behind settlement pause boundary"): return
-    if not _check(active_main_source.contains("Camp condition: %s") and active_main_source.contains("condition_mood_text"), "work board exposes camp condition mood effect"): return
+    if not _check(active_game_source.contains("func assign_daily_chore") and active_game_source.contains("func perform_daily_chore_action") and active_game_source.contains("func duty_fairness_snapshot") and active_game_source.contains("Daily camp chores are assigned from the camp work board."), "daily chore runtime replaces active legacy chore path"): return
+    if not _check(active_main_source.contains("CampChoreMinigame") and active_main_source.contains("ASSIGN & PLAY") and active_main_source.contains("TODAY'S CAMP WORK"), "work board routes reusable chore minigame"): return
+    if not _check(chore_minigame_source.contains("signal action_requested") and chore_minigame_source.contains("CHOP") and chore_minigame_source.contains("DEBRIS") and chore_minigame_source.contains("CRATE"), "shared touch-first chore minigame supports four chore fantasies"): return
+    if not _check(active_camp_source.contains("WORK_BOARD_CELL") and active_camp_source.contains("duties_pressed.emit()") and active_camp_source.contains("daily_chore_incomplete_count"), "physical work board is visible active chore entry point"): return
     if not _check(base_game_source.contains("buildings[\"Storage Crate\"] = true") and base_game_source.contains("buildings[\"Workbench\"] = true"), "starter camp physical essentials"): return
     if not _check(active_camp_source.contains("func _draw_wilderness") and active_camp_source.contains("remain code/data only") and not active_camp_source.contains("build_plot_pressed.emit"), "sparse wilderness hides future build placeholders"): return
-    if not _check(inspector_source.contains("CAMP LIFE") and inspector_source.contains("_start_training") and inspector_source.contains("_start_camp_work"), "survivor inspector owns deliberate camp assignments"): return
+    if not _check(inspector_source.contains("CAMP LIFE") and inspector_source.contains("_start_training") and inspector_source.contains("physical camp work board") and not inspector_source.contains("camp_chore_needed"), "survivor inspector routes daily chores to physical work board"): return
 
     if not _check(VirusRules.exposure_chance(1) > 0.0 and VirusRules.exposure_chance(4) > VirusRules.exposure_chance(1), "virus exposure scales with infected contact"): return
     var early_plan: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_EXPOSED, false)
@@ -134,6 +138,28 @@ func _init() -> void:
     if not _check(int(CampLifeRules.normalize_daily_activity(busy_activity, 5).get("day", -1)) == 5 and not bool(CampLifeRules.normalize_daily_activity(busy_activity, 5).get("assigned_work", true)), "daily activity resets at day transition"): return
     var missed_result := CampLifeRules.apply_missed_schedule_consequences(base_needs, 10.0, true, true)
     if not _check(float(missed_result["needs"]["hunger"]) < float(base_needs["hunger"]) and float(missed_result["fatigue"]) > 10.0, "missed schedule uses existing hunger and fatigue axes"): return
+    var chore_rng := RandomNumberGenerator.new()
+    chore_rng.seed = 20261001
+    var rolled_chores := CampLifeRules.generate_daily_chores(7, chore_rng)
+    if not _check(rolled_chores.size() >= 1 and rolled_chores.size() <= 2, "daily chores roll exactly one or two"): return
+    for chore_value in rolled_chores:
+        var chore: Dictionary = chore_value
+        if not _check(str(chore.get("kind", "")) in CampLifeRules.DAILY_CHORE_KINDS and int(chore.get("day", -1)) == 7, "daily chores use approved catalog and day"): return
+    var persisted_chores := CampLifeRules.normalize_daily_chores(rolled_chores, 7)
+    if not _check(persisted_chores == rolled_chores, "persisted daily chores normalize without rerolling"): return
+    if not _check(CampLifeRules.normalize_daily_chores(rolled_chores, 8).is_empty(), "new day invalidates yesterday chore set"): return
+    var neglected_before := 80.0
+    var neglected_after := CampLifeRules.apply_unfinished_chore_neglect(neglected_before, rolled_chores)
+    if not _check(neglected_after < neglected_before and neglected_after >= neglected_before - 8.0, "unfinished chores conservatively worsen camp condition"): return
+    var poke_effect := CampLifeRules.daily_chore_effect("poke_fire")
+    var chop_effect := CampLifeRules.daily_chore_effect("chop_wood")
+    var clear_effect := CampLifeRules.daily_chore_effect("clear_area")
+    var stack_effect := CampLifeRules.daily_chore_effect("stack_supplies")
+    if not _check(float(poke_effect.get("fire_gain", 0.0)) > 0.0 and int(poke_effect.get("wood_gain", 0)) == 0, "poke fire improves fire without wood cost"): return
+    if not _check(int(chop_effect.get("wood_gain", 0)) == 1, "chop wood reward is bounded"): return
+    if not _check(float(clear_effect.get("condition_gain", 0.0)) > 0.0 and float(stack_effect.get("condition_gain", 0.0)) > 0.0 and not stack_effect.has("wood_gain"), "clear and stack improve condition without duplicating supplies"): return
+    if not _check(CampLifeRules.daily_chore_target_index("poke_fire", 41, 0) >= 0 and CampLifeRules.daily_chore_target_index("poke_fire", 41, 0) < CampLifeRules.CHORE_TARGET_COUNT and CampLifeRules.daily_chore_target_index("poke_fire", 41, 0) != CampLifeRules.daily_chore_target_index("poke_fire", 41, 1), "minigame target varies deterministically by progress"): return
+    if not _check(CampLifeRules.duty_fairness_pressure([6,7], [4,5,6,7], 7) == 2 and CampLifeRules.duty_fairness_pressure([], [], 7) == 0, "duty fairness only counts eligible days"): return
     var pet_rng:=RandomNumberGenerator.new(); pet_rng.seed=7
     var pet_find:=CampLifeRules.pet_forage_resource("Dog",pet_rng)
     if not _check(CampLifeRules.default_pet_needs().size()==1 and CampLifeRules.default_pet_needs().has("affection"), "affection-only pet needs"): return
