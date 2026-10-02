@@ -38,6 +38,7 @@ var day_elapsed := 0.0
 var resources := {}
 var components := {}
 var inventory_gear := []
+var inventory_gear_states := {}
 var buildings := {}
 var survivors := []
 var next_survivor_id := 1
@@ -97,6 +98,7 @@ func new_game():
     resources = D.STARTING_RESOURCES.duplicate(true)
     components = {"Sterile Dressing": 0, "Framing Kit": 0, "Pack Frame": 0, "Weatherproofing Roll": 0}
     inventory_gear = []
+    inventory_gear_states = {}
     buildings = {"Fire Pit": true, "Sleeping Bag": true}
     for b in D.BUILD_ORDER:
         buildings[b] = false
@@ -807,16 +809,74 @@ func _work_duration(s, base):
         reduction += 0.10
     return max(base * 0.45, base * (1.0 - reduction))
 
+func _default_gear_state(gear_name: String) -> Dictionary:
+    if not D.GEAR.has(gear_name):
+        return {}
+    var data: Dictionary = D.GEAR[gear_name]
+    if gear_name == "Flashlight":
+        return {"charge": float(data.get("charge_max", 100.0))}
+    if gear_name == "Lock Pick":
+        return {"uses_left": rng.randi_range(int(data.get("uses_min", 3)), int(data.get("uses_max", 5)))}
+    if gear_name == "Firecracker":
+        return {"uses_left": 1}
+    return {}
+
+func _normalize_survivor_equipment_state(survivor) -> void:
+    if survivor == null:
+        return
+    if not survivor.has("equipment_state") or not (survivor.get("equipment_state", {}) is Dictionary):
+        survivor["equipment_state"] = {}
+    var states: Dictionary = survivor["equipment_state"]
+    var equipment: Dictionary = survivor.get("equipment", {})
+    for slot in equipment.keys():
+        var gear_name := str(equipment.get(slot, ""))
+        if gear_name == "":
+            states.erase(str(slot))
+            continue
+        if not states.has(str(slot)):
+            var initial := _default_gear_state(gear_name)
+            if not initial.is_empty():
+                states[str(slot)] = initial
+    survivor["equipment_state"] = states
+
+func _take_inventory_gear_state(gear_name: String) -> Dictionary:
+    var pool_value = inventory_gear_states.get(gear_name, [])
+    var pool: Array = pool_value if pool_value is Array else []
+    if not pool.is_empty():
+        var state_value = pool.pop_back()
+        inventory_gear_states[gear_name] = pool
+        return state_value.duplicate(true) if state_value is Dictionary else {}
+    return _default_gear_state(gear_name)
+
+func _store_inventory_gear_state(gear_name: String, state: Dictionary) -> void:
+    if gear_name == "" or state.is_empty():
+        return
+    var pool_value = inventory_gear_states.get(gear_name, [])
+    var pool: Array = pool_value if pool_value is Array else []
+    pool.append(state.duplicate(true))
+    inventory_gear_states[gear_name] = pool
+
 func equip_gear(sid, gear_name):
     var s: Variant = get_survivor(sid)
     if s == null or not inventory_gear.has(gear_name) or not D.GEAR.has(gear_name):
         return false
-    var slot = D.GEAR[gear_name]["slot"]
-    var old = s["equipment"].get(slot, "")
+    _normalize_survivor_equipment_state(s)
+    var slot := str(D.GEAR[gear_name]["slot"])
+    var old := str(s["equipment"].get(slot, ""))
+    var states: Dictionary = s.get("equipment_state", {})
+    var old_state_value = states.get(slot, {})
+    var old_state: Dictionary = old_state_value if old_state_value is Dictionary else {}
     inventory_gear.erase(gear_name)
+    var new_state := _take_inventory_gear_state(str(gear_name))
     if old != "":
         inventory_gear.append(old)
+        _store_inventory_gear_state(old, old_state)
     s["equipment"][slot] = gear_name
+    if new_state.is_empty():
+        states.erase(slot)
+    else:
+        states[slot] = new_state
+    s["equipment_state"] = states
     save_game()
     state_changed.emit()
     return true
@@ -1157,12 +1217,9 @@ func update_combat_runtime(data):
     current_combat["runtime"] = data.duplicate(true)
     save_game()
 
-func consume_combat_ammo(amount):
-    amount = max(1, int(amount))
-    if int(resources.get("Ammo", 0)) < amount:
-        return false
-    resources["Ammo"] = int(resources.get("Ammo", 0)) - amount
-    save_game()
+func consume_combat_ammo(_amount):
+    # Compatibility facade for older tactical code/saves. Current ranged
+    # weapons use magazine/chamber reloads with no camp Ammo resource.
     return true
 
 func _condition_rank(name):
@@ -1243,6 +1300,20 @@ func _grant_tactical_container_loot(value) -> String:
     bits.sort()
     return ", ".join(bits)
 
+func _commit_tactical_secondary_state(survivor, item_name: String, state_value) -> void:
+    if survivor == null:
+        return
+    _normalize_survivor_equipment_state(survivor)
+    var equipment: Dictionary = survivor.get("equipment", {})
+    var states: Dictionary = survivor.get("equipment_state", {})
+    equipment["Secondary"] = item_name
+    if item_name == "":
+        states.erase("Secondary")
+    else:
+        states["Secondary"] = state_value.duplicate(true) if state_value is Dictionary else {}
+    survivor["equipment"] = equipment
+    survivor["equipment_state"] = states
+
 func resolve_combat(result):
     if current_combat.is_empty():
         return
@@ -1254,6 +1325,7 @@ func resolve_combat(result):
 
     if lead != null:
         _commit_tactical_health(lead, result.get("lead_hp", 0), result.get("lead_max_hp", 18), "was killed in a tactical field encounter")
+        _commit_tactical_secondary_state(lead, str(result.get("lead_secondary_item", lead.get("equipment", {}).get("Secondary", ""))), result.get("lead_secondary_state", lead.get("equipment_state", {}).get("Secondary", {})))
         lead["fatigue"] = min(100.0, float(lead["fatigue"]) + CampLifeRules.fatigue_gain(4.0))
         lead["stress"] = min(100.0, float(lead["stress"]) + min(18.0, float(result.get("damage", 0)) * 1.5))
         var combat_xp := mini(20, int(result.get("kills", 0)) * 2 + int(result.get("melee", 0)) + int(result.get("shots", 0)))
@@ -1503,14 +1575,7 @@ func _equipment_combat_bonus(s):
     var weapon = s["equipment"].get("Weapon", "")
     if weapon == "" or not D.GEAR.has(weapon):
         return 0
-    var data = D.GEAR[weapon]
-    if data.has("ammo"):
-        var needed = int(data["ammo"])
-        if int(resources.get("Ammo", 0)) >= needed:
-            resources["Ammo"] -= needed
-            return int(data.get("combat", 0))
-        return 1
-    return int(data.get("combat", 0))
+    return int(D.GEAR[weapon].get("combat", 0))
 
 func _apply_injury(s, severity):
     if s == null or s["condition"] == "Dead":
@@ -1641,15 +1706,15 @@ func _roll_gear(exp, party):
         return ""
     var pool = []
     if zone == "Camp Perimeter":
-        pool = ["Work Gloves"]
+        pool = ["Work Gloves", "Flashlight", "Firecracker"]
     elif zone == "Nearby Streets":
-        pool = ["Kitchen Knife", "Work Gloves", "Heavy Boots", "School Backpack", "Glow Stick"]
+        pool = ["Kitchen Knife", "Work Gloves", "Heavy Boots", "School Backpack", "Lock Pick", "Firecracker"]
     elif zone == "Residential Blocks":
-        pool = ["Kitchen Knife", "Baseball Bat", "Crossbow", "Flashlight", "Lantern", "Glow Stick", "Screwdriver Set", "First Aid Kit", "School Backpack", "Leather Jacket"]
+        pool = ["Kitchen Knife", "Baseball Bat", "Crossbow", "Flashlight", "Lock Pick", "Screwdriver Set", "First Aid Kit", "School Backpack", "Leather Jacket"]
     elif zone == "Commercial Fringe":
-        pool = ["Crowbar", "Sledgehammer", "Hatchet", "Flashlight", "Headlamp", "Lantern", "Road Flare", "Bolt Cutters", "Toolbox", "First Aid Kit", "Pistol", "Hiking Pack", "Leather Jacket"]
+        pool = ["Crowbar", "Sledgehammer", "Hatchet", "Flashlight", "Lock Pick", "Firecracker", "Bolt Cutters", "Toolbox", "First Aid Kit", "6-Shot Revolver", "Double-Barrel Shotgun", "Hiking Pack", "Leather Jacket"]
     else:
-        pool = ["Crowbar", "Sledgehammer", "Hatchet", "Headlamp", "Glow Stick", "Road Flare", "Bolt Cutters", "Toolbox", "Pistol", "Shotgun", "Rifle", "Hiking Pack", "Heavy Boots", "Work Jacket"]
+        pool = ["Crowbar", "Sledgehammer", "Hatchet", "Lock Pick", "Firecracker", "Bolt Cutters", "Toolbox", "6-Shot Revolver", "12-Shot Automatic", "Double-Barrel Shotgun", "Pump Shotgun", "Medium Rifle", "Long Rifle", "Hiking Pack", "Heavy Boots", "Work Jacket"]
     return pool[rng.randi_range(0, pool.size() - 1)]
 
 func _check_zone_unlock(_zone):
@@ -2122,7 +2187,7 @@ func _handle_event_action(event, action):
                     inventory_gear.append("School Backpack")
                     resources["Cooked Food"] += 1
                     if rw == 2:
-                        resources["Ammo"] += 1
+                        resources["Hardware"] = int(resources.get("Hardware", 0)) + 1
                     _queue_field_result(event, "Clear Enough", "After several quiet minutes, the street tells you what you needed to know. The pack is safe to recover." + (" A loose round under a nearby seat is a bonus." if rw == 2 else ""), "Careful observation turned an exposed backpack into safe loot.")
                 elif rw == 0:
                     inventory_gear.append("School Backpack")
@@ -2317,14 +2382,14 @@ func _handle_event_action(event, action):
             if gk == "survivor":
                 _queue_recruit_offer(event, "After the Shot", "You find a shaken survivor behind a wrecked car. The shot was theirs. Whatever they fired at is down, and they are not eager to stay alone.", "gunshot_survivor")
             elif gk == "aftermath":
-                resources["Ammo"] += rng.randi_range(2, 4)
+                resources["Hardware"] = int(resources.get("Hardware", 0)) + rng.randi_range(2, 4)
                 if rng.randf() < 0.35: resources["Medicine"] += 1
                 _queue_field_result(event, "Too Late for the People", "The fight is already over. There is ammunition left behind, and maybe one medical item worth taking.", "The party scavenged the aftermath of a gunfight.")
             elif gk == "hostile":
                 var rg2 = skill_check(lead, "Combat", 11, _equipment_combat_bonus(lead)) if lead != null else -1
                 if lead != null: add_skill_xp(lead, "Combat", 7)
                 if rg2 >= 1:
-                    resources["Ammo"] += 2
+                    resources["Hardware"] = int(resources.get("Hardware", 0)) + 2
                     _queue_field_result(event, "Contact Broken", "The shooter tries to turn the encounter into an ambush and loses the nerve when you push back. Two rounds are left where they fled.")
                 else:
                     if lead != null: _apply_injury(lead, "Hurt")
@@ -2345,13 +2410,13 @@ func _handle_event_action(event, action):
                     _queue_field_result(event, "No Clear Picture", "You wait long enough to know nobody is coming toward you. That is all the information the shot gives up.")
 
         "patrol_pry":
-            inventory_gear.append("Pistol")
-            resources["Ammo"] += rng.randi_range(2, 4)
+            inventory_gear.append("6-Shot Revolver")
+            resources["Hardware"] = int(resources.get("Hardware", 0)) + rng.randi_range(2, 4)
             _queue_field_result(event, "Quiet Entry", "The door flexes just enough to defeat the old lock. The pistol and ammunition come out without broadcasting the theft.", "The party recovered a pistol from an abandoned patrol car.")
         "patrol_break":
             if rng.randf() < 0.62:
-                inventory_gear.append("Pistol")
-                resources["Ammo"] += rng.randi_range(1, 3)
+                inventory_gear.append("6-Shot Revolver")
+                resources["Hardware"] = int(resources.get("Hardware", 0)) + rng.randi_range(1, 3)
                 if lead != null: lead["stress"] = min(100.0, float(lead["stress"]) + 3.0)
                 _queue_field_result(event, "Fast and Loud", "The glass goes everywhere, but the rack gives up the pistol. The party leaves before the noise draws an answer.", "The party smashed into a patrol car and recovered its weapon.")
             else:
@@ -2362,11 +2427,11 @@ func _handle_event_action(event, action):
                 var r7 = skill_check(lead, "Survival", 11)
                 add_skill_xp(lead, "Survival", 4)
                 if r7 >= 1:
-                    inventory_gear.append("Pistol")
-                    resources["Ammo"] += 2
+                    inventory_gear.append("6-Shot Revolver")
+                    resources["Hardware"] = int(resources.get("Hardware", 0)) + 2
                     _queue_field_result(event, "A Better Way In", "The rear window is already cracked and the rack release can be reached with a piece of wire. No smashing required.")
                 elif r7 == 0:
-                    resources["Ammo"] += 1
+                    resources["Hardware"] = int(resources.get("Hardware", 0)) + 1
                     _queue_field_result(event, "Not Worth the Gun", "You cannot find a clean route to the rack, but a loose round under the driver's seat is reachable through the broken seal.")
                 else:
                     lead["stress"] = min(100.0, float(lead["stress"]) + 3.0)
@@ -2429,7 +2494,7 @@ func _handle_event_action(event, action):
                     _apply_injury(lead, "Hurt")
                     _queue_field_result(event, "Mutual Bad Decision", "Nobody wins. A short violent exchange ends with both sides breaking contact.")
                 else:
-                    resources["Ammo"] += 2
+                    resources["Hardware"] = int(resources.get("Hardware", 0)) + 2
                     resources["Cooked Food"] += 1
                     _queue_field_result(event, "They Back Down", "Your side looks harder to rob than they expected. They retreat behind the barricade, leaving a small pouch behind in the scramble.")
 
@@ -3064,7 +3129,7 @@ func save_game():
         "version": "0.9.0-beta-candidate",
         "save_schema": SAVE_SCHEMA_VERSION,
         "day": day, "day_elapsed": day_elapsed,
-        "resources": resources, "components": components, "inventory_gear": inventory_gear,
+        "resources": resources, "components": components, "inventory_gear": inventory_gear, "inventory_gear_states": inventory_gear_states,
         "buildings": buildings, "survivors": survivors,
         "next_survivor_id": next_survivor_id, "next_expedition_id": next_expedition_id,
         "expeditions": expeditions, "zone_successes": zone_successes, "zone_pressure": zone_pressure,
@@ -3096,8 +3161,12 @@ func load_game():
     day = int(parsed.get("day", 1))
     day_elapsed = float(parsed.get("day_elapsed", 0.0))
     resources = parsed.get("resources", D.STARTING_RESOURCES.duplicate(true))
+    resources.erase("Ammo")
     components = parsed.get("components", {})
     inventory_gear = parsed.get("inventory_gear", [])
+    inventory_gear_states = parsed.get("inventory_gear_states", {})
+    if not (inventory_gear_states is Dictionary):
+        inventory_gear_states = {}
     buildings = parsed.get("buildings", {})
     survivors = parsed.get("survivors", [])
     next_survivor_id = int(parsed.get("next_survivor_id", 1))

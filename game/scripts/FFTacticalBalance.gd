@@ -33,7 +33,7 @@ const CONTAINER_BIASES := {
     "cabinet": {"Cloth": 8, "Plastic": 7, "Hardware": 5, "Medicine": 2},
     "crate": {"Scrap Metal": 12, "Hardware": 10, "Plastic": 7, "Cloth": 5},
     "washer": {"Cloth": 14, "Hardware": 4, "Plastic": 4},
-    "car": {"Scrap Metal": 9, "Hardware": 8, "Cloth": 5, "Ammo": 2},
+    "car": {"Scrap Metal": 10, "Hardware": 9, "Cloth": 5},
     "dumpster": {"Scrap Metal": 9, "Plastic": 9, "Cloth": 7, "Wood": 5},
     "trash": {"Plastic": 10, "Cloth": 7, "Scrap Metal": 5},
     "cart": {"Scrap Metal": 7, "Cloth": 6, "Plastic": 5},
@@ -51,6 +51,24 @@ static func explore_site_count(zone: String, rng: RandomNumberGenerator = null) 
 
 static func loot_container_target(zone: String, rng: RandomNumberGenerator = null) -> int:
     return explore_site_count(zone, rng)
+
+static func locked_container_chance(zone: String) -> float:
+    return float({
+        "Camp Perimeter": 0.10,
+        "Nearby Streets": 0.16,
+        "Residential Blocks": 0.22,
+        "Commercial Fringe": 0.30,
+        "Industrial Edge": 0.36,
+    }.get(zone, 0.16))
+
+static func locked_door_chance(zone: String) -> float:
+    return float({
+        "Camp Perimeter": 0.06,
+        "Nearby Streets": 0.10,
+        "Residential Blocks": 0.16,
+        "Commercial Fringe": 0.22,
+        "Industrial Edge": 0.28,
+    }.get(zone, 0.10))
 
 static func zombie_count_range(zone: String, kind: String, rescue_is_pet: bool = false, quiet: bool = false) -> Vector2i:
     if kind == "ambush":

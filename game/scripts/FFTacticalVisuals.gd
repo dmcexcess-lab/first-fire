@@ -48,8 +48,8 @@ static func weapon_visual(name: String) -> Dictionary:
         "Improvised Spear", "Crossbow": return {"kind": "spear", "atlas": 195}
         "Crowbar": return {"kind": "crowbar", "atlas": 196}
         "Hatchet": return {"kind": "hatchet", "atlas": 197}
-        "Pistol": return {"kind": "pistol", "atlas": 198}
-        "Shotgun", "Rifle": return {"kind": "shotgun", "atlas": 199}
+        "6-Shot Revolver", "12-Shot Automatic", "Pistol": return {"kind": "pistol", "atlas": 198}
+        "Double-Barrel Shotgun", "Pump Shotgun", "Medium Rifle", "Long Rifle", "Shotgun", "Rifle": return {"kind": "shotgun", "atlas": 199}
         _: return {"kind": "none", "atlas": -1}
 
 static func field_gear_visual(name: String) -> Dictionary:

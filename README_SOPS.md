@@ -228,8 +228,9 @@ Important bugs should leave behind a cheaper future check when practical.
 ## 13. Product rules to preserve unless explicitly changed
 
 - simulation-first zombie survival/extraction feel;
-- infected weapon ladder is authored around fragile 7–10 HP bodies: fists 3–5 hits, Utility Knife 2–3, standard 1H melee 2, standard 2H melee 1–2, Sledgehammer 1, rare/expensive Hatchet 1; Crossbow 2–3 at medium range; Pistol 1 at short range; Shotgun 1 at short cone multi-hit; Rifle 1 at long range;
+- infected weapon ladder is authored around fragile 7–10 HP bodies: fists 3–5 hits, Utility Knife 2–3, standard 1H melee 2, standard 2H melee 1–2, Sledgehammer 1, rare/expensive Hatchet 1; Crossbow is a one-shot/reload 2–3-hit medium-range weapon; firearms are found-only and use magazines/reloads with no camp Ammo resource—6-shot Revolver / 12-shot Automatic (short optimum), 2-shot Double-Barrel / 6-shot Pump Shotgun (physical pellet range; 3 tight vs 5 wide projectiles, Pump requires cycling), 20-round Medium Rifle, and 5-round Long Rifle; all non-shotgun firearms may fire to any visible target with accuracy falloff by distance;
 - individual infected stay weak and mob density creates pressure;
+- active off-hand items are found-only Flashlight, Lock Pick, and Firecracker: Flashlight charge depletes, Lock Pick breaks after 3–5 uses, Firecracker is single-use; tactical maps may contain locked doors and optional locked containers;
 - infected attacks split into high-hit/low-damage Scratch and low-hit/high-damage Bite; only successful Bite can roll a fixed small per-bite virus exposure chance;
 - no AI director spawning threats simply to manufacture drama;
 - persistent consequences;

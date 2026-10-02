@@ -50,29 +50,41 @@ func _init() -> void:
     var sledge := ThreeStatRules.weapon_profile("Sledgehammer")
     var hatchet := ThreeStatRules.weapon_profile("Hatchet")
     var crossbow := ThreeStatRules.weapon_profile("Crossbow")
-    var pistol := ThreeStatRules.weapon_profile("Pistol")
-    var shotgun := ThreeStatRules.weapon_profile("Shotgun")
-    var rifle := ThreeStatRules.weapon_profile("Rifle")
+    var revolver := ThreeStatRules.weapon_profile("6-Shot Revolver")
+    var auto_pistol := ThreeStatRules.weapon_profile("12-Shot Automatic")
+    var double_barrel := ThreeStatRules.weapon_profile("Double-Barrel Shotgun")
+    var pump_shotgun := ThreeStatRules.weapon_profile("Pump Shotgun")
+    var medium_rifle := ThreeStatRules.weapon_profile("Medium Rifle")
+    var long_rifle := ThreeStatRules.weapon_profile("Long Rifle")
     if not _check(int(ceil(float(all_hp_min) / float(fists["dmax"]))) == 3 and int(ceil(float(all_hp_max) / float(fists["dmin"]))) == 5, "fists kill infected in three to five hits"): return
     if not _check(int(ceil(float(all_hp_min) / float(starter_knife["dmax"]))) == 2 and int(ceil(float(all_hp_max) / float(starter_knife["dmin"]))) == 3, "utility knife kills infected in two to three hits"): return
     if not _check(int(ceil(float(all_hp_min) / float(one_hand["dmax"]))) == 2 and int(ceil(float(all_hp_max) / float(one_hand["dmin"]))) == 2, "standard one hand melee kills in two hits"): return
     if not _check(int(ceil(float(all_hp_min) / float(two_hand["dmax"]))) == 1 and int(ceil(float(all_hp_max) / float(two_hand["dmin"]))) == 2, "standard two hand melee kills in one to two hits"): return
     if not _check(int(sledge["dmin"]) >= all_hp_max and int(hatchet["dmin"]) >= all_hp_max, "top two hand and rare one hand melee kill in one hit"): return
-    if not _check(int(ceil(float(all_hp_min) / float(crossbow["gmax"]))) == 2 and int(ceil(float(all_hp_max) / float(crossbow["gmin"]))) == 3 and ThreeStatRules.weapon_range(crossbow) == 7, "crossbow is two to three hit medium range"): return
-    if not _check(int(pistol["gmin"]) >= all_hp_max and ThreeStatRules.weapon_range(pistol) == 4, "pistol is one hit short range"): return
-    if not _check(int(shotgun["gmin"]) >= all_hp_max and ThreeStatRules.weapon_range(shotgun) == 4 and ThreeStatRules.weapon_pattern(shotgun) == "cone", "shotgun is one hit short range cone"): return
-    if not _check(int(rifle["gmin"]) >= all_hp_max and ThreeStatRules.weapon_range(rifle) == 10, "rifle is one hit long range"): return
+    if not _check(int(ceil(float(all_hp_min) / float(crossbow["gmax"]))) == 2 and int(ceil(float(all_hp_max) / float(crossbow["gmin"]))) == 3 and ThreeStatRules.weapon_mag_capacity(crossbow) == 1 and ThreeStatRules.weapon_projectile_range(crossbow) == 7, "crossbow is one shot before reload and two to three hit medium range"): return
+    if not _check(ThreeStatRules.weapon_mag_capacity(revolver) == 6 and ThreeStatRules.weapon_mag_capacity(auto_pistol) == 12 and ThreeStatRules.weapon_optimal_range(revolver) == 4 and ThreeStatRules.weapon_optimal_range(auto_pistol) == 4, "two short-range pistol magazines"): return
+    if not _check(ThreeStatRules.weapon_projectile_range(revolver) == 0 and ThreeStatRules.weapon_projectile_range(auto_pistol) == 0 and ThreeStatRules.ranged_falloff_penalty(revolver, 8) > ThreeStatRules.ranged_falloff_penalty(revolver, 4), "pistols can fire to visible targets with distance hit falloff"): return
+    if not _check(ThreeStatRules.weapon_mag_capacity(double_barrel) == 2 and ThreeStatRules.weapon_projectiles(double_barrel) == 3 and ThreeStatRules.weapon_projectile_range(double_barrel) == 5, "double barrel has two shells and three tight physical-range projectiles"): return
+    if not _check(ThreeStatRules.weapon_mag_capacity(pump_shotgun) == 6 and ThreeStatRules.weapon_projectiles(pump_shotgun) == 5 and ThreeStatRules.weapon_requires_pump(pump_shotgun) and ThreeStatRules.weapon_projectile_range(pump_shotgun) == 4 and ThreeStatRules.weapon_spread_scale(pump_shotgun) > ThreeStatRules.weapon_spread_scale(double_barrel), "pump shotgun has six shells pump action and wider five-projectile spread"): return
+    if not _check(ThreeStatRules.weapon_mag_capacity(medium_rifle) == 20 and ThreeStatRules.weapon_optimal_range(medium_rifle) == 7 and ThreeStatRules.weapon_projectile_range(medium_rifle) == 0, "medium rifle has twenty-round magazine and hit falloff instead of hard range"): return
+    if not _check(ThreeStatRules.weapon_mag_capacity(long_rifle) == 5 and ThreeStatRules.weapon_optimal_range(long_rifle) == 10 and ThreeStatRules.weapon_projectile_range(long_rifle) == 0, "long rifle has five-round magazine and long accuracy band"): return
+    if not _check(int(revolver["gmin"]) >= all_hp_max and int(auto_pistol["gmin"]) >= all_hp_max and int(double_barrel["gmin"]) >= all_hp_max and int(pump_shotgun["gmin"]) >= all_hp_max and int(medium_rifle["gmin"]) >= all_hp_max and int(long_rifle["gmin"]) >= all_hp_max, "all firearms retain one-projectile one-hit infected lethality"): return
+    var recipe_ids: Array = []
     var hatchet_recipe: Dictionary = {}
     var crossbow_recipe: Dictionary = {}
-    var rifle_recipe: Dictionary = {}
     for recipe_value in D.RECIPES.get("Workbench", []):
         var recipe: Dictionary = recipe_value
-        match str(recipe.get("id", "")):
-            "Hatchet": hatchet_recipe = recipe
-            "Crossbow": crossbow_recipe = recipe
-            "Rifle": rifle_recipe = recipe
+        recipe_ids.append(str(recipe.get("id", "")))
+        if str(recipe.get("id", "")) == "Hatchet": hatchet_recipe = recipe
+        if str(recipe.get("id", "")) == "Crossbow": crossbow_recipe = recipe
+    var found_only_guns := ["6-Shot Revolver", "12-Shot Automatic", "Double-Barrel Shotgun", "Pump Shotgun", "Medium Rifle", "Long Rifle"]
+    var found_only_offhand := ["Flashlight", "Lock Pick", "Firecracker"]
+    for gear_name in found_only_guns + found_only_offhand:
+        if not _check(not recipe_ids.has(gear_name), "%s is found-only" % gear_name): return
+    if not _check(recipe_ids.has("Crossbow") and not Array(crossbow_recipe.get("requires", [])).has("Armory"), "crossbow remains craftable without Armory"): return
     if not _check(int(hatchet_recipe.get("cost", {}).get("Scrap Metal", 0)) >= 5 and int(hatchet_recipe.get("cost", {}).get("Hardware", 0)) >= 4 and not Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Residential Blocks"]).has("Hatchet") and Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Commercial Fringe"]).has("Hatchet"), "one hit one hand hatchet is expensive and late field loot"): return
-    if not _check(not Array(crossbow_recipe.get("requires", [])).has("Armory") and Array(rifle_recipe.get("requires", [])).has("Armory"), "crossbow is normally craftable while rifle is armory gated"): return
+    if not _check(not D.RESOURCE_ORDER.has("Ammo") and not D.STARTING_RESOURCES.has("Ammo"), "camp ammo resource is retired in favor of tactical reloads"): return
+    if not _check(Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Camp Perimeter"]).has("Flashlight") and Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Nearby Streets"]).has("Lock Pick") and Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Camp Perimeter"]).has("Firecracker"), "all three active off-hand items are field finds"): return
     if not _check(TacticalBalance.shove_chance(actor, "LIGHT", 1) > TacticalBalance.shove_chance(actor, "HEAVY", 1), "mass resists shove"): return
     if not _check(TacticalBalance.search_cost(actor) > 0 and TacticalBalance.search_noise(actor) > 0, "search remains bounded"): return
     if not _check(TacticalBalance.zombie_count("Camp Perimeter", "rescue", true) < TacticalBalance.zombie_count("Camp Perimeter", "rescue", false) and TacticalBalance.zombie_count("Camp Perimeter", "rescue", false) == TacticalBalance.zombie_count("Camp Perimeter", "ambush"), "objective zombie balance"): return
@@ -105,7 +117,7 @@ func _init() -> void:
     if not _check(active_inspector_source.contains("ZOMBIE VIRUS") and active_inspector_source.contains("QUARANTINE") and active_inspector_source.contains("start_virus_treatment"), "virus choices exposed in inspector"): return
     if not _check(combat_source.contains("No armor layer") and combat_source.contains("target_actor.hp -= dmg"), "no armor damage mitigation"): return
     if not _check(combat_source.contains("zombie_attack_kind(rng)") and combat_source.contains("zombie_attack_hit_chance(target_actor, attack_kind, mob_size)") and combat_source.contains("zombie_attack_damage_range") and combat_source.contains("mob_attack_cost_multiplier"), "active three-stat combat uses scratch bite and mob attack tuning"): return
-    if not _check(combat_source.contains("var max_range := ThreeStatRules.weapon_range(player.weapon)") and combat_source.contains("func apply_shotgun_cone") and combat_source.contains("weapon_pattern(player.weapon) == \"cone\""), "active ranged combat enforces hard range and shotgun cone multi-hit"): return
+    if not _check(combat_source.contains("func reload_or_pump") and combat_source.contains("weapon_loaded") and combat_source.contains("weapon_needs_pump") and combat_source.contains("ranged_falloff_penalty") and combat_source.contains("func _fire_shotgun") and combat_source.contains("weapon_projectile_range") and not combat_source.contains("consume_combat_ammo"), "active ranged combat uses tactical magazines reloads falloff and physical shotgun projectile range"): return
     if not _check(not combat_source.contains("func guard():") and not combat_source.contains("KEY_G: guard()"), "guard removed from active combat"): return
     if not _check(combat_source.contains("btn_forward_primary") and combat_source.contains("draw_button(btn_forward_primary,\"FORWARD\""), "forward occupies former guard slot"): return
     if not _check(combat_source.contains("func shove()") and combat_source.contains("super.shove()"), "shove remains active"): return
@@ -114,6 +126,10 @@ func _init() -> void:
     if not _check(active_combat_source.contains("bite_hits") and active_combat_source.contains("companion_bite_hits") and active_combat_source.contains("outcome != \"bite_hit\"") and active_combat_source.contains("super.zombie_attack"), "only successful bites enter tactical virus tracking"): return
     var base_combat_source := FileAccess.get_file_as_string("res://scripts/FFCombat.gd")
     if not _check(base_combat_source.contains("rescue_contacted and not rescuee.is_empty()") and base_combat_source.contains("func search_loot_container"), "protected rescue opening and physical container search"): return
+    if not _check(base_combat_source.contains("func setup_locks") and base_combat_source.contains("locked_doors") and base_combat_source.contains("locked_containers") and base_combat_source.contains("func try_unlock") and base_combat_source.contains("Lock Pick"), "tactical doors and optional containers support persistent lock picking"): return
+    if not _check(combat_source.contains("func use_secondary_item") and combat_source.contains("Flashlight") and combat_source.contains("Firecracker") and combat_source.contains("charge_per_tick"), "active off-hand runtime supports flashlight charge lock pick and one-use firecracker"): return
+    if not _check(active_combat_source.contains("lead_secondary_item") and active_combat_source.contains("lead_secondary_state"), "tactical result returns persistent off-hand state"): return
+    if not _check(base_game_source.contains("inventory_gear_states") and base_game_source.contains("func _default_gear_state") and base_game_source.contains("uses_left") and base_game_source.contains("resources.erase(\"Ammo\")"), "camp persistence retains off-hand durability and removes legacy ammo"): return
     if not _check(combat_source.contains("nearest_exit_distance") and combat_source.contains("LOOT %d/%d"), "route-oriented tactical HUD"): return
     if not _check(not active_game_source.contains("SIM_TIME_SCALE") and base_game_source.contains("const DAY_SECONDS := 300.0") and active_game_source.contains("var camp_delta := float(delta)") and active_game_source.contains("func _advance_settlement_simulation") and active_game_source.contains("\"status\"] = \"Sleeping\"") and active_game_source.contains("AWAKE_FATIGUE_PER_SECOND") and active_game_source.contains("func survivor_can_assign") and active_game_source.contains("func start_virus_treatment") and active_game_source.contains("func quarantine_survivor"), "single authoritative five-minute settlement day"): return
     if not _check(active_camp_source.contains("status == \"Sleeping\"") and active_camp_source.contains("_sleep_cell_for_survivor") and active_camp_source.contains("QUARANTINE"), "camp reflects sleep and isolation"): return
@@ -159,6 +175,7 @@ func _init() -> void:
     if not _check(TacticalBalance.zombie_count_range("Commercial Fringe", "rescue", true) == Vector2i(3, 3), "pet rescue population is three infected"): return
     if not _check(TacticalBalance.zombie_count_range("Commercial Fringe", "rescue", false) == Vector2i(5, 5), "survivor rescue population is five infected"): return
     if not _check(TacticalBalance.explore_site_count_range("Camp Perimeter") == Vector2i(3, 5) and TacticalBalance.explore_site_count_range("Nearby Streets").x >= 4 and TacticalBalance.explore_site_count_range("Industrial Edge").x >= 7, "searchable container targets scale upward with expedition distance"): return
+    if not _check(TacticalBalance.locked_container_chance("Industrial Edge") > TacticalBalance.locked_container_chance("Camp Perimeter") and TacticalBalance.locked_door_chance("Industrial Edge") > TacticalBalance.locked_door_chance("Camp Perimeter"), "lock frequency rises with expedition distance"): return
     if not _check(not game_source.contains("func start_expedition") and base_game_source.contains("func start_expedition(primary_id, zone, companion_id = -1)") and base_game_source.contains("_pay_expedition_cost(zone, party_ids.size())") and base_game_source.contains("\"time_cost_paid\": false") and base_game_source.contains("_begin_tactical_encounter(exp)") and not base_game_source.contains("_advance_settlement_time_for_departure"), "base send out commits supplies and launches tactical immediately without advancing camp time"): return
     if not _check(base_game_source.contains("func _settle_expedition_time_cost") and base_game_source.contains("exp[\"tactical_resolved\"] = true\n    _settle_expedition_time_cost(exp)") and active_game_source.contains("func _advance_settlement_time_for_expedition_return"), "tactical resolution advances the route duration exactly once on return"): return
     if not _check(base_game_source.contains("sim_paused = true") and active_game_source.contains("if not initialized or sim_paused or game_over"), "tactical board freezes settlement simulation"): return

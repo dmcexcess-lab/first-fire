@@ -67,16 +67,16 @@ Active camp/menu renderer and touch hit-test layer. Owns deterministic visual sl
 Legacy concise roster/dashboard implementation retained as an internal reusable component while camp interaction replaces standalone roster navigation. Detailed current presentation belongs to the active inspector wrapper.
 
 ### `FFCombat.gd`
-Established tactical board/runtime foundation: map state, actors, infected, vision/fog, facing, sound propagation, doors/glass/hazards, physical loot-container state, objectives, survivor/pet rescue escort state, persistence, and rendering integration.
+Established tactical board/runtime foundation: map state, actors, infected, vision/fog, facing, sound propagation, doors/glass/hazards, **locked door / locked optional-container state**, physical loot-container state, objectives, survivor/pet rescue escort state, persistence, and rendering integration. Lock picking consumes the equipped persistent Lock Pick state rather than an abstract skill roll.
 
 ### `FFCombatThreeStat.gd`
-Current combat rules: Combat/Agility attack and movement behavior, Stealth, Sprint, Forward, Shove, **hard ranged max-range enforcement**, **shotgun forward-cone multi-hit**, weapon-class handling, and no armor mitigation.
+Current combat rules: Combat/Agility attack and movement behavior, Stealth, Sprint, Forward, Shove, **magazine/chamber reloads with no camp Ammo resource**, Pump Shotgun cycling, distance-based ranged hit falloff, physical Crossbow/shotgun projectile range, multi-projectile shotgun cones, active off-hand use/Flashlight drain/Firecracker lure, weapon-class handling, and no armor mitigation.
 
 ### `FFCombatVirus.gd`
 Thin active tactical wrapper. Counts **successful Bite hits only** for the controlled survivor and optional expedition companion, persists/returns those bite counts, and prevents a contacted living rescue from being failed merely because the player reaches the exit before the escort's next scheduled movement. Scratch and generic physical damage never enter virus exposure tracking.
 
 ### `FFTacticalBalance.gd`
-Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected encounter population/HP/damage, **Scratch/Bite attack profiles**, mob-pressure bonuses, distance-scaled searchable-container targets, container search/loot tuning, Shove resistance/stagger, and infected hit chance. Infected durability is intentionally compressed to roughly **7–10 HP** across LIGHT/MED/HEAVY mass classes so the authored weapon kill-count ladder remains stable; mass matters more for shove/attack behavior than sponge HP. Infected attempt Scratch most of the time (higher hit chance, low damage) and Bite rarely (lower hit chance, high damage). Nearby group size still raises pressure, adds only a small damage bonus, accelerates repeated attacks, and expands pack alerting. Current population contract: Very Short exploration rolls 0–3 infected and is the only route that may produce 0–1; longer exploration floors at 2; ambushes use 5, pet rescues 3, and survivor rescues 5. Very Short targets 3–5 searchable containers, with higher tiers increasing from there.
+Pure tactical tuning. Current formulas use Combat and Agility only. Owns infected encounter population/HP/damage, **Scratch/Bite attack profiles**, mob-pressure bonuses, distance-scaled searchable-container targets, **distance-scaled locked-door/container probability**, container search/loot tuning, Shove resistance/stagger, and infected hit chance. Infected durability is intentionally compressed to roughly **7–10 HP** across LIGHT/MED/HEAVY mass classes so the authored weapon kill-count ladder remains stable; mass matters more for shove/attack behavior than sponge HP. Infected attempt Scratch most of the time (higher hit chance, low damage) and Bite rarely (lower hit chance, high damage). Nearby group size still raises pressure, adds only a small damage bonus, accelerates repeated attacks, and expands pack alerting. Current population contract: Very Short exploration rolls 0–3 infected and is the only route that may produce 0–1; longer exploration floors at 2; ambushes use 5, pet rescues 3, and survivor rescues 5. Very Short targets 3–5 searchable containers, with higher tiers increasing from there.
 
 ### `FFTacticalTime.gd`
 Low-level tactical timeline utilities for load, fatigue, condition, stance, weapon timing, and infected pace. `FFThreeStatRules.gd` applies current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.
@@ -91,7 +91,7 @@ Authored physical places, geometry, props, searchable container anchors, entries
 Atlas-region lookup and tactical environment/item rendering.
 
 ### `FFTacticalLighting.gd`
-Ambient profiles, authored/fixed light math, Secondary portable-light profiles, daylight/window behavior, and light-dependent visibility helpers.
+Ambient profiles, authored/fixed light math, Flashlight/off-hand light profiles, daylight/window behavior, and light-dependent visibility helpers. Flashlight charge ownership/persistence stays in Game/tactical actor state rather than this pure presentation/rule helper.
 
 ### `FFTacticalSound.gd`
 Surface-aware labels, bounded fuzzy source estimates, and ambient sound profiles. Tactical propagation/AI state remains in combat runtime.

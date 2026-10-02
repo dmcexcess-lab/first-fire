@@ -27,7 +27,7 @@ func _render_survivor() -> void:
 
     var plan: Dictionary = VirusRules.treatment_plan(stage, bool(Game.buildings.get("Infirmary", false)))
     if stage == VirusRules.STAGE_EXPOSED:
-        body.add_child(_make_label("Options: decontaminate now, quarantine and observe, or risk waiting. Untreated exposure has one 30% natural-clear chance before infection establishes.", 11))
+        body.add_child(_make_label("Options: decontaminate now, quarantine and observe, or risk waiting. Untreated exposure has one 50% natural-clear chance before infection establishes.", 11))
     elif stage == VirusRules.STAGE_INFECTED:
         body.add_child(_make_label("The infection is established. Medicine can still clear it; otherwise it progresses to severe fever at the next daily transition.", 11))
     else:

@@ -66,6 +66,8 @@ var explore_gear_cell := Vector2i(-1, -1)
 var loot_containers := {}
 var looted_containers := {}
 var container_contents := {}
+var locked_doors := {}
+var locked_containers := {}
 var game_over := false
 var msg := ""
 var submsg := ""
@@ -145,6 +147,7 @@ func start_encounter(data: Dictionary):
     build_map(environment_id, environment_variant)
     supplement_distance_loot_containers()
     setup_explore_sites()
+    setup_locks()
     make_party()
     setup_rescuee()
     spawn_zombies()
@@ -218,7 +221,10 @@ func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
         return {}
     var max_hp := condition_max_hp(str(s.get("condition", "Healthy")))
     var equipment: Dictionary = s.get("equipment", {}).duplicate(true)
+    var equipment_state: Dictionary = s.get("equipment_state", {}).duplicate(true) if s.get("equipment_state", {}) is Dictionary else {}
     var secondary_item: String = TacticalLighting.secondary_item_from_equipment(equipment)
+    var secondary_state_value = equipment_state.get("Secondary", {})
+    var secondary_state: Dictionary = secondary_state_value.duplicate(true) if secondary_state_value is Dictionary else {}
     var actor = {
         "id": int(s.get("id", -1)),
         "name": str(s.get("name", "Survivor")),
@@ -230,11 +236,13 @@ func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
         "stress": float(s.get("stress", 0.0)),
         "condition": str(s.get("condition", "Healthy")),
         "equipment": equipment,
+        "equipment_state": equipment_state,
         "appearance": s.get("appearance", TacticalVisuals.default_survivor_appearance(int(s.get("id", -1)))).duplicate(true),
         "weapon": weapon_profile(str(equipment.get("Weapon", ""))),
         "clothing": str(equipment.get("Clothing", "")),
         "tool": str(equipment.get("Tool", "")),
         "secondary": secondary_item,
+        "secondary_state": secondary_state,
         "pack": str(equipment.get("Pack", "")),
         "hp": max_hp,
         "max_hp": max_hp,
@@ -411,6 +419,75 @@ func supplement_distance_loot_containers() -> void:
         loot_containers[cell] = kind
         container_contents[cell] = TacticalBalance.roll_container_loot(zone, kind, rng)
 
+func _door_lock_is_safe(lock_cell: Vector2i) -> bool:
+    var visited := {player_spawn: true}
+    var queue: Array = [player_spawn]
+    while not queue.is_empty():
+        var p: Vector2i = queue.pop_front()
+        for d in DIRS:
+            var n: Vector2i = p + Vector2i(d)
+            if not inside(n) or n == lock_cell or walls.has(n) or obstacles.has(n) or visited.has(n):
+                continue
+            visited[n] = true
+            queue.append(n)
+    if not visited.has(objective_cell):
+        return false
+    for exit_cell in exit_cells:
+        if visited.has(exit_cell):
+            return true
+    return false
+
+func setup_locks() -> void:
+    locked_doors.clear()
+    locked_containers.clear()
+    var zone := str(context.get("zone", "Nearby Streets"))
+    var door_chance := TacticalBalance.locked_door_chance(zone)
+    for cell_value in doors.keys():
+        var cell: Vector2i = cell_value
+        if bool(doors.get(cell, false)):
+            continue
+        if rng.randf() < door_chance and _door_lock_is_safe(cell):
+            locked_doors[cell] = true
+    var container_chance := TacticalBalance.locked_container_chance(zone)
+    for cell_value in loot_containers.keys():
+        var cell: Vector2i = cell_value
+        if explore_cells.has(cell):
+            continue
+        if rng.randf() < container_chance:
+            locked_containers[cell] = true
+
+func _consume_lock_pick_use() -> bool:
+    if str(player.get("secondary", "")) != "Lock Pick":
+        return false
+    var state_value = player.get("secondary_state", {})
+    var state: Dictionary = state_value if state_value is Dictionary else {}
+    var uses_left := maxi(0, int(state.get("uses_left", 0)) - 1)
+    if uses_left <= 0:
+        player["secondary"] = ""
+        if player.has("equipment"):
+            player["equipment"]["Secondary"] = ""
+        player["secondary_state"] = {}
+        msg += " The Lock Pick breaks."
+    else:
+        state["uses_left"] = uses_left
+        player["secondary_state"] = state
+    return true
+
+func try_unlock(cell: Vector2i, container_lock: bool) -> bool:
+    var locks: Dictionary = locked_containers if container_lock else locked_doors
+    if not locks.has(cell):
+        return true
+    if str(player.get("secondary", "")) != "Lock Pick":
+        msg = "%s is locked. You need a Lock Pick." % ("Container" if container_lock else "Door")
+        queue_redraw()
+        return false
+    locks.erase(cell)
+    msg = "%s unlocked." % ("Container" if container_lock else "Door")
+    _consume_lock_pick_use()
+    emit_noise(cell, 9, "lock pick", true)
+    commit_action(TacticalTime.interaction_cost(player, 72))
+    return false
+
 func setup_explore_sites() -> void:
     explore_cells.clear()
     explore_searched.clear()
@@ -578,6 +655,18 @@ func restore_runtime():
             var searched_cell := arr_to_v2i(value, Vector2i(-1, -1))
             if searched_cell != Vector2i(-1, -1):
                 explore_searched[searched_cell] = true
+    if runtime.has("locked_doors"):
+        locked_doors.clear()
+        for value in runtime.get("locked_doors", []):
+            var lock_cell := arr_to_v2i(value, Vector2i(-1, -1))
+            if doors.has(lock_cell):
+                locked_doors[lock_cell] = true
+    if runtime.has("locked_containers"):
+        locked_containers.clear()
+        for value in runtime.get("locked_containers", []):
+            var lock_cell := arr_to_v2i(value, Vector2i(-1, -1))
+            if loot_containers.has(lock_cell) and not looted_containers.has(lock_cell):
+                locked_containers[lock_cell] = true
     if not ally.is_empty():
         ally["hp"] = clamp(int(runtime.get("ally_hp", ally["max_hp"])), 0, int(ally["max_hp"]))
         ally["dead"] = int(ally["hp"]) <= 0
@@ -658,6 +747,12 @@ func persist_runtime():
             "opened": looted_containers.has(p),
             "loot": container_contents.get(p, {}).duplicate(true)
         })
+    var saved_locked_doors := []
+    for p in locked_doors.keys():
+        saved_locked_doors.append([p.x, p.y])
+    var saved_locked_containers := []
+    for p in locked_containers.keys():
+        saved_locked_containers.append([p.x, p.y])
     runtime = {
         "lead_hp": int(player.get("hp", 0)),
         "ally_hp": int(ally.get("hp", 0)) if not ally.is_empty() else -1,
@@ -677,6 +772,8 @@ func persist_runtime():
         "explore_searched": saved_explore_searched,
         "explore_gear_cell": [explore_gear_cell.x, explore_gear_cell.y],
         "container_state": saved_containers,
+        "locked_doors": saved_locked_doors,
+        "locked_containers": saved_locked_containers,
         "tick": tick,
         "zombies": zsave,
         "open_doors": open_doors,
@@ -913,6 +1010,8 @@ func interact():
             search_explore_cell(p)
             return
     if doors.has(p):
+        if locked_doors.has(p) and not try_unlock(p, false):
+            return
         player["guarding"] = false
         doors[p] = not doors[p]
         msg = "Door opened." if doors[p] else "Door closed."
@@ -976,9 +1075,6 @@ func shoot(i: int):
         msg = "No firearm equipped."; queue_redraw(); return
     var z: Dictionary = zombies[i]
     if z.dead or not visible_cells.has(z.pos): return
-    var ammo_cost := int(player.weapon.ammo)
-    if not Game.consume_combat_ammo(ammo_cost):
-        msg = "No ammunition."; queue_redraw(); return
     player["guarding"] = false
     player.facing = dominant(z.pos - player.pos)
     var dist := manhattan(player.pos, z.pos)
@@ -1022,8 +1118,6 @@ func apply_shotgun_spread(primary_index: int, impact_cell: Vector2i, primary_dam
 func shoot_barrel(cell: Vector2i):
     if not bool(player.weapon.gun):
         msg = "You need a firearm to hit that safely."; queue_redraw(); return
-    if not Game.consume_combat_ammo(int(player.weapon.ammo)):
-        msg = "No ammunition."; queue_redraw(); return
     player["guarding"] = false
     barrels.erase(cell)
     stats.shots += 1
@@ -1173,6 +1267,8 @@ func search_loot_container(cell: Vector2i) -> void:
     if looted_containers.has(cell):
         msg = "Already searched."
         queue_redraw()
+        return
+    if locked_containers.has(cell) and not try_unlock(cell, true):
         return
     looted_containers[cell] = true
     stats["containers"] = int(stats.get("containers", 0)) + 1
@@ -1750,6 +1846,8 @@ func draw_map():
                 TacticalTiles.draw_wall(self, r, theme)
             elif doors.has(p):
                 TacticalTiles.draw_door(self, r, bool(doors[p]))
+                if locked_doors.has(p):
+                    draw_string(font, cell_center(p) + Vector2(-11, 3), "LOCK", HORIZONTAL_ALIGNMENT_CENTER, 22, 6, Color(1.0,.58,.18,.96))
             elif glass.has(p):
                 TacticalTiles.draw_window(self, r)
             elif barrels.has(p):
@@ -1767,9 +1865,10 @@ func draw_loot_container_markers() -> void:
         if not (visible_cells.has(cell) or memory.has(cell)):
             continue
         var opened := looted_containers.has(cell)
-        var color := Color(.28,.88,.48,.90) if opened else Color(.95,.75,.20,.92)
+        var locked := locked_containers.has(cell) and not opened
+        var color := Color(.28,.88,.48,.90) if opened else (Color(1.0,.48,.18,.95) if locked else Color(.95,.75,.20,.92))
         draw_rect(Rect2(cell.x*TILE+3, cell.y*TILE+3, TILE-6, TILE-6), color, false, 2)
-        draw_string(font, cell_center(cell)+Vector2(-15, 3), "OPEN" if opened else "LOOT", HORIZONTAL_ALIGNMENT_CENTER, 30, 7, color)
+        draw_string(font, cell_center(cell)+Vector2(-15, 3), "OPEN" if opened else ("LOCK" if locked else "LOOT"), HORIZONTAL_ALIGNMENT_CENTER, 30, 7, color)
 
 func draw_explore_sites() -> void:
     for cell in explore_cells:
@@ -1927,7 +2026,7 @@ func draw_hud():
     draw_string(font,Vector2(10,47),"%s  HP %d/%d  %s"%[player.name,int(player.hp),int(player.max_hp),str(player.condition).to_upper()],HORIZONTAL_ALIGNMENT_LEFT,370,13,Color(.70,.84,1))
     var gear_lines: Array = TacticalVisuals.equipment_summary_lines(player.get("equipment", {}))
     var primary_gear := str(gear_lines[0])
-    if bool(player.weapon.gun): primary_gear += " | Ammo %d" % int(Game.resources.get("Ammo", 0))
+    if bool(player.weapon.gun): primary_gear += " | RELOADS"
     draw_string(font, Vector2(10,69), primary_gear, HORIZONTAL_ALIGNMENT_LEFT, 370, 9, Color(.82,.84,.82))
     draw_string(font, Vector2(10,89), str(gear_lines[1]), HORIZONTAL_ALIGNMENT_LEFT, 370, 8, Color(.72,.78,.74))
     var objective_text := "ESCAPE"

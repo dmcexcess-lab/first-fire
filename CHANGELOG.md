@@ -1,3 +1,25 @@
+## Beta Candidate — Firearm Magazines, Found-Only Off-Hand Tools & Tactical Locks — 2026-10-01
+
+- Rebuilt ranged weapons around **magazines/chambers and explicit tactical reloads**. The shared camp `Ammo` resource is retired and is removed from loaded schema-7 saves.
+- Firearms are now **field-found only**; firearm Workbench recipes were removed. Crossbow remains the craftable ranged option.
+- Added the final firearm lineup:
+  - **6-Shot Revolver** — 6 rounds, short optimal range, can fire to any visible target with accuracy falloff.
+  - **12-Shot Automatic** — 12 rounds, faster handling, short optimal range, steeper distance falloff.
+  - **Double-Barrel Shotgun** — 2 shells, 3 projectiles per shot, tighter spread, **5-tile physical pellet range**.
+  - **Pump Shotgun** — 6 shells, explicit **PUMP** action between shots, 5 projectiles per shot, wider spread, **4-tile physical pellet range**.
+  - **Medium Rifle** — 20-round magazine, medium optimal range, fire-to-vision distance falloff.
+  - **Long Rifle** — 5-round magazine, long optimal range, fire-to-vision distance falloff.
+- Crossbow now has a **1-shot chamber**, explicit reload, 7-tile physical range, and retains its 2–3-hit infected kill role.
+- Tactical save/resume persists current loaded count and Pump Shotgun chamber/pump state. Reloading uses tactical time but consumes no camp resource.
+- Replaced the active off-hand pool with exactly three **found-only** items:
+  - **Flashlight** — finite persistent charge; charge drains while the light is on and the light shuts off at zero.
+  - **Lock Pick** — starts with a random 3–5 uses and breaks when the final use is spent.
+  - **Firecracker** — one use; thrown forward as a loud tactical sound lure, then consumed.
+- Added locked tactical doors and optional locked loot containers, with lock frequency rising by expedition distance. Marked exploration objective containers are not locked, preventing an expedition objective from requiring a Lock Pick.
+- Lock/off-hand condition persists through tactical saves and returns to the survivor's equipped state when the expedition ends. Unequipping an off-hand item preserves its remaining condition in camp inventory state.
+- Legacy generic Pistol/Shotgun/Rifle and retired portable-light entries remain compatibility aliases/data only for existing schema-7 saves; they are not active field/craft content.
+- Updated deterministic architecture smoke and CI source contracts for found-only firearms/off-hand items, magazine capacities, pump behavior, physical shotgun range/projectile counts, distance hit falloff, tactical locks, and off-hand durability.
+
 ## Beta Candidate — Weapon Kill Ladder & Ranged Roles — 2026-10-01
 
 - Rebuilt tactical weapon damage around the fragile **7–10 HP infected** contract so kill counts are authored by weapon tier instead of silently collapsing from Combat damage scaling.

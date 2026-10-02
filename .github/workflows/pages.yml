@@ -151,14 +151,30 @@ jobs:
           grep -Fq '"Bare Hands":' game/scripts/FFThreeStatRules.gd
           grep -Fq '"Sledgehammer":' game/scripts/FFThreeStatRules.gd
           grep -Fq '"Crossbow":' game/scripts/FFThreeStatRules.gd
-          grep -Fq '"Rifle":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"6-Shot Revolver":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"12-Shot Automatic":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"Double-Barrel Shotgun":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"Pump Shotgun":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"Medium Rifle":' game/scripts/FFThreeStatRules.gd
+          grep -Fq '"Long Rifle":' game/scripts/FFThreeStatRules.gd
           grep -Fq '"Utility Knife":' game/scripts/FFThreeStatRules.gd
-          grep -q 'var max_range := ThreeStatRules.weapon_range(player.weapon)' game/scripts/FFCombatThreeStat.gd
-          grep -q 'func apply_shotgun_cone' game/scripts/FFCombatThreeStat.gd
+          grep -q 'func reload_or_pump' game/scripts/FFCombatThreeStat.gd
+          grep -q 'func _fire_shotgun' game/scripts/FFCombatThreeStat.gd
+          grep -q 'weapon_projectile_range' game/scripts/FFCombatThreeStat.gd
+          grep -q 'func use_secondary_item' game/scripts/FFCombatThreeStat.gd
+          grep -q 'func setup_locks' game/scripts/FFCombat.gd
+          grep -q 'func try_unlock' game/scripts/FFCombat.gd
+          grep -q 'inventory_gear_states' game/scripts/Game.gd
           grep -Fq '"Crossbow": {"slot": "Weapon"' game/scripts/FFData.gd
-          grep -Fq '"Rifle": {"slot": "Weapon"' game/scripts/FFData.gd
+          grep -Fq '"6-Shot Revolver": {"slot": "Weapon"' game/scripts/FFData.gd
+          grep -Fq '"Pump Shotgun": {"slot": "Weapon"' game/scripts/FFData.gd
+          grep -Fq '"Long Rifle": {"slot": "Weapon"' game/scripts/FFData.gd
+          grep -Fq '"Lock Pick": {"slot": "Secondary"' game/scripts/FFData.gd
+          grep -Fq '"Firecracker": {"slot": "Secondary"' game/scripts/FFData.gd
           grep -Fq '"id": "Crossbow"' game/scripts/FFData.gd
-          grep -Fq '"id": "Rifle"' game/scripts/FFData.gd
+          if grep -Eq '"id": "(6-Shot Revolver|12-Shot Automatic|Double-Barrel Shotgun|Pump Shotgun|Medium Rifle|Long Rifle|Flashlight|Lock Pick|Firecracker)"' game/scripts/FFData.gd; then exit 1; fi
+          if grep -q '"Ammo"' game/scripts/FFData.gd; then exit 1; fi
+          if grep -q 'consume_combat_ammo' game/scripts/FFCombatThreeStat.gd; then exit 1; fi
           grep -q 'func supplement_distance_loot_containers' game/scripts/FFCombat.gd
           grep -q 'func zombie_mob_size' game/scripts/FFCombat.gd
           grep -Fq 'const BITE_EXPOSURE_CHANCE := 0.03' game/scripts/FFVirusRules.gd

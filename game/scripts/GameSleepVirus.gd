@@ -6,6 +6,7 @@ func new_game():
     super.new_game()
     for survivor in survivors:
         survivor["virus"] = VirusRules.default_state()
+        survivor["equipment_state"] = {}
         survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
         survivor["previous_daily_activity"] = {}
         survivor["duty_days"] = []
@@ -25,6 +26,7 @@ func load_game():
     buildings["Workbench"] = true
     for survivor in survivors:
         survivor["virus"] = VirusRules.normalize(survivor.get("virus", {}))
+        _normalize_survivor_equipment_state(survivor)
         survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
         if not survivor.has("previous_daily_activity"):
             survivor["previous_daily_activity"] = {}
@@ -45,6 +47,7 @@ func load_game():
 func _generate_survivor(founder = false, preferred_background = ""):
     var survivor: Dictionary = super._generate_survivor(founder, preferred_background)
     survivor["virus"] = VirusRules.default_state()
+    survivor["equipment_state"] = {}
     survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
     survivor["previous_daily_activity"] = {}
     survivor["duty_days"] = []
@@ -371,6 +374,7 @@ func _normalize_health_status(survivor) -> void:
     if survivor == null or str(survivor.get("condition", "Dead")) == "Dead":
         return
     survivor["virus"] = VirusRules.normalize(survivor.get("virus", {}))
+    _normalize_survivor_equipment_state(survivor)
     if not survivor.has("task"):
         survivor["task"] = {}
     if not survivor.has("camp_activity"):

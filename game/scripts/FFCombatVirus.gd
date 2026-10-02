@@ -62,6 +62,8 @@ func finish_encounter(outcome: String):
         "damage": int(stats.damage),
         "bite_hits": int(stats.get("bite_hits", 0)),
         "companion_bite_hits": int(stats.get("companion_bite_hits", 0)),
+        "lead_secondary_item": str(player.get("secondary", "")),
+        "lead_secondary_state": player.get("secondary_state", {}).duplicate(true),
         "searches_completed": explore_searched.size(),
         "search_sites_total": explore_cells.size(),
         "containers_opened": looted_containers.size(),

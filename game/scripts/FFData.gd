@@ -4,7 +4,7 @@ class_name FFData
 const RESOURCE_ORDER := [
     "Raw Food", "Cooked Food", "Dirty Water", "Clean Water",
     "Wood", "Scrap Metal", "Cloth", "Plastic", "Hardware",
-    "Medicine", "Ammo", "Seeds"
+    "Medicine", "Seeds"
 ]
 
 const STARTING_RESOURCES := {
@@ -18,7 +18,6 @@ const STARTING_RESOURCES := {
     "Plastic": 0,
     "Hardware": 0,
     "Medicine": 0,
-    "Ammo": 0,
     "Seeds": 0,
 }
 
@@ -103,7 +102,7 @@ const ZONES := {
         "loot": {
             "Dirty Water": 25, "Raw Food": 20,
             "Cloth": 10, "Wood": 9, "Plastic": 9, "Hardware": 8, "Scrap Metal": 7,
-            "Clean Water": 5, "Cooked Food": 2, "Medicine": 4, "Seeds": 3, "Ammo": 2
+            "Clean Water": 5, "Cooked Food": 2, "Medicine": 4, "Seeds": 3
         }
     },
     "Commercial Fringe": {
@@ -112,7 +111,7 @@ const ZONES := {
         "loot": {
             "Dirty Water": 22, "Raw Food": 18,
             "Hardware": 12, "Scrap Metal": 11, "Plastic": 10, "Cloth": 9, "Wood": 7,
-            "Clean Water": 5, "Cooked Food": 2, "Medicine": 5, "Ammo": 4, "Seeds": 3
+            "Clean Water": 5, "Cooked Food": 2, "Medicine": 5, "Seeds": 3
         }
     },
     "Industrial Edge": {
@@ -121,7 +120,7 @@ const ZONES := {
         "loot": {
             "Dirty Water": 20, "Raw Food": 16,
             "Scrap Metal": 14, "Hardware": 12, "Plastic": 10, "Wood": 8, "Cloth": 7,
-            "Clean Water": 5, "Cooked Food": 2, "Ammo": 5, "Medicine": 3, "Seeds": 2
+            "Clean Water": 5, "Cooked Food": 2, "Medicine": 3, "Seeds": 2
         }
     }
 }
@@ -147,15 +146,23 @@ const GEAR := {
     "Crowbar": {"slot": "Weapon", "combat": 2, "size": 3, "tool": "Breach"},
     "Sledgehammer": {"slot": "Weapon", "combat": 4, "size": 4},
     "Hatchet": {"slot": "Weapon", "combat": 5, "size": 2},
-    "Crossbow": {"slot": "Weapon", "combat": 3, "size": 3, "ammo": 1},
-    "Pistol": {"slot": "Weapon", "combat": 5, "size": 2, "ammo": 1},
-    "Shotgun": {"slot": "Weapon", "combat": 5, "size": 3, "ammo": 2},
-    "Rifle": {"slot": "Weapon", "combat": 5, "size": 3, "ammo": 1},
-    "Flashlight": {"slot": "Secondary", "size": 2, "weight": 0.8, "light": "cone", "light_range": 8.5, "light_spread": 0.52, "light_strength": 1.0, "light_color": "edf5d6", "view_bonus": 2},
-    "Headlamp": {"slot": "Secondary", "size": 1, "weight": 0.4, "light": "cone", "light_range": 7.0, "light_spread": 0.34, "light_strength": 0.88, "light_color": "f1edc5", "view_bonus": 1},
-    "Lantern": {"slot": "Secondary", "size": 2, "weight": 1.4, "light": "radial", "light_range": 4.5, "light_strength": 0.88, "light_color": "ffc46f", "view_bonus": 0},
-    "Glow Stick": {"slot": "Secondary", "size": 1, "weight": 0.2, "light": "radial", "light_range": 3.0, "light_strength": 0.58, "light_color": "71ef68", "view_bonus": 0},
-    "Road Flare": {"slot": "Secondary", "size": 1, "weight": 0.3, "light": "radial", "light_range": 4.8, "light_strength": 0.92, "light_color": "ff5b48", "view_bonus": 0},
+    "Crossbow": {"slot": "Weapon", "combat": 3, "size": 3},
+    "6-Shot Revolver": {"slot": "Weapon", "combat": 5, "size": 2},
+    "12-Shot Automatic": {"slot": "Weapon", "combat": 5, "size": 2},
+    "Double-Barrel Shotgun": {"slot": "Weapon", "combat": 5, "size": 3},
+    "Pump Shotgun": {"slot": "Weapon", "combat": 5, "size": 3},
+    "Medium Rifle": {"slot": "Weapon", "combat": 5, "size": 3},
+    "Long Rifle": {"slot": "Weapon", "combat": 5, "size": 3},
+    "Pistol": {"slot": "Weapon", "combat": 5, "size": 2, "legacy_alias": "6-Shot Revolver"},
+    "Shotgun": {"slot": "Weapon", "combat": 5, "size": 3, "legacy_alias": "Double-Barrel Shotgun"},
+    "Rifle": {"slot": "Weapon", "combat": 5, "size": 3, "legacy_alias": "Long Rifle"},
+    "Flashlight": {"slot": "Secondary", "size": 2, "weight": 0.8, "light": "cone", "light_range": 8.5, "light_spread": 0.52, "light_strength": 1.0, "light_color": "edf5d6", "view_bonus": 2, "charge_max": 100.0, "charge_per_tick": 0.025},
+    "Lock Pick": {"slot": "Secondary", "size": 1, "weight": 0.1, "uses_min": 3, "uses_max": 5},
+    "Firecracker": {"slot": "Secondary", "size": 1, "weight": 0.1, "uses": 1},
+    "Headlamp": {"slot": "Secondary", "size": 1, "weight": 0.4, "light": "cone", "light_range": 7.0, "light_spread": 0.34, "light_strength": 0.88, "light_color": "f1edc5", "view_bonus": 1, "legacy": true},
+    "Lantern": {"slot": "Secondary", "size": 2, "weight": 1.4, "light": "radial", "light_range": 4.5, "light_strength": 0.88, "light_color": "ffc46f", "view_bonus": 0, "legacy": true},
+    "Glow Stick": {"slot": "Secondary", "size": 1, "weight": 0.2, "light": "radial", "light_range": 3.0, "light_strength": 0.58, "light_color": "71ef68", "view_bonus": 0, "legacy": true},
+    "Road Flare": {"slot": "Secondary", "size": 1, "weight": 0.3, "light": "radial", "light_range": 4.8, "light_strength": 0.92, "light_color": "ff5b48", "view_bonus": 0, "legacy": true},
     "Screwdriver Set": {"slot": "Tool", "size": 2, "technical": 1},
     "Bolt Cutters": {"slot": "Tool", "size": 3, "tool": "Cutters"},
     "Toolbox": {"slot": "Tool", "size": 3, "technical": 1},
@@ -175,20 +182,23 @@ const GEAR := {
 
 const TACTICAL_GEAR_UNLOCKS_BY_ZONE := {
     "Camp Perimeter": [
-        "Utility Knife", "Kitchen Knife", "Wooden Club", "Flashlight", "Glow Stick",
-        "Road Flare", "Screwdriver Set", "Work Gloves", "Worn Backpack",
-        "School Backpack", "Improvised Pack"
+        "Utility Knife", "Kitchen Knife", "Wooden Club", "Flashlight", "Firecracker",
+        "Screwdriver Set", "Work Gloves", "Worn Backpack", "School Backpack", "Improvised Pack"
     ],
     "Nearby Streets": [
-        "Baseball Bat", "Hammer", "Improvised Spear", "Headlamp", "Lantern", "Pry Tool",
+        "Baseball Bat", "Hammer", "Improvised Spear", "Lock Pick", "Pry Tool",
         "Work Jacket", "Heavy Boots", "First Aid Kit"
     ],
     "Residential Blocks": [
-        "Crowbar", "Crossbow", "Toolbox", "Padded Jacket", "Leather Jacket",
-        "Hiking Pack"
+        "Crowbar", "Crossbow", "Toolbox", "Padded Jacket", "Leather Jacket", "Hiking Pack"
     ],
-    "Commercial Fringe": ["Bolt Cutters", "Reinforced Pack", "Sledgehammer", "Hatchet", "Pistol"],
-    "Industrial Edge": ["Shotgun", "Rifle"],
+    "Commercial Fringe": [
+        "Bolt Cutters", "Reinforced Pack", "Sledgehammer", "Hatchet",
+        "6-Shot Revolver", "Double-Barrel Shotgun"
+    ],
+    "Industrial Edge": [
+        "12-Shot Automatic", "Pump Shotgun", "Medium Rifle", "Long Rifle"
+    ],
 }
 
 const RECIPES := {
@@ -208,14 +218,6 @@ const RECIPES := {
         {"id": "Crossbow", "time": 14.0, "cost": {"Wood": 3, "Scrap Metal": 1, "Hardware": 2, "Cloth": 1}, "gives_gear": "Crossbow"},
         {"id": "Sledgehammer", "time": 15.0, "cost": {"Wood": 2, "Scrap Metal": 4, "Hardware": 3}, "gives_gear": "Sledgehammer"},
         {"id": "Hatchet", "time": 18.0, "cost": {"Wood": 1, "Scrap Metal": 5, "Hardware": 4}, "gives_gear": "Hatchet"},
-        {"id": "Pistol", "time": 18.0, "cost": {"Scrap Metal": 4, "Hardware": 3, "Plastic": 1}, "requires": ["Armory"], "gives_gear": "Pistol"},
-        {"id": "Shotgun", "time": 24.0, "cost": {"Scrap Metal": 6, "Hardware": 4, "Wood": 2}, "requires": ["Armory"], "gives_gear": "Shotgun"},
-        {"id": "Rifle", "time": 26.0, "cost": {"Scrap Metal": 6, "Hardware": 5, "Wood": 2, "Plastic": 1}, "requires": ["Armory"], "gives_gear": "Rifle"},
-        {"id": "Flashlight", "time": 7.0, "cost": {"Plastic": 1, "Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Flashlight"},
-        {"id": "Headlamp", "time": 8.0, "cost": {"Plastic": 1, "Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Headlamp"},
-        {"id": "Lantern", "time": 9.0, "cost": {"Scrap Metal": 1, "Hardware": 2}, "gives_gear": "Lantern"},
-        {"id": "Glow Stick", "time": 5.0, "cost": {"Plastic": 1, "Cloth": 1}, "gives_gear": "Glow Stick"},
-        {"id": "Road Flare", "time": 6.0, "cost": {"Plastic": 1, "Cloth": 1, "Scrap Metal": 1}, "gives_gear": "Road Flare"},
         {"id": "Screwdriver Set", "time": 7.0, "cost": {"Scrap Metal": 1, "Hardware": 1}, "gives_gear": "Screwdriver Set"},
         {"id": "Bolt Cutters", "time": 11.0, "cost": {"Scrap Metal": 3, "Hardware": 2}, "gives_gear": "Bolt Cutters"},
         {"id": "Toolbox", "time": 12.0, "cost": {"Scrap Metal": 2, "Hardware": 3}, "gives_gear": "Toolbox"},
@@ -253,7 +255,7 @@ const BUILDINGS := {
     "Infirmary": {"time": 32.0, "cost": {"Wood": 5, "Cloth": 3, "Plastic": 3, "Hardware": 3}, "component_cost": {"Sterile Dressing": 2}, "requires": ["Cabin", "Workbench"], "description": "Speeds treatment and wound recovery; reduces untreated critical decline."},
     "Watch Post": {"time": 28.0, "cost": {"Wood": 5, "Scrap Metal": 2, "Hardware": 2}, "requires": ["Noise Line", "Workbench"], "description": "Further reduces danger from camp-perimeter disturbances."},
     "Bunkhouse": {"time": 42.0, "cost": {"Wood": 8, "Cloth": 4, "Plastic": 2}, "component_cost": {"Framing Kit": 2, "Weatherproofing Roll": 1}, "requires": ["Cabin", "Sewing Table"], "description": "+6 shelter capacity."},
-    "Armory": {"time": 38.0, "cost": {"Wood": 8, "Scrap Metal": 8, "Hardware": 6, "Plastic": 2}, "requires": ["Workbench", "Cabin"], "description": "Unlocks firearm construction at the Workbench."},
+    "Armory": {"time": 38.0, "cost": {"Wood": 8, "Scrap Metal": 8, "Hardware": 6, "Plastic": 2}, "requires": ["Workbench", "Cabin"], "description": "Secure storage and readiness for field-found firearms."},
     "Dormitory": {"time": 55.0, "cost": {"Wood": 12, "Scrap Metal": 6, "Cloth": 4, "Hardware": 4}, "component_cost": {"Framing Kit": 4, "Weatherproofing Roll": 2}, "requires": ["Bunkhouse", "Infirmary", "Sewing Table"], "description": "+5 shelter capacity; completes the 18-person housing ceiling."},
 }
 

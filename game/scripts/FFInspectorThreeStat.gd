@@ -37,7 +37,17 @@ func _render_survivor() -> void:
             body.add_child(_make_label("%s: None" % slot, 13))
         else:
             var label := "%s: %s" % [slot, gear_name]
-            if slot == "Weapon": label += "  •  %s" % str(ThreeStatRules.weapon_class(gear_name).get("label", ""))
+            if slot == "Weapon":
+                label += "  •  %s" % str(ThreeStatRules.weapon_class(gear_name).get("label", ""))
+            elif slot == "Secondary":
+                var state_value = survivor.get("equipment_state", {}).get("Secondary", {})
+                var state: Dictionary = state_value if state_value is Dictionary else {}
+                if gear_name == "Flashlight":
+                    label += "  •  %.0f%% CHARGE" % float(state.get("charge", 0.0))
+                elif gear_name == "Lock Pick":
+                    label += "  •  %d USES" % int(state.get("uses_left", 0))
+                elif gear_name == "Firecracker":
+                    label += "  •  ONE USE"
             var equipped = Button.new()
             equipped.text = label + "  •  INFO"
             equipped.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -157,9 +167,16 @@ func _render_item() -> void:
         body.add_child(_make_label("Slot: %s" % str(data.get("slot", "Unknown")), 13))
         if str(data.get("slot", "")) == "Weapon":
             var wc := ThreeStatRules.weapon_class(current_item)
+            var profile := ThreeStatRules.weapon_profile(current_item)
             body.add_child(_make_label("Combat class: %s" % str(wc.get("label", "1H MELEE")), 13))
+            if bool(profile.get("gun", false)):
+                body.add_child(_make_label("Loaded capacity: %d  •  Optimal range: %d" % [ThreeStatRules.weapon_mag_capacity(profile), ThreeStatRules.weapon_optimal_range(profile)], 13))
+                var physical_range := ThreeStatRules.weapon_projectile_range(profile)
+                if physical_range > 0:
+                    body.add_child(_make_label("Physical projectile range: %d tiles" % physical_range, 13))
+                if ThreeStatRules.weapon_pattern(profile) == "shotgun":
+                    body.add_child(_make_label("Projectiles per shot: %d" % ThreeStatRules.weapon_projectiles(profile), 13))
         if data.has("capacity"): body.add_child(_make_label("Carry capacity: %d" % int(data.get("capacity", 0)), 13))
-        if data.has("ammo"): body.add_child(_make_label("Ammo per shot: %d" % int(data.get("ammo", 0)), 13))
         if data.has("tool"): body.add_child(_make_label("Tool tag: %s" % str(data.get("tool", "")), 13))
         if data.has("light"): body.add_child(_make_label("Light reach: %.0f tiles" % float(data.get("light_range", 0.0)), 13))
         if data.has("weight"): body.add_child(_make_label("Carried weight: %.1f" % float(data.get("weight", 0.0)), 13))

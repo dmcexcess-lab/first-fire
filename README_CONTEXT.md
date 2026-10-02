@@ -51,10 +51,13 @@ Tactical encounters use the actual expedition party: one controlled lead plus an
 The active combat layer is intentionally compact:
 
 - **Melee ladder** — fists 3–5 clean hits; Utility Knife 2–3; ordinary 1H melee 2; ordinary 2H melee 1–2; Sledgehammer 1; Hatchet 1. Hatchet is intentionally the rare/expensive one-hit 1H option.
-- **Crossbow** — craftable Workbench ranged weapon, 2–3 hits, medium range (7 tiles), quiet compared with firearms.
-- **Pistol** — 1-hit short-range firearm (4 tiles).
-- **Shotgun** — 1-hit short-range firearm (4 tiles) with a real forward cone that can kill multiple infected in one shot.
-- **Rifle** — 1-hit long-range firearm (10 tiles).
+- **Crossbow** — craftable Workbench ranged weapon, one shot before reload, 2–3 hits to kill, and a physical 7-tile medium range.
+- **6-Shot Revolver / 12-Shot Automatic** — found-only pistols. Both are strongest at short range but may fire at any visible target; hit chance falls off with distance.
+- **Double-Barrel Shotgun** — found-only, 2 shells, 3 projectiles per shot, tighter spread, physical 5-tile pellet range.
+- **Pump Shotgun** — found-only, 6 shells, explicit pump action between shots, 5 projectiles per shot, wider spread, physical 4-tile pellet range.
+- **Medium Rifle** — found-only, 20-round magazine, medium optimal range, may fire to any visible target with distance falloff.
+- **Long Rifle** — found-only, 5-round magazine, long optimal range, may fire to any visible target with distance falloff.
+- **Reload model** — there is no camp Ammo resource. Ranged weapons use tactical magazine/chamber state and explicit reload actions; Pump Shotgun additionally requires cycling the pump.
 - **Stealth** — Agility-driven quieter crouched movement with positional stealth-attack opportunity; its tactical action cost is deliberately and materially slower than walking.
 - **Sprint** — Agility-driven movement with a deliberately and materially lower action cost than walking, louder noise, and improved grab avoidance.
 - **Forward** — dedicated touch movement action in the former Guard control slot.
@@ -74,7 +77,7 @@ Combat and Agility are the only survivor stats that affect tactical fighting/mov
 
 Authored environments include back alleys, gas stations, houses, apartments, stores, warehouse yards, and drainage washes. Every map has far-side extraction rather than an exit beside the entry, plus physical loot containers whose contents are only retained after escape. Container/search density now scales by expedition distance: Very Short targets **3–5 searchable containers**, then rises through Short/Medium/Far/Very Far. Current authored geometry remains the fixed 20×18 tactical board; actual distance-scaled larger map geometry belongs to the upcoming tactical-environment overhaul rather than fake empty padding. Rescue civilians are protected from infected targeting until first contact, then become vulnerable escorts. On extraction, a contacted living rescue may catch up to a player holding the exit instead of being abandoned solely because the player reached the exit one tactical step first.
 
-Tactical scene lighting uses the actual settlement clock at encounter creation with DAWN / DAY / DUSK / NIGHT phases plus independently powered/unpowered environments. Actual per-cell light shapes the player's vision cone geometry as well as visibility thresholds: darkness contracts and narrows sight, while bright cells and portable/fixed lighting extend and widen it. Portable Secondary lights can be switched on/off and persist in tactical runtime. Off-screen audible events continue to appear as fuzzy **yellow/gold sound callouts** at approximate locations and disappear when the true source becomes directly visible.
+Tactical scene lighting uses the actual settlement clock at encounter creation with DAWN / DAY / DUSK / NIGHT phases plus independently powered/unpowered environments. Actual per-cell light shapes the player's vision cone geometry as well as visibility thresholds: darkness contracts and narrows sight, while bright cells and portable/fixed lighting extend and widen it. The active off-hand slot has exactly three field-found tools: **Flashlight, Lock Pick, Firecracker**. Flashlight charge drains while lit and persists; Lock Pick has a random **3–5 successful unlock uses** before breaking; Firecracker is a **single-use** thrown noise lure. Tactical maps may roll locked doors and optional locked containers, with higher lock frequency farther from camp. Off-screen audible events continue to appear as fuzzy **yellow/gold sound callouts** at approximate locations and disappear when the true source becomes directly visible.
 
 ## Expedition logistics
 
@@ -152,7 +155,7 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 
 Settlement time has one direct authoritative clock with **no secondary speed multiplier**. `DAY_SECONDS := 300.0` means **12.5 real active seconds = 1 in-game hour** and **300 real active seconds / 5 minutes per in-game day**. Camp need decay, awake fatigue, sleep duration, fire decay, camp-condition decay, chatter/event cadence, and daily-life action durations are retuned so their per-in-game-hour behavior remains coherent at the longer day length. Standard expedition travel uses authored in-game hours directly: 3h = 37.5 settlement seconds, 5h = 62.5s, 8h = 100s, 12h = 150s, and 18h = 225s. Tactical turns are a separate frozen time scale. UI refresh and autosave remain real-time responsiveness concerns.
 
-New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder carries **exactly one starter loot/gear item: the Utility Knife**. The Workbench can craft the Crossbow without an Armory; Pistol, Shotgun, and Rifle are Armory-gated firearm crafts. Hatchet is deliberately expensive to craft and does not enter field loot until Commercial Fringe; Sledgehammer joins the same later melee tier. All current ranged weapons consume the existing generic Ammo resource in this pass rather than adding a second ammunition economy.
+New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder carries **exactly one starter loot/gear item: the Utility Knife**. The Workbench can craft the Crossbow, but **all firearms and all three active off-hand items are found-only**. Hatchet remains deliberately expensive and does not enter field loot until Commercial Fringe; Sledgehammer joins the same later melee tier. The former shared Ammo resource is retired; tactical reload/chamber state is the only ranged ammunition constraint.
 
 Fire Pit conversions:
 - **1 Raw Food → 2 Cooked Food**
