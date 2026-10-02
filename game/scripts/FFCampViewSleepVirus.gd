@@ -90,6 +90,18 @@ func _draw() -> void:
     var title_origin := Vector2(7.0, float(title_size) + 4.0) if menu_mode else origin + Vector2(7.0, float(title_size) + 4.0)
     draw_string(font, title_origin, "FIRST FIRE CAMP  •  DAY %d" % Game.day, HORIZONTAL_ALIGNMENT_LEFT, -1.0, title_size, Color(0.94, 0.94, 0.86, 0.95))
 
+func _draw_ground_layer(origin: Vector2, tile: float) -> void:
+    for y in range(GRID_H):
+        for x in range(GRID_W):
+            var cell := Vector2i(x, y)
+            var rect := _cell_rect(cell, origin, tile)
+            var near_fire := abs(cell.x - FIRE_CELL.x) <= 1 and abs(cell.y - FIRE_CELL.y) <= 1
+            Tiles.draw_ground(self, rect, "dirt" if near_fire else "grass")
+            if not near_fire and _cell_variation(cell, 2) > 0.58:
+                var tuft := rect.get_center() + Vector2((_cell_variation(cell, 4) - 0.5) * tile * 0.5, (_cell_variation(cell, 7) - 0.5) * tile * 0.5)
+                draw_line(tuft + Vector2(-tile * 0.05, tile * 0.08), tuft, Color(0.25, 0.43, 0.23, 0.66), maxf(1.0, tile * 0.025))
+                draw_line(tuft + Vector2(tile * 0.05, tile * 0.08), tuft, Color(0.33, 0.50, 0.28, 0.60), maxf(1.0, tile * 0.025))
+
 func _draw_wilderness(origin: Vector2, tile: float) -> void:
     # Starter camp is intentionally mostly wilderness. Future build locations
     # remain code/data only until a real construction interaction is authored.
@@ -145,9 +157,9 @@ func _draw_menu_affordances(origin: Vector2, tile: float) -> void:
             draw_circle(dirt_center, tile * 0.09, Color(0.33, 0.24, 0.14, 0.48))
             draw_circle(dirt_center + Vector2(tile * 0.12, tile * 0.05), tile * 0.05, Color(0.25, 0.19, 0.12, 0.42))
     if repair_needed:
-        var fence_rect := _cell_rect(Vector2i(16, 5), origin, tile).grow(-tile * 0.10)
-        draw_line(fence_rect.position + Vector2(0, fence_rect.size.y * 0.25), fence_rect.end - Vector2(0, fence_rect.size.y * 0.25), Color(0.92, 0.56, 0.34, 0.92), maxf(2.0, tile * 0.06))
-        draw_line(fence_rect.position + Vector2(fence_rect.size.x, fence_rect.size.y * 0.25), fence_rect.position + Vector2(0, fence_rect.size.y * 0.75), Color(0.92, 0.56, 0.34, 0.92), maxf(2.0, tile * 0.06))
+        var debris := _cell_center(Vector2i(12, 3), origin, tile)
+        draw_line(debris + Vector2(-tile * 0.28, -tile * 0.12), debris + Vector2(tile * 0.30, tile * 0.16), Color(0.60, 0.36, 0.20, 0.90), maxf(2.0, tile * 0.08))
+        draw_line(debris + Vector2(-tile * 0.24, tile * 0.18), debris + Vector2(tile * 0.24, -tile * 0.16), Color(0.50, 0.31, 0.19, 0.88), maxf(2.0, tile * 0.07))
 
 func _draw_interaction_ring(center: Vector2, radius: float) -> void:
     draw_arc(center, radius, 0.0, TAU, 22, Color(0.83, 0.73, 0.46, 0.42), maxf(1.0, radius * 0.05))
