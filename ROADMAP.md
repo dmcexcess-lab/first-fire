@@ -6,7 +6,7 @@ First Fire is now in **feature freeze** and shelved for Beta testing/release wor
 
 **Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare one survivor → expedition → tactical field situation → escape with resources/rescues → return to a visibly changing camp → repeat.**
 
-The living camp is the primary home/menu surface. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. On phones the camp is zoomed and pannable so structures and people remain readable instead of shrinking the full 18×11 settlement into one strip. Normal management starts by touching the camp itself: survivors open inspection, the communal stash opens inventory/resources, the First Fire provides default Day-1 crafting, built crafting stations expose their own recipes, empty plots expose their one construction project, built structures expose contextual information/interactions, the work board owns chores/pets, and the gate owns expedition dispatch. Contextual sheets may reuse mature underlying UI logic, but they are entered from physical camp objects and return to the camp.
+The living camp is the primary home/menu surface. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. On phones the camp is zoomed and pannable so structures and people remain readable instead of shrinking the full 18×11 settlement into one strip. Normal management starts by touching the camp itself: survivors open inspection and deliberate assignments, the communal stash opens inventory/resources, the First Fire and starter Workbench provide physical crafting, built structures expose contextual interactions, and the camp edge/gate owns expedition dispatch. The starter scene is mostly wilderness; future construction locations are not shown as empty placeholders. Contextual sheets may reuse mature underlying UI logic, but they are entered from physical camp objects and return to the camp.
 
 The game has **no scripted ending**. A settlement with every building completed and roughly **15–18 living survivors** is the mature/top-level state; play can continue indefinitely after that.
 
@@ -30,12 +30,12 @@ Removing these is intentional scope control, not deferred work.
 
 Finish tuning the systems that already exist:
 
-- make the living camp itself carry the normal management/navigation load: survivor taps open stats/inventory, the First Fire opens starter crafting, built stations open their own work surfaces, empty authored plots open that specific BUILD action, built structures expose contextual details, the communal stash opens inventory/resources, the work board opens duties/pet care, and the gate opens a send-out chooser;
+- make the living camp itself carry the normal management/navigation load: survivor taps open stats/inventory plus training/maintenance/treatment assignments, the First Fire and Workbench open their physical crafting surfaces, built structures expose contextual details, the communal stash opens inventory/resources, and the gate opens a send-out chooser;
 - keep the legacy four-tab navigation hidden in the active UI and continue removing assumptions that Craft/Build/Survivors are standalone destinations;
 - keep mood/need/virus state glanceable on the camp through compact floating indicators rather than forcing routine roster-panel inspection;
 - autonomous relationship/politics-based chatter in the living camp;
 - survivor moodlets driven by hunger, thirst, sleep, fun, safety, and hygiene; eating/drinking/sleep/fun remain autonomous idle behavior while productive labor is player-assigned;
-- an active camp work loop covering fire tending, cleaning, perimeter maintenance, building, crafting, gardening, pet care and expeditions; routine chores only surface after visible fire/maintenance problems create a reason to act, and short active WORK interactions remain available where appropriate;
+- an active camp work loop covering survivor training, fire tending, cleaning/maintenance, crafting, treatment, pet care and expeditions; routine chores only surface after visible fire/maintenance problems create a reason to act, and assignments play out as timed survivor behavior in the living camp;
 - rescued dogs/cats as persistent Tamagotchi-style camp pets whose affection is maintained through PLAY/LOVE assignments; pets consume no camp food/water, can leave if neglected, and each retained pet contributes exactly one random material or Raw Food per day;
 - relationship drift from meaningful positive/negative interactions;
 - shortages and repeated expedition duty feeding camp opinion;
@@ -88,7 +88,7 @@ The final build list is:
 14. Armory
 15. Dormitory
 
-Housing grows additively to the final 18-person ceiling. Utility buildings deepen existing food/water/recovery/security/social/crafting rules rather than creating new minigames. Empty authored plots are visible/tappable in the living camp and expose only their associated construction project; built structures remain tappable for contextual information and any active interaction such as tending the Garden Plot.
+Housing grows additively to the final 18-person ceiling. Utility buildings deepen existing food/water/recovery/security/social/crafting rules rather than creating new minigames. Future construction anchors remain data/code only for now; the wilderness camp does not show empty build placeholders. Built structures remain tappable for contextual information and active interactions.
 
 ### Mature settlement state
 
