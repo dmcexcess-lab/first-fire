@@ -100,9 +100,15 @@ static func moodlets(needs:Dictionary)->Array:
 
 static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,has_table:bool,hygiene_support:bool,rng:RandomNumberGenerator)->Dictionary:
     # Idle needs are autonomous. Productive camp labor is never auto-assigned.
+    # These small behaviors exist mainly to make an unassigned camp worth watching.
     var n:=normalize_needs(needs)
     if float(n["sleep"])<48.0: return {"kind":"rest","label":"Sleeping","remaining":7.0,"duration":7.0}
+    if float(n["hunger"])<48.0: return {"kind":"check_food","label":"Checking Rations","remaining":4.0,"duration":4.0}
+    if float(n["thirst"])<48.0: return {"kind":"check_water","label":"Checking Water","remaining":4.0,"duration":4.0}
+    if float(n["hygiene"])<44.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":5.0,"duration":5.0}
+    if float(n["safety"])<44.0: return {"kind":"keep_watch","label":"Watching the Treeline","remaining":6.0,"duration":6.0}
     if float(n["fun"])<58.0: return {"kind":"watch_fire","label":"Watching Fire","remaining":7.0,"duration":7.0}
+    if rng.randf()<0.18: return {"kind":"wander","label":"Walking Camp","remaining":5.0,"duration":5.0}
     return {}
 
 static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dictionary:
