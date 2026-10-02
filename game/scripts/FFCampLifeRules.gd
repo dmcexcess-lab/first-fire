@@ -314,9 +314,6 @@ static func unfinished_daily_chore_count(chores: Array) -> int:
         if chore_value is Dictionary and not bool(chore_value.get("complete", false)): count += 1
     return count
 
-static func apply_unfinished_chore_neglect(value: float, chores: Array) -> float:
-    return clampf(value - float(unfinished_daily_chore_count(chores)) * DAILY_CHORE_NEGLECT_LOSS, 0.0, 100.0)
-
 static func daily_chore_effect(kind: String) -> Dictionary:
     match kind:
         "poke_fire": return {"fire_gain":28.0}
