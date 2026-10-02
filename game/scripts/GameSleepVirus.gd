@@ -1,7 +1,7 @@
 extends "res://scripts/GameThreeStat.gd"
 
 const VirusRules = preload("res://scripts/FFVirusRules.gd")
-const SIM_TIME_SCALE := 1.0
+const SIM_TIME_SCALE := 0.5
 
 func new_game():
     super.new_game()
@@ -414,7 +414,7 @@ func _process_survivors(delta):
         var recovery := CampLifeRules.idle_recovery_rates(bool(buildings.get("Cabin", false)), caretaker, bool(buildings.get("Communal Table", false)))
 
         if status == "Available":
-            survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta))
+            survivor["fatigue"] = minf(100.0, float(survivor["fatigue"]) + CampLifeRules.AWAKE_FATIGUE_PER_SECOND * float(delta))
             survivor["stress"] = maxf(0.0, float(survivor["stress"]) - recovery.y * float(delta))
             survivor["needs"] = CampLifeRules.update_needs(survivor["needs"], float(survivor["fatigue"]), 0.0, safety, hygiene_support, false)
             _process_camp_activity(survivor, float(delta), pop, hygiene_support)
@@ -446,7 +446,19 @@ func _process_survivors(delta):
 func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygiene_support: bool) -> void:
     var activity: Dictionary = survivor.get("camp_activity", {})
     if activity.is_empty():
-        activity = CampLifeRules.choose_available_activity(survivor.get("needs", {}), fire_level, int(resources.get("Wood", 0)), pop, bool(buildings.get("Communal Table", false)), hygiene_support, rng)
+        activity = CampLifeRules.choose_available_activity(
+            survivor.get("needs", {}),
+            fire_level,
+            int(resources.get("Wood", 0)),
+            pop,
+            bool(buildings.get("Communal Table", false)),
+            hygiene_support,
+            rng,
+            CampLifeRules.settlement_hour(day_elapsed, DAY_SECONDS),
+            survivor.get("daily_activity", {}),
+            int(resources.get("Cooked Food", 0)),
+            int(resources.get("Clean Water", 0))
+        )
         if activity.is_empty():
             return
         if str(activity.get("kind", "")) == "rest":
@@ -465,11 +477,22 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
     if float(activity.get("remaining", 0.0)) > 0.0:
         return
     var kind := str(activity.get("kind", ""))
-    if kind == "maintain_fire":
-        if int(resources.get("Wood", 0)) > 0:
-            resources["Wood"] = int(resources.get("Wood", 0)) - 1
-            fire_level = clampf(fire_level + CampLifeRules.FIRE_MAINTAIN_GAIN, 0.0, 100.0)
-            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - 1.0)
+    if kind == "eat_meal":
+        survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
+        survivor["daily_activity"]["meal_attempted"] = true
+        if int(resources.get("Cooked Food", 0)) > 0:
+            resources["Cooked Food"] = int(resources.get("Cooked Food", 0)) - 1
+            var meal_result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), kind)
+            survivor["needs"] = meal_result.get("needs", survivor.get("needs", {}))
+            survivor["daily_activity"]["ate_normally"] = true
+    elif kind == "drink_water":
+        survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
+        survivor["daily_activity"]["water_attempted"] = true
+        if int(resources.get("Clean Water", 0)) > 0:
+            resources["Clean Water"] = int(resources.get("Clean Water", 0)) - 1
+            var drink_result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), kind)
+            survivor["needs"] = drink_result.get("needs", survivor.get("needs", {}))
+            survivor["daily_activity"]["drank_normally"] = true
     else:
         var result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), kind)
         survivor["needs"] = result.get("needs", survivor.get("needs", {}))
@@ -659,6 +682,31 @@ func resolve_combat(result):
                     toast_requested.emit("%s was exposed to the zombie virus. Early decontamination can stop it." % lead["name"])
     super.resolve_combat(result)
 
+func _resolve_daily_rations() -> void:
+    var food_missing := 0
+    var water_missing := 0
+    for survivor in survivors:
+        if survivor["condition"] == "Dead":
+            continue
+        var activity := CampLifeRules.finalize_daily_activity(survivor.get("daily_activity", {}), day)
+        var supply_food_missing := not bool(activity.get("ate_normally", false)) and not bool(activity.get("missed_meal", false))
+        var supply_water_missing := not bool(activity.get("drank_normally", false)) and not bool(activity.get("missed_water", false))
+        if supply_food_missing: food_missing += 1
+        if supply_water_missing: water_missing += 1
+        if supply_food_missing or supply_water_missing:
+            survivor["needs"] = CampLifeRules.apply_daily_shortage_consequences(survivor.get("needs", {}), supply_food_missing, supply_water_missing)
+
+    if food_missing > 0:
+        food_shortage_days += 1
+        _apply_shortage("food", food_shortage_days)
+    else:
+        food_shortage_days = 0
+    if water_missing > 0:
+        water_shortage_days += 1
+        _apply_shortage("water", water_shortage_days)
+    else:
+        water_shortage_days = 0
+
 func _daily_tick():
     _process_daily_virus()
     if game_over:
@@ -697,19 +745,22 @@ func _daily_tick():
             continue
         var summary: Dictionary = completed_activity.get(str(survivor["id"]), {})
         survivor["previous_daily_activity"] = summary.duplicate(true)
+        var missed_water := bool(summary.get("missed_water", false))
         var missed_meal := bool(summary.get("missed_meal", false))
         var missed_sleep := bool(summary.get("missed_sleep", false))
-        if missed_meal or missed_sleep:
+        if missed_water or missed_meal or missed_sleep:
             var consequence := CampLifeRules.apply_missed_schedule_consequences(
                 survivor.get("needs", {}),
                 float(survivor.get("fatigue", 0.0)),
                 missed_meal,
-                missed_sleep
+                missed_sleep,
+                missed_water
             )
             survivor["needs"] = consequence.get("needs", survivor.get("needs", {}))
             survivor["fatigue"] = float(consequence.get("fatigue", survivor.get("fatigue", 0.0)))
             survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + (4.0 if missed_meal else 0.0) + (6.0 if missed_sleep else 0.0))
             var misses: Array = []
+            if missed_water: misses.append("water break")
             if missed_meal: misses.append("meal")
             if missed_sleep: misses.append("sleep")
             survivor["history"].append("Day %d — Assigned work crowded out normal %s time." % [day - 1, " and ".join(misses)])

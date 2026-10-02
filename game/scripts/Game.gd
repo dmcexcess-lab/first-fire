@@ -1552,7 +1552,7 @@ func zone_loot_state(zone):
     if p >= 30: return "Good"
     return "Rich"
 
-func _daily_tick():
+func _resolve_daily_rations() -> void:
     var pop = population()
     var food_have = int(resources.get("Cooked Food", 0))
     var water_have = int(resources.get("Clean Water", 0))
@@ -1576,6 +1576,9 @@ func _daily_tick():
     var everyone_watered: bool = int(water_missing) == 0
     for s in survivors:
         if s["condition"]!="Dead": s["needs"]=CampLifeRules.apply_daily_rations(s.get("needs",{}),everyone_fed,everyone_watered)
+
+func _daily_tick():
+    _resolve_daily_rations()
 
     if buildings.get("Rain Catcher", false):
         resources["Dirty Water"] = int(resources.get("Dirty Water", 0)) + CampLifeRules.rain_catcher_yield(bool(buildings.get("Water Tank", false)))

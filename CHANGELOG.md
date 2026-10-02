@@ -1,3 +1,13 @@
+## Beta Candidate — Camp Time & Autonomous Needs Rebalance — 2026-10-01
+
+- Slowed settlement simulation back to **0.5×**, restoring **10 real active seconds per in-game hour** and roughly **4 real active minutes per in-game day** while keeping existing authored simulation-second task durations coherent.
+- Fixed the root sleep bug: Available survivors no longer passively erase Fatigue every tick. Awake time now builds normal sleep pressure, and overnight sleep is a real ~7-hour authoritative Sleeping task that substantially restores Fatigue.
+- Replaced invisible end-of-day food/water fulfillment in the active runtime with visible autonomous need actions: survivors seek a midday water break and an evening meal, consume 1 Clean Water / 1 Cooked Food when available, and immediately restore Thirst/Hunger.
+- Daily activity now records actual eating, drinking, and meaningful sleep rather than inferring them merely from being free during a window.
+- Added a midday water-opportunity window alongside existing meal/sleep pressure. Player-assigned work can now make a survivor miss a water break, meal, or sleep, with those consequences kept separate from true resource shortages.
+- Kept schema 7. New daily-activity fields normalize additively for current saves.
+- Expanded deterministic smoke coverage for real autonomous water/meal selection, meaningful sleep recovery, shortage penalties, and the slower settlement clock.
+
 ## Beta Candidate — Daily Camp Chores & Minigames — 2026-10-01
 
 - Replaced threshold-based active maintenance buttons with a persisted daily work-board loop that rolls exactly **1–2 required chores** from **Poke Fire, Chop Wood, Clear Area, Stack Supplies**.

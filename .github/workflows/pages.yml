@@ -147,7 +147,7 @@ jobs:
           grep -q 'TacticalTiles.draw_ground' game/scripts/FFCombat.gd
           grep -Fq 'Game="*res://scripts/GameSleepVirus.gd"' game/project.godot
           grep -Fq 'res://scripts/MainSleepVirus.gd' game/main.tscn
-          grep -Fq 'const SIM_TIME_SCALE := 1.0' game/scripts/GameSleepVirus.gd
+          grep -Fq 'const SIM_TIME_SCALE := 0.5' game/scripts/GameSleepVirus.gd
           grep -q 'func survivor_can_assign' game/scripts/GameSleepVirus.gd
           grep -q 'func start_virus_treatment' game/scripts/GameSleepVirus.gd
           grep -q 'func quarantine_survivor' game/scripts/GameSleepVirus.gd

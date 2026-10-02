@@ -103,7 +103,7 @@ Persistent survivor appearances, infected visual families, rescued-pet rendering
 Pure single-survivor expedition/logistics rules: travel duration, recruit protection, tactical-event share, zone haul caps, and haul-count distributions. Agility is the active survivor stat passed into travel timing.
 
 ### `FFCampLifeRules.gd`
-Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, pet affection/retention/daily reward, authoritative camp-condition degradation/recovery/bands, daily activity and meal/sleep-window accounting, recovery/treatment modifiers, defense-building effects, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
+Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, scheduled midday drinking/evening eating/overnight sleep, awake fatigue and sleep recovery, pet affection/retention/daily reward, authoritative camp-condition degradation/recovery/bands, daily water/meal/sleep-window accounting, recovery/treatment modifiers, defense-building effects, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
 
 ### `FFCampChoreMinigame.gd`
 Shared touch-first presentation/controller for the four daily chore interactions. It renders one reusable six-target interaction surface with chore-specific instructions and labels, emits action intents only, and never awards resources or mutates camp state. `MainSleepVirus.gd` pauses/restores settlement simulation around the overlay and forwards intents to authoritative `GameSleepVirus.gd` chore APIs.
@@ -123,7 +123,7 @@ Temporary remaining outside-world text-event catalog. Outside-world content shou
 Persistence transport only: JSON/file read-write, compatibility check, invalidation. Current save schema remains 7. The three-stat layer adds the stat-model compatibility marker; virus state is additive and normalized by the active runtime.
 
 ### `scripts/ci/FFArchitectureSmoke.gd`
-Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts are compiled by import/startup gates in their real project context; smoke asserts the active wrapper chain plus durable rules such as sleep selection, the five-seconds-per-hour clock, survivor training, sparse camp interaction, infected-contact tracking, and virus treatment requirements.
+Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts are compiled by import/startup gates in their real project context; smoke asserts the active wrapper chain plus durable rules such as scheduled eating/drinking/sleep, the ten-real-seconds-per-hour clock, survivor training, sparse camp interaction, infected-contact tracking, and virus treatment requirements.
 
 ## Camp interaction boundary
 
