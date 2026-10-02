@@ -83,6 +83,34 @@ func _render_survivor() -> void:
         send.disabled = status != "Available"; send.pressed.connect(_handoff_send); actions.add_child(send)
         body.add_child(actions)
 
+        body.add_child(_separator())
+        body.add_child(_heading("CAMP LIFE", 18))
+        body.add_child(_make_label("Assign deliberate work here. Eating, drinking, sleep, fun and social downtime remain autonomous.", 11))
+        var train_row := HBoxContainer.new()
+        for stat_name in ["Combat", "Agility", "Leadership"]:
+            var train := Button.new()
+            train.text = "TRAIN " + stat_name.substr(0, 3).to_upper()
+            train.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+            train.custom_minimum_size = Vector2(0, 44)
+            train.disabled = status != "Available"
+            train.pressed.connect(_start_training.bind(stat_name))
+            train_row.add_child(train)
+        body.add_child(train_row)
+
+        var work_buttons: Array = []
+        if Game.camp_chore_needed("stoke_fire"): work_buttons.append(["STOKE FIRE", "stoke_fire"])
+        if Game.camp_chore_needed("clean_camp"): work_buttons.append(["CLEAN CAMP", "clean_camp"])
+        if Game.camp_chore_needed("repair_perimeter"): work_buttons.append(["MAINTAIN CAMP", "repair_perimeter"])
+        if not work_buttons.is_empty():
+            body.add_child(_make_label("Camp needs attention:", 12))
+            for work in work_buttons:
+                var duty := Button.new()
+                duty.text = str(work[0])
+                duty.custom_minimum_size = Vector2(0, 44)
+                duty.disabled = status != "Available"
+                duty.pressed.connect(_start_camp_work.bind(str(work[1])))
+                body.add_child(duty)
+
     body.add_child(_separator())
     body.add_child(_heading("RELATIONSHIPS", 18))
     var any_relationship := false
@@ -128,3 +156,11 @@ func _render_item() -> void:
         if data.has("light"): body.add_child(_make_label("Light reach: %.0f tiles" % float(data.get("light_range", 0.0)), 13))
         if data.has("weight"): body.add_child(_make_label("Carried weight: %.1f" % float(data.get("weight", 0.0)), 13))
         body.add_child(_make_label("Inventory size: %d" % int(data.get("size", 0)), 13))
+
+func _start_training(stat_name: String) -> void:
+    if Game.start_training(current_survivor_id, stat_name):
+        _render_survivor()
+
+func _start_camp_work(chore: String) -> void:
+    if Game.start_camp_chore(current_survivor_id, chore):
+        _render_survivor()
