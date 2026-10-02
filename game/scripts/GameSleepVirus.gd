@@ -84,7 +84,73 @@ func start_camp_chore(sid: int, chore: String) -> bool:
     if not camp_chore_needed(chore):
         toast_requested.emit("That part of camp does not need attention yet.")
         return false
-    return super.start_camp_chore(sid, chore)
+    var survivor: Variant = get_survivor(sid)
+    if not survivor_can_assign(survivor):
+        return false
+    var label := ""
+    var duration := 8.0
+    match chore:
+        "stoke_fire":
+            if int(resources.get("Wood", 0)) <= 0:
+                toast_requested.emit("Stoking the fire needs 1 Wood.")
+                return false
+            resources["Wood"] = int(resources.get("Wood", 0)) - 1
+            label = "Stoking First Fire"
+            duration = 6.0
+        "clean_camp":
+            label = "Cleaning Camp"
+            duration = 8.0
+        "repair_perimeter":
+            if int(resources.get("Scrap Metal", 0)) > 0:
+                resources["Scrap Metal"] = int(resources.get("Scrap Metal", 0)) - 1
+            elif int(resources.get("Wood", 0)) > 0:
+                resources["Wood"] = int(resources.get("Wood", 0)) - 1
+            else:
+                toast_requested.emit("Camp repairs need 1 Scrap Metal or Wood.")
+                return false
+            label = "Maintaining Camp"
+            duration = 10.0
+        _:
+            return false
+    _clear_camp_activity(survivor)
+    survivor["status"] = "Chore"
+    survivor["task"] = {"kind":"chore","chore":chore,"label":label,"remaining":duration,"duration":duration}
+    survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue",0.0)) + CampLifeRules.fatigue_gain(duration / 4.0))
+    save_game()
+    state_changed.emit()
+    return true
+
+func start_training(sid: int, stat: String) -> bool:
+    if stat not in ["Combat", "Agility", "Leadership"]:
+        return false
+    var survivor: Variant = get_survivor(sid)
+    if not survivor_can_assign(survivor):
+        return false
+    var sessions := int(survivor.get("training_sessions_today", 0)) if int(survivor.get("training_day", -1)) == day else 0
+    if sessions >= 2:
+        toast_requested.emit("%s has already trained twice today." % survivor["name"])
+        return false
+    _clear_camp_activity(survivor)
+    survivor["training_day"] = day
+    survivor["training_sessions_today"] = sessions + 1
+    survivor["status"] = "Training"
+    survivor["task"] = {"kind":"training","stat":stat,"label":"Training %s" % stat,"remaining":10.0,"duration":10.0}
+    survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue",0.0)) + CampLifeRules.fatigue_gain(3.0))
+    save_game()
+    state_changed.emit()
+    return true
+
+func start_pet_care(sid: int, pet_id: int, action: String) -> bool:
+    var survivor: Variant = get_survivor(sid)
+    var pet: Variant = get_pet(pet_id)
+    if not survivor_can_assign(survivor) or pet == null or action not in ["play","love"]:
+        return false
+    _clear_camp_activity(survivor)
+    survivor["status"] = "Pet Care"
+    survivor["task"] = {"kind":"pet_care","pet_id":pet_id,"action":action,"label":"%s %s" % [action.capitalize(),pet["name"]],"remaining":5.0,"duration":5.0}
+    save_game()
+    state_changed.emit()
+    return true
 
 func survivor_can_assign(survivor) -> bool:
     if survivor == null or str(survivor.get("condition", "Dead")) == "Dead":
@@ -175,11 +241,7 @@ func _process_survivors(delta):
             survivor["camp_activity"] = {}
             survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta) * 0.6)
             survivor["stress"] = maxf(0.0, float(survivor["stress"]) - recovery.y * float(delta) * 0.6)
-        elif status in ["Chore", "Pet Care"]:
-            survivor["camp_activity"] = {}
-            if survivor["task"].is_empty():
-                survivor["status"] = _home_idle_status(survivor)
-        elif status in ["Crafting", "Building", "Recovering", "Tending", "Sleeping"]:
+        elif status in ["Crafting", "Building", "Recovering", "Tending", "Sleeping", "Chore", "Pet Care", "Training"]:
             survivor["camp_activity"] = {}
             if survivor["task"].is_empty():
                 survivor["status"] = _home_idle_status(survivor)
@@ -246,6 +308,16 @@ func _complete_task(survivor):
         survivor["needs"] = result.get("needs", survivor.get("needs", {}))
         survivor["fatigue"] = float(result.get("fatigue", survivor.get("fatigue", 0.0)))
         survivor["status"] = _home_idle_status(survivor)
+        save_game()
+        state_changed.emit()
+        return
+    if kind == "training":
+        survivor["task"] = {}
+        var stat := str(task.get("stat", "Combat"))
+        add_skill_xp(survivor, stat, 5)
+        survivor["status"] = _home_idle_status(survivor)
+        survivor["history"].append("Day %d — Spent two camp hours training %s." % [day, stat])
+        toast_requested.emit("%s finished %s training." % [survivor["name"], stat])
         save_game()
         state_changed.emit()
         return
