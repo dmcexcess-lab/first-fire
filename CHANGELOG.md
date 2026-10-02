@@ -1,3 +1,12 @@
+## Beta Candidate — Lean Start & Instant Tactical Travel — 2026-10-01
+
+- Reduced founder starting carried loot to **one item total: Utility Knife**. The starter Flashlight and Worn Backpack are no longer granted; the communal starting food/water runway is unchanged.
+- Standard expeditions and special-site outings now open the tactical map **immediately** without advancing settlement time first.
+- Tactical play still hard-pauses the settlement clock. When the tactical encounter resolves, the expedition's full authored route duration advances the camp in one synchronous jump before the party is returned.
+- Reused the persisted `time_cost_paid` flag as the once-only guard, so reloads cannot double-charge route time and older expeditions that already paid travel time remain safe.
+- Provisioned Medium/Far/Very Far parties still receive their paid food/water coverage during the return-time jump; travel supplies remain charged at launch.
+- Updated gate copy, deterministic architecture smoke, and CI source contracts to enforce immediate tactical launch plus return-time settlement advancement.
+
 ## Beta Candidate — Five-Minute Days & Proper Expeditions — 2026-10-01
 
 - Extended the single authoritative camp day from **120 real active seconds to 300 seconds / 5 minutes** with no hidden simulation-speed multiplier. One in-game hour is now **12.5 real active seconds**.

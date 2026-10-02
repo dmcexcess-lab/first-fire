@@ -375,7 +375,7 @@ func _prepare_gate_context(preferred_id: int = -1) -> void:
     gate_zone_index = 0
 
 func _draw_gate_context() -> void:
-    _draw_context_header("CAMP GATE", "Build a 1–2 survivor expedition. Travel time and supplies are paid before departure; camp time freezes completely on the tactical map.")
+    _draw_context_header("CAMP GATE", "Build a 1–2 survivor expedition. Supplies are committed when you leave, tactical starts immediately, and the route hours pass instantly when you return.")
     if gate_survivor_ids.is_empty():
         content_box.add_child(_make_label("No survivor is currently free to leave camp.", 13))
         return

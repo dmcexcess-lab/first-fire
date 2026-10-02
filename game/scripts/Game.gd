@@ -144,7 +144,7 @@ func new_game():
     next_camp_chatter_at = rng.randf_range(CampLifeRules.CAMP_CHATTER_MIN_SECONDS, CampLifeRules.CAMP_CHATTER_MAX_SECONDS)
     sim_paused = false
     var founder = _generate_survivor(true)
-    founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight", "Clothing": "", "Pack": "Worn Backpack", "Tool": ""}
+    founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "", "Clothing": "", "Pack": "", "Tool": ""}
     founder["history"].append("Day 1 — Established First Fire.")
     survivors.append(founder)
     _add_history("Day 1 — %s established First Fire." % founder["name"])
@@ -976,7 +976,6 @@ func start_expedition(primary_id, zone, companion_id = -1):
     next_expedition_id += 1
     expeditions.append(exp)
     _pay_expedition_cost(zone, party_ids.size())
-    _credit_expedition_provisions(party_ids, zone)
     for sid_value in party_ids:
         var member: Variant = get_survivor(int(sid_value))
         if member != null:
@@ -987,31 +986,30 @@ func start_expedition(primary_id, zone, companion_id = -1):
     while recent_expedition_ids.size() > 4:
         recent_expedition_ids.pop_front()
 
-    _advance_settlement_time_for_departure(duration)
-    exp["time_cost_paid"] = true
-    _credit_expedition_provisions(party_ids, zone)
-    var living_ids: Array = []
-    for sid_value in party_ids:
-        var member: Variant = get_survivor(int(sid_value))
-        if member != null and member["condition"] != "Dead":
-            living_ids.append(int(sid_value))
-    if living_ids.is_empty():
-        _abort_expedition(int(exp["id"]), false)
-        _check_game_over()
-        return false
-    exp["survivor_ids"] = living_ids
     _begin_tactical_encounter(exp)
     save_game()
     state_changed.emit()
     return not current_combat.is_empty()
 
-func _advance_settlement_time_for_departure(seconds: float) -> void:
+func _advance_settlement_time_for_expedition_return(seconds: float) -> void:
     # Compatibility fallback for base-only callers. The active GameSleepVirus
-    # override advances the full settlement simulation during departure.
+    # override advances the full settlement simulation in one return-time jump.
     day_elapsed += maxf(0.0, seconds)
     while day_elapsed >= DAY_SECONDS and not game_over:
         day_elapsed -= DAY_SECONDS
         _daily_tick()
+
+func _settle_expedition_time_cost(exp) -> void:
+    if exp == null or bool(exp.get("time_cost_paid", false)):
+        return
+    var duration := maxf(0.0, float(exp.get("duration", 0.0)))
+    var party_ids: Array = exp.get("survivor_ids", [])
+    var zone := str(exp.get("zone", ""))
+    _credit_expedition_provisions(party_ids, zone)
+    if duration > 0.0:
+        _advance_settlement_time_for_expedition_return(duration)
+    _credit_expedition_provisions(party_ids, zone)
+    exp["time_cost_paid"] = true
 
 func start_special_site(primary_id, site, companion_id = -1):
     if not special_sites.has(site) or not bool(special_sites[site].get("discovered", false)) or bool(special_sites[site].get("cleared", false)):
@@ -1053,26 +1051,12 @@ func start_special_site(primary_id, site, companion_id = -1):
     next_expedition_id += 1
     expeditions.append(exp)
     _pay_expedition_cost(zone, party_ids.size())
-    _credit_expedition_provisions(party_ids, zone)
     for sid_value in party_ids:
         var member: Variant = get_survivor(int(sid_value))
         if member != null:
             _clear_camp_activity(member)
             member["status"] = "Expedition"
             member["task"] = {"expedition_id": exp["id"]}
-    _advance_settlement_time_for_departure(duration)
-    exp["time_cost_paid"] = true
-    _credit_expedition_provisions(party_ids, zone)
-    var living_ids: Array = []
-    for sid_value in party_ids:
-        var member: Variant = get_survivor(int(sid_value))
-        if member != null and member["condition"] != "Dead":
-            living_ids.append(int(sid_value))
-    if living_ids.is_empty():
-        _abort_expedition(int(exp["id"]), false)
-        _check_game_over()
-        return false
-    exp["survivor_ids"] = living_ids
     _begin_tactical_encounter(exp)
     save_game()
     state_changed.emit()
@@ -1289,6 +1273,7 @@ func resolve_combat(result):
     if exp == null:
         save_game(); state_changed.emit(); return
     exp["tactical_resolved"] = true
+    _settle_expedition_time_cost(exp)
     var living = []
     for sid in exp["survivor_ids"]:
         var s: Variant = get_survivor(sid)
@@ -1366,6 +1351,7 @@ func _resume_expedition(eid):
     if exp == null:
         return
     if bool(exp.get("tactical_resolved", false)) and float(exp.get("remaining", 0.0)) <= 0.0:
+        _settle_expedition_time_cost(exp)
         _finish_expedition(eid)
         return
     exp["state"] = "traveling"
@@ -1378,6 +1364,8 @@ func _abort_expedition(eid, return_loot = false):
     var exp: Variant = _find_expedition(eid)
     if exp == null:
         return
+    if bool(exp.get("tactical_resolved", false)):
+        _settle_expedition_time_cost(exp)
     if return_loot:
         _finish_expedition(eid)
         return
@@ -1394,6 +1382,8 @@ func _finish_expedition(eid):
     var exp: Variant = _find_expedition(eid)
     if exp == null:
         return
+    if bool(exp.get("tactical_resolved", false)):
+        _settle_expedition_time_cost(exp)
     if exp.get("special_site", "") != "":
         exp["state"] = "pending"
         for sid in exp["survivor_ids"]:

@@ -24,7 +24,7 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 
 `GameThreeStat.gd` remains the three-stat compatibility/specialization layer over `Game.gd`. It owns survivor generation, progression, three-stat expedition checks, treatment specialization, abstract danger, loot hooks, politics specialization, and the `combat-agility-leadership-v1` compatibility marker.
 
-`GameSleepVirus.gd` is the **active Game autoload**. It extends `GameThreeStat.gd` with the direct five-minute settlement day, fixed expedition departure-time advancement, authoritative sleep/work availability, timed survivor training/chores, a separate zombie-virus survivor axis, quarantine/treatment, camp spread, and tactical infected-contact integration. Save schema remains 7.
+`GameSleepVirus.gd` is the **active Game autoload**. It extends `GameThreeStat.gd` with the direct five-minute settlement day, one-shot expedition return-time advancement, authoritative sleep/work availability, timed survivor training/chores, a separate zombie-virus survivor axis, quarantine/treatment, camp spread, and tactical infected-contact integration. Save schema remains 7.
 
 `MainThreeStat.gd` remains the three-stat UI specialization over `Main.gd`. `MainSleepVirus.gd` is the **active main-scene script** and routes the living camp, inspector, and tactical runtime to their sleep/virus-aware wrappers.
 
@@ -46,7 +46,7 @@ Persistent state/orchestration foundation: camp ticks, survivor work assignment,
 Three-stat specialization and compatibility boundary. It keeps the base orchestration usable while ensuring the live survivor model contains only Combat, Agility, and Leadership.
 
 ### `GameSleepVirus.gd`
-Active settlement orchestration layer. Owns the single direct settlement clock, fixed expedition departure-time advancement through the same camp simulation, authoritative Sleeping status/tasks, centralized assignment availability, zombie-virus state progression, quarantine, timed virus treatment, camp spread, and handoff of tactical infected-contact results into persistent survivor state.
+Active settlement orchestration layer. Owns the single direct settlement clock, one-shot expedition return-time advancement through the same camp simulation, authoritative Sleeping status/tasks, centralized assignment availability, zombie-virus state progression, quarantine, timed virus treatment, camp spread, and handoff of tactical infected-contact results into persistent survivor state.
 
 ### `Main.gd`
 Top-level UI/input foundation: legacy navigation shells, overlays, work board primitives, expedition modal, and shared interaction flow. The active runtime may reuse these mature UI functions without exposing their old standalone tab navigation.
@@ -147,7 +147,7 @@ Detailed survivor/item inspection also pauses settlement simulation while open a
 
 ## Settlement time scale
 
-`Game.gd` retains the single direct clock but now uses `DAY_SECONDS := 300.0`: real active delta is settlement delta, giving **12.5 real active seconds = 1 in-game hour** and 300 real active seconds / five minutes per full in-game day. Camp-life rates and autonomous-life durations are retuned to preserve their previous per-in-game-hour behavior at the longer day. Expedition route time is calculated directly from authored hours against the 300-second day. Tactical action ticks remain separate and freeze settlement simulation completely. UI refresh/autosave remain real-time concerns.
+`Game.gd` retains the single direct clock and uses `DAY_SECONDS := 300.0`: real active delta is settlement delta, giving **12.5 real active seconds = 1 in-game hour** and 300 real active seconds / five minutes per full in-game day. Camp-life rates and autonomous-life durations preserve their per-in-game-hour behavior at the longer day. Expedition tactical maps launch immediately without advancing this clock; once tactical resolution is final, the route's authored duration is applied once through the same settlement simulation before the party returns. Tactical action ticks remain separate and freeze settlement simulation completely. UI refresh/autosave remain real-time concerns.
 
 ## Frozen scope
 

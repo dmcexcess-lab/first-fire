@@ -83,7 +83,7 @@ The five route bands map onto the existing zones: **Camp Perimeter = Very Short 
 
 Expedition parties may contain **one lead plus one companion**. The second survivor is a real tactical actor using the existing companion AI: they follow, fight, can be targeted/injured/killed, persist through tactical reload state, and must reach the extraction area with the lead. The gate exposes lead, optional companion, route, total supply cost, and launch in one phone-safe surface.
 
-Route time and travel supplies are paid once before the tactical board opens. The tactical board then hard-pauses settlement simulation, so tactical thinking/combat consumes no additional camp time. Previously discovered special sites use the same party/cost/vehicle rules and also launch tactical maps rather than passive travel-only branches.
+Travel supplies are committed at launch, but **route time is not advanced before tactical play**. The tactical map opens immediately at the current camp clock, settlement remains hard-paused while the player is in tactical, and when the encounter resolves the full authored route duration advances the camp in one synchronous jump before the expedition is returned. The persisted `time_cost_paid` flag prevents double-charging across reloads and preserves compatibility with older expeditions that already paid their travel time. Previously discovered special sites use the same instant-tactical / return-time-jump rule.
 
 ## Living camp and camp life
 
@@ -148,7 +148,7 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 
 Settlement time has one direct authoritative clock with **no secondary speed multiplier**. `DAY_SECONDS := 300.0` means **12.5 real active seconds = 1 in-game hour** and **300 real active seconds / 5 minutes per in-game day**. Camp need decay, awake fatigue, sleep duration, fire decay, camp-condition decay, chatter/event cadence, and daily-life action durations are retuned so their per-in-game-hour behavior remains coherent at the longer day length. Standard expedition travel uses authored in-game hours directly: 3h = 37.5 settlement seconds, 5h = 62.5s, 8h = 100s, 12h = 150s, and 18h = 225s. Tactical turns are a separate frozen time scale. UI refresh and autosave remain real-time responsiveness concerns.
 
-New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages; scavenging still has to sustain the camp after that.
+New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder now carries **exactly one starter loot/gear item: the Utility Knife**; the previous starter Flashlight and Worn Backpack are no longer granted. Scavenging must supply all additional carried gear.
 
 Fire Pit conversions:
 - **1 Raw Food → 2 Cooked Food**
@@ -164,7 +164,7 @@ Current survivor-model marker is **`combat-agility-leadership-v1`**. The zombie-
 
 The filename remains `user://first_fire_alpha01.json` intentionally.
 
-`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with the direct five-minute camp day, fixed expedition departure-time advancement, authoritative sleep/work availability, survivor training, zombie-virus state/treatment/quarantine, and tactical exposure integration.
+`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with the direct five-minute camp day, one-shot expedition return-time advancement, authoritative sleep/work availability, survivor training, zombie-virus state/treatment/quarantine, and tactical exposure integration.
 
 ## Canonical technical reality
 

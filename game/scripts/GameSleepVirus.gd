@@ -84,10 +84,10 @@ func _advance_settlement_simulation(amount: float, include_expeditions: bool = t
         _check_settlement_mature()
         remaining -= step
 
-func _advance_settlement_time_for_departure(seconds: float) -> void:
-    # Travel consumes ordinary camp time before the tactical map opens. The
-    # departing survivor is already marked away; the new expedition itself is
-    # excluded from countdown processing so this charge can happen only once.
+func _advance_settlement_time_for_expedition_return(seconds: float) -> void:
+    # Expeditions open the tactical board immediately. When tactical play ends,
+    # apply the authored route duration in one settlement jump while the party
+    # is still marked away, then return them to camp.
     _advance_settlement_simulation(maxf(0.0, seconds), false, false)
 
 func _process(delta):
