@@ -139,47 +139,6 @@ func _work_duration(s, base):
     if leader != null and leader["leader_ability"] == "Organizer": reduction += 0.10
     return maxf(float(base) * 0.55, float(base) * (1.0 - reduction))
 
-func start_expedition(primary_id: int, zone: String) -> bool:
-    if not unlocked_zones.has(zone) or not D.ZONES.has(zone): return false
-    var s: Variant = get_survivor(primary_id)
-    if s == null or s["status"] != "Available" or s["condition"] == "Dead": return false
-    _clear_camp_activity(s)
-    if zone in ["Commercial Fringe", "Industrial Edge"] and float(s["fatigue"]) >= 95.0:
-        toast_requested.emit("%s is too exhausted for that trip." % s["name"]); return false
-    if zone in ["Commercial Fringe", "Industrial Edge"] and s["condition"] == "Wounded":
-        toast_requested.emit("%s is too badly wounded for that trip." % s["name"]); return false
-    var party_ids: Array = [primary_id]
-    var recruit_eligible: bool = zone != "Camp Perimeter"
-    if recruit_eligible: eligible_expeditions_since_recruit += 1
-    var agility := int(s.get("skills", {}).get("Agility", 0))
-    var duration: float = ExpeditionRules.travel_duration(float(D.ZONES[zone]["duration"]), agility)
-    var force_recruit: bool = ExpeditionRules.should_force_recruit(population(), shelter_capacity(), MAX_POPULATION, eligible_expeditions_since_recruit, recruit_eligible)
-    var event_key := ""
-    var combat_kind := ""
-    var tactical_drought := int(flags.get("tactical_drought", 0))
-    if recruit_eligible and flags.has("injured_stranger_return_after"):
-        flags["injured_stranger_return_after"] = int(flags["injured_stranger_return_after"]) - 1
-        if int(flags["injured_stranger_return_after"]) <= 0:
-            flags.erase("injured_stranger_return_after"); event_key = "injured_stranger_return"; eligible_expeditions_since_recruit = 0
-    if event_key == "" and recruit_eligible and flags.has("dog_return_after"):
-        flags["dog_return_after"] = int(flags["dog_return_after"]) - 1
-        if int(flags["dog_return_after"]) <= 0:
-            flags.erase("dog_return_after"); event_key = "dog_return"
-    if event_key == "" and force_recruit:
-        eligible_expeditions_since_recruit = 0; combat_kind = "rescue"; flags["tactical_drought"] = 0
-    elif event_key == "" and ExpeditionRules.should_force_tactical(tactical_drought):
-        combat_kind = _pick_tactical_kind(zone); flags["tactical_drought"] = 0
-    elif event_key == "" and ExpeditionRules.should_trigger_tactical_event(zone, rng):
-        combat_kind = _pick_tactical_kind(zone); flags["tactical_drought"] = 0
-    elif event_key == "" and rng.randf() < float(D.ZONES[zone]["event_chance"]):
-        event_key = _select_field_event(zone); flags["tactical_drought"] = tactical_drought + 1
-    elif event_key == "": flags["tactical_drought"] = tactical_drought + 1
-    var exp := {"id": next_expedition_id, "survivor_ids": party_ids, "zone": zone, "duration": duration, "remaining": duration, "state": "traveling", "event_key": event_key, "event_triggered": false, "event_trigger_remaining": duration * rng.randf_range(0.25, 0.65), "combat_kind": combat_kind, "combat_triggered": false, "combat_trigger_remaining": duration * rng.randf_range(0.25, 0.65), "tactical_resolved": false, "force_recruit": force_recruit, "special_site": ""}
-    next_expedition_id += 1; expeditions.append(exp)
-    s["status"] = "Expedition"; s["task"] = {"expedition_id": exp["id"]}
-    recent_expedition_ids.append(primary_id)
-    if recent_expedition_ids.size() > 4: recent_expedition_ids.pop_front()
-    save_game(); state_changed.emit(); return true
 
 func _grant_tactical_explore_reward(exp, lead, searches_completed: int):
     var count := TacticalBalance.explore_reward_rolls(searches_completed, 0)

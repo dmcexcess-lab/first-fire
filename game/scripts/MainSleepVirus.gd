@@ -369,13 +369,11 @@ func _prepare_gate_context(preferred_id: int = -1) -> void:
         gate_survivor_index = gate_survivor_ids.find(preferred_id)
     gate_zone_names.clear()
     for zone_value in CampData.ZONE_ORDER:
-        var zone := str(zone_value)
-        if Game.unlocked_zones.has(zone):
-            gate_zone_names.append(zone)
+        gate_zone_names.append(str(zone_value))
     gate_zone_index = 0
 
 func _draw_gate_context() -> void:
-    _draw_context_header("CAMP GATE", "Choose who goes and where. This is the whole send-out flow.")
+    _draw_context_header("CAMP GATE", "Every Send Out is a playable tactical outing. Route time passes before departure; camp time freezes completely on the tactical map.")
     if gate_survivor_ids.is_empty():
         content_box.add_child(_make_label("No survivor is currently free to leave camp.", 13))
         return
@@ -438,11 +436,21 @@ func _draw_gate_context() -> void:
         zone_next.pressed.connect(_cycle_gate_zone.bind(1))
         zone_row.add_child(zone_next)
     content_box.add_child(zone_row)
-    content_box.add_child(_make_label("%.0fs • %s • %s" % [float(zone_data.get("duration", 0.0)), str(zone_data.get("danger", "?")), Game.zone_loot_state(zone)], 12))
+    var unlocked := Game.expedition_route_unlocked(zone)
+    var hours := Game.expedition_route_hours(zone)
+    var route_line := "%.0fh • %s • %s" % [hours, str(zone_data.get("danger", "?")), Game.zone_loot_state(zone)]
+    if not unlocked:
+        route_line += " • LOCKED"
+    content_box.add_child(_make_label(route_line, 12))
     content_box.add_child(_make_label("Likely finds: %s" % _zone_focus_text(zone), 12))
+    if not unlocked:
+        content_box.add_child(_make_label(Game.expedition_route_lock_text(zone), 12))
+    else:
+        content_box.add_child(_make_label("Launches directly into an Explore, Ambush, or rare Rescue tactical map.", 11))
     var leave := Button.new()
-    leave.text = "LEAVE CAMP"
+    leave.text = "PLAY TACTICAL OUTING" if unlocked else "ROUTE LOCKED"
     leave.custom_minimum_size = Vector2(0, 48)
+    leave.disabled = not unlocked
     leave.pressed.connect(_leave_from_gate)
     content_box.add_child(leave)
 
@@ -457,7 +465,9 @@ func _draw_gate_context() -> void:
             content_box.add_child(_make_label("Known special sites", 13))
             found_site = true
         var site_button := Button.new()
-        site_button.text = "%s — %.0fs" % [site, float(CampData.SPECIAL_SITES[site].get("duration", 0.0))]
+        var site_seconds := float(CampData.SPECIAL_SITES[site].get("duration", 0.0))
+        var site_hours := site_seconds * 24.0 / maxf(1.0, float(Game.DAY_SECONDS))
+        site_button.text = "%s — %.0fh • TACTICAL" % [site, site_hours]
         site_button.custom_minimum_size = Vector2(0, 42)
         site_button.pressed.connect(_leave_special_from_gate.bind(site))
         content_box.add_child(site_button)

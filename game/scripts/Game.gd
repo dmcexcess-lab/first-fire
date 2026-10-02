@@ -112,12 +112,12 @@ func new_game():
     for z in D.ZONE_ORDER:
         zone_successes[z] = 0
         zone_pressure[z] = 0
-    unlocked_zones = ["Camp Perimeter"]
+    unlocked_zones = ExpeditionRules.starting_routes()
     special_sites = {}
     for site in D.SPECIAL_SITES.keys():
         special_sites[site] = {"discovered": false, "cleared": false}
     history = []
-    flags = {"tutorial_complete": false}
+    flags = {"tutorial_complete": false, "route_unlocks": {}}
     policies = {}
     current_event = {}
     event_queue = []
@@ -848,123 +848,144 @@ func _process_expeditions(delta):
     for eid in finished:
         _finish_expedition(eid)
 
-func start_expedition(primary_id, zone):
-    if not unlocked_zones.has(zone) or not D.ZONES.has(zone):
+func expedition_route_unlocked(zone: String) -> bool:
+    return D.ZONES.has(zone) and ExpeditionRules.route_is_unlocked(zone, flags.get("route_unlocks", {}))
+
+func expedition_route_hours(zone: String) -> float:
+    return ExpeditionRules.route_hours(zone)
+
+func expedition_route_lock_text(zone: String) -> String:
+    return ExpeditionRules.route_lock_text(zone)
+
+func unlock_expedition_route(zone: String) -> bool:
+    if not D.ZONES.has(zone):
         return false
-    var party_ids = [int(primary_id)]
-    for sid in party_ids:
-        var s: Variant = get_survivor(sid)
-        if s == null or s["status"] != "Available" or s["condition"] == "Dead":
-            return false
-        _clear_camp_activity(s)
-        if zone in ["Commercial Fringe", "Industrial Edge"] and float(s["fatigue"]) >= 95.0:
-            toast_requested.emit("%s is too exhausted for that trip." % s["name"])
-            return false
-        if zone in ["Commercial Fringe", "Industrial Edge"] and s["condition"] == "Wounded":
-            toast_requested.emit("%s is too badly wounded for that trip." % s["name"])
-            return false
+    var key := ExpeditionRules.route_unlock_key(zone)
+    if key == "":
+        return ExpeditionRules.STARTING_ROUTES.has(zone)
+    var unlocks: Dictionary = flags.get("route_unlocks", {}).duplicate(true)
+    unlocks[key] = true
+    flags["route_unlocks"] = unlocks
+    if not unlocked_zones.has(zone):
+        unlocked_zones.append(zone)
+    save_game()
+    state_changed.emit()
+    return true
 
-    var recruit_eligible = zone != "Camp Perimeter"
-    if recruit_eligible:
-        eligible_expeditions_since_recruit += 1
-    var avg_survival = 0.0
-    for sid in party_ids:
-        avg_survival += int(get_survivor(sid)["skills"]["Survival"])
-    avg_survival /= party_ids.size()
-    var duration = ExpeditionRules.travel_duration(float(D.ZONES[zone]["duration"]), avg_survival)
-    var force_recruit = ExpeditionRules.should_force_recruit(population(), shelter_capacity(), MAX_POPULATION, eligible_expeditions_since_recruit, recruit_eligible)
+func start_expedition(primary_id, zone):
+    zone = str(zone)
+    if not expedition_route_unlocked(zone):
+        toast_requested.emit("%s is locked — %s." % [zone, expedition_route_lock_text(zone)])
+        return false
+    if not current_combat.is_empty():
+        return false
+    var survivor: Variant = get_survivor(int(primary_id))
+    if survivor == null or survivor["status"] != "Available" or survivor["condition"] == "Dead":
+        return false
+    _clear_camp_activity(survivor)
+    if zone in ["Commercial Fringe", "Industrial Edge"] and float(survivor["fatigue"]) >= 95.0:
+        toast_requested.emit("%s is too exhausted for that trip." % survivor["name"])
+        return false
+    if zone in ["Commercial Fringe", "Industrial Edge"] and survivor["condition"] == "Wounded":
+        toast_requested.emit("%s is too badly wounded for that trip." % survivor["name"])
+        return false
 
-    var event_key = ""
-    var combat_kind = ""
-    var tactical_drought = int(flags.get("tactical_drought", 0))
-    # Scripted follow-ups have priority. They are consequences of earlier choices,
-    # not additional random encounter types.
-    if recruit_eligible and flags.has("injured_stranger_return_after"):
-        flags["injured_stranger_return_after"] = int(flags["injured_stranger_return_after"]) - 1
-        if int(flags["injured_stranger_return_after"]) <= 0:
-            flags.erase("injured_stranger_return_after")
-            event_key = "injured_stranger_return"
-            eligible_expeditions_since_recruit = 0
-    if event_key == "" and recruit_eligible and flags.has("dog_return_after"):
-        flags["dog_return_after"] = int(flags["dog_return_after"]) - 1
-        if int(flags["dog_return_after"]) <= 0:
-            flags.erase("dog_return_after")
-            event_key = "dog_return"
-    if event_key == "" and force_recruit:
-        # Recruitment protection guarantees a real rescue opportunity.
-        eligible_expeditions_since_recruit = 0
-        combat_kind = "rescue"
-        flags["tactical_drought"] = 0
-    elif event_key == "" and ExpeditionRules.should_force_tactical(tactical_drought):
-        # After two ordinary field runs without tactical combat, force the next
-        # normal run tactical so Alpha playtesting cannot miss the system forever.
-        combat_kind = _pick_tactical_kind(zone)
-        flags["tactical_drought"] = 0
-    elif event_key == "" and ExpeditionRules.should_trigger_tactical_event(str(zone), rng):
-        combat_kind = _pick_tactical_kind(zone)
-        flags["tactical_drought"] = 0
-    elif event_key == "" and rng.randf() < float(D.ZONES[zone]["event_chance"]):
-        # Temporary legacy text events only roll when no tactical encounter fired.
-        event_key = _select_field_event(zone)
-        flags["tactical_drought"] = tactical_drought + 1
-    elif event_key == "":
-        flags["tactical_drought"] = tactical_drought + 1
-
+    var outing: Dictionary = TacticalScenarios.pick_outing(zone, rng)
+    var duration := ExpeditionRules.route_duration_seconds(zone, DAY_SECONDS)
     var exp = {
         "id": next_expedition_id,
-        "survivor_ids": party_ids,
+        "survivor_ids": [int(primary_id)],
         "zone": zone,
         "duration": duration,
-        "remaining": duration,
-        "state": "traveling",
-        "event_key": event_key,
-        "event_triggered": false,
-        "event_trigger_remaining": duration * rng.randf_range(0.25, 0.65),
-        "combat_kind": combat_kind,
+        "remaining": 0.0,
+        "state": "departing",
+        "event_key": "",
+        "event_triggered": true,
+        "event_trigger_remaining": -1.0,
+        "combat_kind": str(outing.get("kind", "explore")),
         "combat_triggered": false,
-        "combat_trigger_remaining": duration * rng.randf_range(0.25, 0.65),
+        "combat_trigger_remaining": 0.0,
         "tactical_resolved": false,
-        "force_recruit": force_recruit,
+        "quiet_explore": bool(outing.get("quiet", false)),
+        "rescue_pet": bool(outing.get("rescue_pet", false)),
+        "outing": str(outing.get("outing", "infected_explore")),
+        "time_cost_paid": false,
         "special_site": "",
     }
     next_expedition_id += 1
     expeditions.append(exp)
-    for sid in party_ids:
-        var s: Variant = get_survivor(sid)
-        s["status"] = "Expedition"
-        s["task"] = {"expedition_id": exp["id"]}
+    survivor["status"] = "Expedition"
+    survivor["task"] = {"expedition_id": exp["id"]}
     recent_expedition_ids.append(primary_id)
     if recent_expedition_ids.size() > 4:
         recent_expedition_ids.pop_front()
+
+    _advance_settlement_time_for_departure(duration)
+    exp["time_cost_paid"] = true
+    var refreshed: Variant = get_survivor(int(primary_id))
+    if refreshed == null or refreshed["condition"] == "Dead":
+        _abort_expedition(int(exp["id"]), false)
+        _check_game_over()
+        return false
+    _begin_tactical_encounter(exp)
     save_game()
     state_changed.emit()
-    return true
+    return not current_combat.is_empty()
+
+func _advance_settlement_time_for_departure(seconds: float) -> void:
+    # Compatibility fallback for base-only callers. The active GameSleepVirus
+    # override advances the full settlement simulation during departure.
+    day_elapsed += maxf(0.0, seconds)
+    while day_elapsed >= DAY_SECONDS and not game_over:
+        day_elapsed -= DAY_SECONDS
+        _daily_tick()
 
 func start_special_site(primary_id, site):
-    if not special_sites.has(site) or not special_sites[site]["discovered"] or special_sites[site]["cleared"]:
+    if not special_sites.has(site) or not bool(special_sites[site].get("discovered", false)) or bool(special_sites[site].get("cleared", false)):
         return false
-    var party_ids = [int(primary_id)]
-    for sid in party_ids:
-        var s: Variant = get_survivor(sid)
-        if s == null or s["status"] != "Available":
-            return false
-    var duration = float(D.SPECIAL_SITES[site]["duration"])
+    if not current_combat.is_empty():
+        return false
+    var survivor: Variant = get_survivor(int(primary_id))
+    if survivor == null or survivor["status"] != "Available" or survivor["condition"] == "Dead":
+        return false
+    _clear_camp_activity(survivor)
+    var site_data: Dictionary = D.SPECIAL_SITES.get(site, {})
+    var duration := maxf(0.0, float(site_data.get("duration", 0.0)))
     var exp = {
-        "id": next_expedition_id, "survivor_ids": party_ids,
-        "zone": D.SPECIAL_SITES[site]["zone"],
-        "duration": duration, "remaining": duration, "state": "traveling",
-        "event_key": "", "event_triggered": true, "event_trigger_remaining": -1.0,
+        "id": next_expedition_id,
+        "survivor_ids": [int(primary_id)],
+        "zone": str(site_data.get("zone", "Commercial Fringe")),
+        "duration": duration,
+        "remaining": 0.0,
+        "state": "departing",
+        "event_key": "",
+        "event_triggered": true,
+        "event_trigger_remaining": -1.0,
+        "combat_kind": "explore",
+        "combat_triggered": false,
+        "combat_trigger_remaining": 0.0,
+        "tactical_resolved": false,
+        "quiet_explore": false,
+        "rescue_pet": false,
+        "outing": "special_site",
+        "time_cost_paid": false,
         "special_site": site,
     }
     next_expedition_id += 1
     expeditions.append(exp)
-    for sid in party_ids:
-        var s: Variant = get_survivor(sid)
-        s["status"] = "Expedition"
-        s["task"] = {"expedition_id": exp["id"]}
+    survivor["status"] = "Expedition"
+    survivor["task"] = {"expedition_id": exp["id"]}
+    _advance_settlement_time_for_departure(duration)
+    exp["time_cost_paid"] = true
+    var refreshed: Variant = get_survivor(int(primary_id))
+    if refreshed == null or refreshed["condition"] == "Dead":
+        _abort_expedition(int(exp["id"]), false)
+        _check_game_over()
+        return false
+    _begin_tactical_encounter(exp)
     save_game()
     state_changed.emit()
-    return true
+    return not current_combat.is_empty()
 
 func _pick_tactical_kind(zone):
     return TacticalScenarios.pick_kind(str(zone), rng)
@@ -1016,7 +1037,7 @@ func _begin_tactical_encounter(exp):
     var rescue_candidate := {}
     var rescue_is_pet := false
     if combat_kind == "rescue":
-        rescue_is_pet = not bool(exp.get("force_recruit",false)) and pets.size()<CampLifeRules.MAX_PETS and population()>=2 and rng.randf()<0.30
+        rescue_is_pet = bool(exp.get("rescue_pet", false)) and pets.size() < CampLifeRules.MAX_PETS
         if rescue_is_pet:
             rescue_candidate = _generate_pet_candidate()
         else:
@@ -1031,6 +1052,8 @@ func _begin_tactical_encounter(exp):
         "survivor_ids": ids.duplicate(true),
         "zone": str(exp["zone"]),
         "kind": combat_kind,
+        "outing": str(exp.get("outing", combat_kind)),
+        "quiet": bool(exp.get("quiet_explore", false)),
         "rescue_candidate": rescue_candidate.duplicate(true) if combat_kind == "rescue" else {},
         "rescue_is_pet": rescue_is_pet,
         "environment_id": environment_id,
@@ -1184,7 +1207,8 @@ func resolve_combat(result):
     var event_context = {
         "expedition_id": eid,
         "survivor_ids": exp["survivor_ids"].duplicate(true),
-        "zone": exp["zone"]
+        "zone": exp["zone"],
+        "return_after_tactical": true,
     }
     var event = _event_base("tactical_result", "Tactical Encounter", "", [], event_context)
     var kind = str(encounter.get("kind", "ambush"))
@@ -1214,15 +1238,15 @@ func resolve_combat(result):
         elif searches > 0:
             _queue_field_result(event, "Partial Search of %s" % place, "You searched %d/%d marked spots and escaped before finding the target gear. You still keep the supplies you physically recovered: %s." % [searches, total_sites, reward if reward != "" else "nothing useful"], "The party partially searched %s and withdrew alive." % place)
         else:
-            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out before committing to the search. The expedition can continue, but the marked gear opportunity here is gone.", "The party withdrew from %s before searching the tactical objective." % place)
+            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out before committing to the search. The outing is over, and the marked gear opportunity here is gone.", "The party withdrew from %s before searching the tactical objective." % place)
     elif kind == "rescue" and not bool(result.get("objective_done", false)):
         var rescue_name := str(encounter.get("rescue_candidate", {}).get("name", "the survivor"))
         if not bool(result.get("rescue_survivor_alive", true)):
             _queue_field_result(event, "Rescue Failed", "%s did not survive the encounter at %s. You still make it back out, but there is nobody left to bring home.%s" % [rescue_name, place, loot_note], "The attempted rescue at %s failed, but the expedition survivor escaped." % place)
         elif bool(result.get("rescue_contacted", false)):
-            _queue_field_result(event, "Separated at %s" % place, "You reached %s, but extracted before both of you could reach the exit. The expedition continues, but the rescue opportunity is lost.%s" % [rescue_name, loot_note], "The party reached a stranded survivor at %s but could not extract them." % place)
+            _queue_field_result(event, "Separated at %s" % place, "You reached %s, but extracted before both of you could reach the exit. The outing is over and the rescue opportunity is lost.%s" % [rescue_name, loot_note], "The party reached a stranded survivor at %s but could not extract them." % place)
         else:
-            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the rescue. The expedition can continue, but the opportunity here is gone.%s" % loot_note, "The party withdrew from %s before completing the tactical objective." % place)
+            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out and chose survival over the rescue. The outing is over and the opportunity here is gone.%s" % loot_note, "The party withdrew from %s before completing the tactical objective." % place)
     else:
         _queue_field_result(event, "Broke Contact", "The ambush never became a stand-up fight. You made space, found an exit, and got away from %s.%s" % [place, loot_note], "The party escaped a tactical ambush at %s." % place)
     save_game()
@@ -1242,6 +1266,9 @@ func _find_expedition(eid) -> Variant:
 func _resume_expedition(eid):
     var exp: Variant = _find_expedition(eid)
     if exp == null:
+        return
+    if bool(exp.get("tactical_resolved", false)) and float(exp.get("remaining", 0.0)) <= 0.0:
+        _finish_expedition(eid)
         return
     exp["state"] = "traveling"
     for sid in exp["survivor_ids"]:
@@ -1294,11 +1321,13 @@ func _finish_expedition(eid):
         state_changed.emit()
         return
 
-    var loot = _roll_loot(exp, living_party)
+    # Standard Send Out is always tactical. Once the tactical map resolved,
+    # only loot physically recovered on that board comes home.
+    var loot: Dictionary = {} if bool(exp.get("tactical_resolved", false)) else _roll_loot(exp, living_party)
     for key in loot.keys():
         resources[key] = int(resources.get(key, 0)) + int(loot[key])
     var gear_found = ""
-    if not (bool(exp.get("tactical_resolved", false)) and str(exp.get("combat_kind", "")) == "explore"):
+    if not bool(exp.get("tactical_resolved", false)):
         gear_found = _roll_gear(exp, living_party)
     if gear_found != "":
         inventory_gear.append(gear_found)
@@ -1329,7 +1358,10 @@ func _finish_expedition(eid):
     if gear_found != "":
         loot_text.append("Found %s" % gear_found)
     var names = _party_names(exp["survivor_ids"])
-    if loot_text.is_empty():
+    if bool(exp.get("tactical_resolved", false)):
+        _add_history("Day %d — %s returned from the tactical outing to %s." % [day, names, zone])
+        toast_requested.emit("%s returned from %s." % [names, zone])
+    elif loot_text.is_empty():
         _add_history("Day %d — %s returned from %s empty-handed." % [day, names, zone])
         toast_requested.emit("%s returned empty-handed." % names)
     else:
@@ -1532,18 +1564,10 @@ func _roll_gear(exp, party):
         pool = ["Crowbar", "Hatchet", "Headlamp", "Glow Stick", "Road Flare", "Bolt Cutters", "Toolbox", "Pistol", "Shotgun", "Hiking Pack", "Heavy Boots", "Work Jacket"]
     return pool[rng.randi_range(0, pool.size() - 1)]
 
-func _check_zone_unlock(zone):
-    if not D.ZONE_SUCCESS_TO_UNLOCK.has(zone):
-        return
-    if int(zone_successes[zone]) < int(D.ZONE_SUCCESS_TO_UNLOCK[zone]):
-        return
-    var idx = D.ZONE_ORDER.find(zone)
-    if idx >= 0 and idx + 1 < D.ZONE_ORDER.size():
-        var next_zone = D.ZONE_ORDER[idx + 1]
-        if not unlocked_zones.has(next_zone):
-            unlocked_zones.append(next_zone)
-            _add_history("Day %d — Route discovered: %s." % [day, next_zone])
-            toast_requested.emit("New area discovered: %s" % next_zone)
+func _check_zone_unlock(_zone):
+    # Standard route progression is explicit now. Repetition never unlocks
+    # farther routes; future long-range prerequisites call unlock_expedition_route().
+    return
 
 func zone_loot_state(zone):
     var p = int(zone_pressure.get(zone, 0))
@@ -1740,8 +1764,10 @@ func _record_event_history(event, note):
 
 func _queue_field_result(event, title, body, note = ""):
     _record_event_history(event, note)
+    var is_tactical_return := str(event.get("key", "")) == "tactical_result" or bool(event.get("context", {}).get("return_after_tactical", false))
+    var continue_text := "Return to First Fire" if is_tactical_return else "Continue the expedition"
     _queue_event(_event_base("field_result", title, body, [
-        _choice("Continue the expedition", "resume")
+        _choice(continue_text, "resume")
     ], event.get("context", {})))
 
 func _queue_closed_result(event, title, body, note = ""):
@@ -1972,7 +1998,7 @@ func _handle_event_action(event, action):
                         var helper: Variant = get_survivor(sid)
                         if helper != null:
                             helper["fatigue"] = min(100.0, float(helper["fatigue"]) + CampLifeRules.fatigue_gain(8.0))
-                _queue_field_result(event, "%s Joins First Fire" % recruit["name"], "%s accepts. They will finish the trip with the party and follow them back to camp." % recruit["name"], "%s agreed to join First Fire." % recruit["name"])
+                _queue_field_result(event, "%s Joins First Fire" % recruit["name"], "%s accepts. They follow you back to First Fire." % recruit["name"], "%s agreed to join First Fire." % recruit["name"])
             else:
                 _queue_field_result(event, "No Room", "There is nowhere safe to put another person yet. You exchange directions and part ways.")
         "recruit_offer_info":
@@ -2991,10 +3017,17 @@ func load_game():
     expeditions = parsed.get("expeditions", [])
     zone_successes = parsed.get("zone_successes", {})
     zone_pressure = parsed.get("zone_pressure", {})
-    unlocked_zones = parsed.get("unlocked_zones", ["Camp Perimeter"])
+    unlocked_zones = parsed.get("unlocked_zones", ExpeditionRules.starting_routes())
     special_sites = parsed.get("special_sites", {})
     history = parsed.get("history", [])
     flags = parsed.get("flags", {})
+    if not flags.has("route_unlocks"):
+        flags["route_unlocks"] = {}
+    unlocked_zones = ExpeditionRules.starting_routes()
+    for route_value in D.ZONE_ORDER:
+        var route := str(route_value)
+        if ExpeditionRules.route_is_unlocked(route, flags.get("route_unlocks", {})) and not unlocked_zones.has(route):
+            unlocked_zones.append(route)
     policies = parsed.get("policies", {})
     current_event = parsed.get("current_event", {})
     event_queue = parsed.get("event_queue", [])

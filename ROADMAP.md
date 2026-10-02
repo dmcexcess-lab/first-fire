@@ -4,7 +4,7 @@ First Fire is now in **feature freeze** and shelved for Beta testing/release wor
 
 ## Final game loop
 
-**Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare one survivor → expedition → tactical field situation → escape with resources/rescues → return to a visibly changing camp → repeat.**
+**Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare one survivor → choose a route → pay its travel time → tactical field situation → escape with physically recovered resources/rescues → return to a visibly changing camp → repeat.**
 
 The living camp is the primary home/menu surface. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. On phones the camp is zoomed and pannable so structures and people remain readable instead of shrinking the full 18×11 settlement into one strip. Normal management starts by touching the camp itself: survivors open inspection and deliberate assignments, the communal stash opens inventory/resources, the First Fire and starter Workbench provide physical crafting, built structures expose contextual interactions, and the camp edge/gate owns expedition dispatch. The starter scene is mostly wilderness; future construction locations are not shown as empty placeholders. Contextual sheets may reuse mature underlying UI logic, but they are entered from physical camp objects and return to the camp.
 
@@ -52,7 +52,7 @@ The core presentation goal is **watch, prioritize, assign, prepare, grow**. The 
 
 ### Tactical field completion
 
-Outside-world events remain physical/tactical. Finish converting or retiring any remaining legacy field-text path so camp narrative is the only routine text-event space.
+Outside-world events remain physical/tactical. Standard Send Out is now always a tactical map, including previously discovered special sites; there is no routine passive expedition-result branch. Finish retiring any remaining legacy field-text path so camp narrative is the only routine text-event space.
 
 Keep deepening the existing tactical language rather than adding another combat system:
 
@@ -110,7 +110,7 @@ First Fire does **not** become 1.0 because a calendar date or feature count says
 
 1. **No known release-blocking bugs.** Normal play, save/load, browser lifecycle, living-camp interaction, tactical encounters, camp simulation, crafting/building, and long-run play must survive Beta testing without known blockers.
 2. **All systems and timers are balanced.** Economy, resource use, construction, crafting, recovery, expedition cadence, camp events, politics, recruitment, and progression must feel coherent across early, middle, and mature settlement play.
-3. **Final game speed is decided.** The current four-real-minute game day is test tuning, not automatically the shipping answer. Beta determines the final simulation speed and timer scale.
+3. **Final game speed is decided.** The current direct 120-real-second / two-minute game day is test tuning, not automatically the shipping answer. There is no secondary 0.5× simulation multiplier; Beta may still tune authored durations if playtesting requires it.
 4. **Combat and tactical systems are balanced and reliable.** Action timing, movement, vision, lighting, sound, stealth, melee, firearms, infected behavior, hazards, objectives, loot, exits, and encounter frequency must all work consistently and produce the intended survival/extraction feel.
 5. **Ads work under the existing non-exploitative policy.** Advertising/ad-free purchase behavior must function without influencing gameplay systems or progression.
 6. **Android APK release build is complete and tested.** The Android package is the release target for 1.0; packaging/device testing is part of the release gate, not an afterthought.

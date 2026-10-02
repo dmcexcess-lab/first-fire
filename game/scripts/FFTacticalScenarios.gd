@@ -3,21 +3,59 @@ class_name FFTacticalScenarios
 
 const Environments = preload("res://scripts/FFTacticalEnvironments.gd")
 
+# Standard Send Out distribution. Exploration dominates; ambushes are
+# occasional; human rescues are rare; pet rescues are very rare.
+const OUTING_WEIGHTS := [
+    {"id":"quiet_explore", "weight":40},
+    {"id":"infected_explore", "weight":33},
+    {"id":"ambush", "weight":20},
+    {"id":"survivor_rescue", "weight":5},
+    {"id":"pet_rescue", "weight":2},
+]
+
+# Compatibility aggregate used by older source contracts. The active selector
+# below preserves the more specific quiet/infected/pet distinction.
 const KIND_WEIGHTS := {
-    "Camp Perimeter": [["rescue", 0.20], ["explore", 0.65], ["ambush", 1.00]],
-    "Nearby Streets": [["rescue", 0.35], ["explore", 0.70], ["ambush", 1.00]],
-    "Residential Blocks": [["rescue", 0.30], ["explore", 0.75], ["ambush", 1.00]],
-    "Commercial Fringe": [["rescue", 0.20], ["explore", 0.70], ["ambush", 1.00]],
-    "Industrial Edge": [["rescue", 0.15], ["explore", 0.50], ["ambush", 1.00]],
+    "Camp Perimeter": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
+    "Nearby Streets": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
+    "Residential Blocks": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
+    "Commercial Fringe": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
+    "Industrial Edge": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
 }
 
+static func pick_outing(zone: String, rng: RandomNumberGenerator) -> Dictionary:
+    var total := 0
+    for entry in OUTING_WEIGHTS:
+        total += int(entry.get("weight", 0))
+    var roll := rng.randi_range(1, maxi(1, total))
+    var running := 0
+    var picked := "infected_explore"
+    for entry in OUTING_WEIGHTS:
+        running += int(entry.get("weight", 0))
+        if roll <= running:
+            picked = str(entry.get("id", "infected_explore"))
+            break
+    match picked:
+        "quiet_explore":
+            return {"kind":"explore","quiet":true,"rescue_pet":false,"outing":picked}
+        "infected_explore":
+            return {"kind":"explore","quiet":false,"rescue_pet":false,"outing":picked}
+        "ambush":
+            return {"kind":"ambush","quiet":false,"rescue_pet":false,"outing":picked}
+        "survivor_rescue":
+            return {"kind":"rescue","quiet":false,"rescue_pet":false,"outing":picked}
+        "pet_rescue":
+            return {"kind":"rescue","quiet":false,"rescue_pet":true,"outing":picked}
+    return {"kind":"explore","quiet":false,"rescue_pet":false,"outing":"infected_explore"}
+
 static func pick_kind(zone: String, rng: RandomNumberGenerator) -> String:
-    var roll := rng.randf()
-    var weights: Array = KIND_WEIGHTS.get(zone, KIND_WEIGHTS["Industrial Edge"])
-    for entry in weights:
-        if roll < float(entry[1]):
-            return str(entry[0])
-    return "ambush"
+    return str(pick_outing(zone, rng).get("kind", "explore"))
+
+static func outing_weight(id: String) -> int:
+    for entry in OUTING_WEIGHTS:
+        if str(entry.get("id", "")) == id:
+            return int(entry.get("weight", 0))
+    return 0
 
 static func pick_environment(zone: String, kind: String, rng: RandomNumberGenerator) -> String:
     return Environments.pick(zone, kind, rng)

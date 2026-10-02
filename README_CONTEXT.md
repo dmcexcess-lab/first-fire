@@ -75,13 +75,13 @@ Tactical scene lighting uses the actual settlement clock at encounter creation w
 
 ## Expedition logistics
 
-`FFExpeditionRules.gd` owns single-survivor travel/logistics, recruit protection, encounter mix, zone caps, and haul counts. Expeditions are permanently single-survivor; multi-survivor dispatch, companion AI, and vehicles are cut.
+`FFExpeditionRules.gd` owns single-survivor route hours, starting-route availability, future long-range unlock flags, zone caps, and expedition logistics. Expeditions remain permanently single-survivor; multi-survivor dispatch and tactical companion AI are cut.
 
-Agility is the active survivor stat used for expedition travel pace. Routine loot/searching no longer receives a Scavenging-stat bonus.
+**Every gate Send Out is now tactical.** A normal outing is most often exploration, sometimes a zombie ambush, rarely a stranded survivor, and very rarely a dog/cat rescue. Quiet exploration can contain no infected; all tactical outing families still use physical loot containers, and only loot physically recovered before extraction comes home.
 
-The SEND OUT selector uses touch-safe PREV/NEXT controls rather than popup `OptionButton` controls because of mobile Safari behavior. Its modal pauses camp simulation until SEND/CANCEL restores the previous pause state.
+Exactly two routes start unlocked: **Camp Perimeter = 3 in-game hours** and **Nearby Streets = 5 in-game hours**. Farther routes remain visible but locked behind explicit future long-range-travel unlock flags rather than automatically opening after repeated runs. Normal route duration is fixed authored time; Agility no longer shortens Send Out travel.
 
-The **camp gate** owns expedition preparation end-to-end. Tapping it opens one contextual surface for the available survivor, destination, danger, likely resource categories, and LEAVE CAMP action; the old second SEND OUT modal is no longer part of the active camp flow. Tapping a survivor directly still opens their inspector, whose SEND OUT handoff returns to this same gate context. The old standalone Survivors navigation is hidden from active play.
+The camp gate owns expedition preparation end-to-end with touch-safe PREV/NEXT controls. Route time is paid once before the tactical board opens. The tactical board then hard-pauses settlement simulation, so tactical thinking/combat consumes no additional camp time. Previously discovered special sites also launch a tactical map rather than using a passive travel-only branch.
 
 ## Living camp and camp life
 
@@ -144,7 +144,7 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 
 ## Time / economy
 
-Settlement time uses the 120-second authored simulation day at **0.5× real-time simulation speed**, giving **10 real active seconds = 1 in-game hour** and **240 real active seconds / 4 minutes per in-game day**. Work/recovery, expeditions, fire/maintenance, camp events, needs, and daily transitions all continue to use the same simulation-second values, so slowing the runtime doubles their real-world breathing room without changing their in-game clock meaning. The Camp Perimeter expedition remains 10 simulation seconds / 2 in-game hours before Agility travel reduction. UI refresh and autosave remain real-time responsiveness concerns.
+Settlement time has one direct authoritative clock with **no secondary speed multiplier**. `DAY_SECONDS := 120.0` means **5 real active seconds = 1 in-game hour** and **120 real active seconds / 2 minutes per in-game day**. Needs, work/recovery, fire/maintenance, camp events, chatter, daily transitions, and expedition travel all use that same camp-time unit. Standard Send Out pays its fixed route cost before tactical launch: Camp Perimeter consumes 15 settlement seconds / 3 in-game hours and Nearby Streets consumes 25 settlement seconds / 5 in-game hours. Tactical turns are a separate frozen time scale. UI refresh and autosave remain real-time responsiveness concerns.
 
 New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages; scavenging still has to sustain the camp after that.
 
@@ -162,7 +162,7 @@ Current survivor-model marker is **`combat-agility-leadership-v1`**. The zombie-
 
 The filename remains `user://first_fire_alpha01.json` intentionally.
 
-`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with the ten-real-seconds-per-hour camp clock, authoritative sleep/work availability, survivor training, zombie-virus state/treatment/quarantine, and tactical exposure integration.
+`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with the direct five-real-seconds-per-hour camp clock, fixed expedition departure-time advancement, authoritative sleep/work availability, survivor training, zombie-virus state/treatment/quarantine, and tactical exposure integration.
 
 ## Canonical technical reality
 

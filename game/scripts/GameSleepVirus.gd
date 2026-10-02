@@ -1,7 +1,6 @@
 extends "res://scripts/GameThreeStat.gd"
 
 const VirusRules = preload("res://scripts/FFVirusRules.gd")
-const SIM_TIME_SCALE := 0.5
 
 func new_game():
     super.new_game()
@@ -52,36 +51,54 @@ func _generate_survivor(founder = false, preferred_background = ""):
     survivor["duty_eligible_days"] = []
     return survivor
 
-func _process(delta):
-    if not initialized or sim_paused or game_over:
-        return
-    var sim_delta := float(delta) * SIM_TIME_SCALE
-    day_elapsed += sim_delta
-    ui_emit_accum += float(delta)
-    autosave_accum += float(delta)
-    camp_event_accum += sim_delta
-    if camp_event_cooldown > 0.0:
-        camp_event_cooldown = maxf(0.0, camp_event_cooldown - sim_delta)
+func _advance_settlement_simulation(amount: float, include_expeditions: bool = true, allow_camp_events: bool = true) -> void:
+    var remaining := maxf(0.0, amount)
+    while remaining > 0.0 and not game_over:
+        var step := minf(0.5, remaining)
+        day_elapsed += step
+        camp_event_accum += step
+        if camp_event_cooldown > 0.0:
+            camp_event_cooldown = maxf(0.0, camp_event_cooldown - step)
 
-    fire_level = maxf(0.0, fire_level - CampLifeRules.FIRE_DECAY_PER_SECOND * sim_delta)
-    camp_maintenance = CampLifeRules.degrade_camp_condition(camp_maintenance, sim_delta)
-    _process_pets(sim_delta)
-    _process_survivors(sim_delta)
-    _process_camp_chatter(sim_delta)
-    _process_expeditions(sim_delta)
+        fire_level = maxf(0.0, fire_level - CampLifeRules.FIRE_DECAY_PER_SECOND * step)
+        camp_maintenance = CampLifeRules.degrade_camp_condition(camp_maintenance, step)
+        _process_pets(step)
+        _process_survivors(step)
+        _process_camp_chatter(step)
+        if include_expeditions:
+            _process_expeditions(step)
+            if sim_paused:
+                # A legacy/saved traveling expedition may still open tactical
+                # from this loop. Stop this frame immediately at the pause edge.
+                return
 
-    if day_elapsed >= DAY_SECONDS:
         while day_elapsed >= DAY_SECONDS and not game_over:
             day_elapsed -= DAY_SECONDS
             _daily_tick()
 
-    if camp_event_accum >= CampLifeRules.CAMP_EVENT_INTERVAL:
-        camp_event_accum -= CampLifeRules.CAMP_EVENT_INTERVAL
-        _consider_camp_event()
+        if allow_camp_events and camp_event_accum >= CampLifeRules.CAMP_EVENT_INTERVAL:
+            camp_event_accum -= CampLifeRules.CAMP_EVENT_INTERVAL
+            _consider_camp_event()
 
-    _consider_politics()
-    _check_settlement_mature()
+        _consider_politics()
+        _check_settlement_mature()
+        remaining -= step
 
+func _advance_settlement_time_for_departure(seconds: float) -> void:
+    # Travel consumes ordinary camp time before the tactical map opens. The
+    # departing survivor is already marked away; the new expedition itself is
+    # excluded from countdown processing so this charge can happen only once.
+    _advance_settlement_simulation(maxf(0.0, seconds), false, false)
+
+func _process(delta):
+    if not initialized or sim_paused or game_over:
+        return
+    var camp_delta := float(delta)
+    _advance_settlement_simulation(camp_delta, true, true)
+
+    # UI cadence and autosave stay real-time responsiveness concerns.
+    ui_emit_accum += float(delta)
+    autosave_accum += float(delta)
     if autosave_accum >= 10.0:
         autosave_accum = 0.0
         save_game()

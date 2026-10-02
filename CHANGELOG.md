@@ -1,3 +1,14 @@
+## Beta Candidate — Always-Tactical Send Out & Unified Camp Time — 2026-10-01
+
+- Reworked the camp gate so every normal Send Out launches a tactical map after paying its authored travel time once. Previously discovered special sites now also route through tactical play instead of a passive travel-only branch.
+- Starting expedition access is exactly **Camp Perimeter (3 in-game hours)** and **Nearby Streets (5 in-game hours)**. Farther zones remain visible but locked behind explicit future long-range-travel unlock flags; repeated expeditions no longer auto-unlock them.
+- Rebalanced tactical outing selection to **73% exploration** (40% quiet / 33% infected), **20% zombie ambush**, **5% stranded survivor**, and **2% dog/cat rescue**. Quiet exploration can contain zero infected.
+- Ambush, rescue, and exploration maps all retain physical loot containers. Standard tactical outings no longer receive a second invisible abstract loot haul after escape; only physically recovered tactical loot/gear is retained.
+- Route travel advances the ordinary settlement simulation before tactical launch. Once the tactical board opens, settlement time is hard-paused and tactical turns consume no camp time.
+- Removed the secondary **0.5× simulation multiplier** entirely. The 120-second authored day is once again the only settlement clock: **5 real active seconds per in-game hour / 120 real active seconds per day**.
+- Expanded deterministic architecture smoke and CI source gates for the unified clock, exact 3h/5h starting routes, locked long-range routes, always-tactical routing, encounter rarity ordering, quiet exploration, and tactical pause behavior.
+- Save schema remains **7**; route-unlock state is additive and existing schema-7 saves normalize to the two starting routes unless an explicit new long-range unlock flag is present.
+
 ## Beta Candidate — Camp Time & Autonomous Needs Rebalance — 2026-10-01
 
 - Slowed settlement simulation back to **0.5×**, restoring **10 real active seconds per in-game hour** and roughly **4 real active minutes per in-game day** while keeping existing authored simulation-second task durations coherent.

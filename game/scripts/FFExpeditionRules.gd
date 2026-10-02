@@ -1,14 +1,19 @@
 extends RefCounted
 class_name FFExpeditionRules
 
-const TACTICAL_EVENT_CHANCE := {
-    "Camp Perimeter": 0.65,
-    "Nearby Streets": 0.70,
-    "Residential Blocks": 0.75,
-    "Commercial Fringe": 0.82,
-    "Industrial Edge": 0.90,
+const STARTING_ROUTES := ["Camp Perimeter", "Nearby Streets"]
+const ROUTE_HOURS := {
+    "Camp Perimeter": 3.0,
+    "Nearby Streets": 5.0,
+    "Residential Blocks": 8.0,
+    "Commercial Fringe": 12.0,
+    "Industrial Edge": 18.0,
 }
-const TACTICAL_DROUGHT_LIMIT := 2
+const ROUTE_UNLOCK_KEYS := {
+    "Residential Blocks": "long_range_residential",
+    "Commercial Fringe": "long_range_commercial",
+    "Industrial Edge": "long_range_industrial",
+}
 const ZONE_CAPS := {
     "Camp Perimeter": 3,
     "Nearby Streets": 4,
@@ -17,31 +22,43 @@ const ZONE_CAPS := {
     "Industrial Edge": 7,
 }
 
-static func travel_duration(base_duration: float, survival_skill: float) -> float:
-    var reduction: float = minf(0.20, survival_skill * 0.025)
-    return base_duration * (1.0 - reduction)
+static func starting_routes() -> Array:
+    return STARTING_ROUTES.duplicate()
+
+static func route_hours(zone: String) -> float:
+    return float(ROUTE_HOURS.get(zone, 0.0))
+
+static func route_duration_seconds(zone: String, day_seconds: float = 120.0) -> float:
+    return route_hours(zone) * maxf(1.0, day_seconds) / 24.0
+
+static func route_unlock_key(zone: String) -> String:
+    return str(ROUTE_UNLOCK_KEYS.get(zone, ""))
+
+static func route_is_unlocked(zone: String, unlocks: Dictionary) -> bool:
+    if STARTING_ROUTES.has(zone):
+        return true
+    var key := route_unlock_key(zone)
+    return key != "" and bool(unlocks.get(key, false))
+
+static func route_lock_text(zone: String) -> String:
+    return "" if STARTING_ROUTES.has(zone) else "Requires long-range travel"
+
+static func travel_duration(base_duration: float, unused_agility: float = 0.0) -> float:
+    # Compatibility helper for special-site callers. Normal Send Out routes use
+    # fixed authored route hours and are not shortened by survivor stats.
+    return base_duration
 
 static func should_force_recruit(population: int, shelter_capacity: int, max_population: int, eligible_count: int, recruit_eligible: bool) -> bool:
-    if not recruit_eligible or population >= max_population:
-        return false
-    if population <= 1:
-        return eligible_count >= 4
-    if population < 5:
-        return eligible_count >= 6
-    if population < 10:
-        return eligible_count >= 8
-    if population < 15:
-        return eligible_count >= 10
-    return eligible_count >= 12
+    return false
 
 static func tactical_event_chance(zone: String) -> float:
-    return float(TACTICAL_EVENT_CHANCE.get(zone, 0.0))
+    return 1.0
 
 static func should_trigger_tactical_event(zone: String, rng: RandomNumberGenerator) -> bool:
-    return rng.randf() < tactical_event_chance(zone)
+    return true
 
 static func should_force_tactical(drought_count: int) -> bool:
-    return drought_count >= TACTICAL_DROUGHT_LIMIT
+    return true
 
 static func zone_cap(zone: String) -> int:
     return int(ZONE_CAPS.get(zone, 3))

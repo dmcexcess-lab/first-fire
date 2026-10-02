@@ -100,7 +100,8 @@ jobs:
           if grep -q 'expedition_companion' game/scripts/Main.gd; then exit 1; fi
           grep -Fq 'founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight"' game/scripts/Game.gd
           grep -q 'TACTICAL_GEAR_UNLOCKS_BY_ZONE' game/scripts/FFData.gd
-          grep -Fq '"duration": 10.0, "danger": "Minimal"' game/scripts/FFData.gd
+          grep -Fq '"duration": 15.0, "danger": "Minimal"' game/scripts/FFData.gd
+          grep -Fq '"duration": 25.0, "danger": "Low"' game/scripts/FFData.gd
           grep -Fq 'buildings["Storage Crate"] = true' game/scripts/Game.gd
           grep -Fq 'buildings["Workbench"] = true' game/scripts/Game.gd
           grep -q 'func start_training' game/scripts/GameSleepVirus.gd
@@ -147,7 +148,11 @@ jobs:
           grep -q 'TacticalTiles.draw_ground' game/scripts/FFCombat.gd
           grep -Fq 'Game="*res://scripts/GameSleepVirus.gd"' game/project.godot
           grep -Fq 'res://scripts/MainSleepVirus.gd' game/main.tscn
-          grep -Fq 'const SIM_TIME_SCALE := 0.5' game/scripts/GameSleepVirus.gd
+          if grep -q 'SIM_TIME_SCALE' game/scripts/GameSleepVirus.gd; then exit 1; fi
+          grep -Fq 'var camp_delta := float(delta)' game/scripts/GameSleepVirus.gd
+          grep -Fq 'const STARTING_ROUTES := ["Camp Perimeter", "Nearby Streets"]' game/scripts/FFExpeditionRules.gd
+          grep -Fq 'TacticalScenarios.pick_outing' game/scripts/Game.gd
+          if grep -Fq 'func start_expedition(primary_id: int, zone: String)' game/scripts/GameThreeStat.gd; then exit 1; fi
           grep -q 'func survivor_can_assign' game/scripts/GameSleepVirus.gd
           grep -q 'func start_virus_treatment' game/scripts/GameSleepVirus.gd
           grep -q 'func quarantine_survivor' game/scripts/GameSleepVirus.gd
