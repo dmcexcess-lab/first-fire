@@ -79,4 +79,4 @@ func _render_item() -> void:
     elif current_item == "First Aid Kit":
         body.add_child(_make_label("Rare, found-only emergency medical supply. Critical physical trauma consumes one First Aid Kit; it cannot be crafted at camp.", 15))
     else:
-        body.add_child(_make_label("The rarest medical field find. A Zombie Cure clears established infection; Feverish cases still require a built Infirmary for emergency treatment.", 15))
+        body.add_child(_make_label("The rarest direct medical find. A built Infirmary can also craft one Zombie Cure from 2 recovered Zombie Corpses. It clears established infection; Feverish cases still require the Infirmary for emergency treatment.", 15))

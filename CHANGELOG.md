@@ -1,3 +1,12 @@
+## Beta Candidate — Corpse Cure Crafting & Count-Only Carry — 2026-10-02
+
+- Added **Zombie Corpse** as physical tactical loot. A killed infected corpse can be harvested from the board; harvesting persists across tactical reloads and each recovered corpse consumes exactly one pooled expedition carry slot.
+- Added **Zombie Cure** crafting at the built Infirmary: **2 Zombie Corpses → 1 Zombie Cure**. The cure remains the rarest direct medical find, so players may find one or manufacture one from dangerous field recovery.
+- Expedition hauling is now explicitly **count-only**: 4 slots with no pack, 6 with common packs, 8 with better packs. Removed gear weight/size metadata and removed equipment-load penalties from tactical action timing; weight no longer affects carry or action speed.
+- The living-camp Infirmary is now a direct crafting touch target when built.
+- Expanded architecture smoke contracts for corpse harvesting/persistence, the corpse-to-cure recipe, Infirmary crafting access, slot-only carry, and load-independent tactical timing.
+- Save schema remains **7**; the corpse resource and per-zombie harvested flag are additive.
+
 ## Beta Candidate — Medical Supply Rarity Pass — 2026-10-02
 
 - Reworked medical supplies into a clear three-tier economy: **Bandages are crafted** at the First Fire, **First Aid Kits are rare found-only supplies**, and **Zombie Cure is found-only and the rarest medical find**.

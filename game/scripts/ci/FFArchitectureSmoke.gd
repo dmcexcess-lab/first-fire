@@ -8,6 +8,7 @@ const TacticalLighting = preload("res://scripts/FFTacticalLighting.gd")
 const TacticalTiles = preload("res://scripts/FFTacticalTiles.gd")
 const TacticalSound = preload("res://scripts/FFTacticalSound.gd")
 const TacticalBalance = preload("res://scripts/FFTacticalBalance.gd")
+const TacticalTime = preload("res://scripts/FFTacticalTime.gd")
 const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 const SaveCodec = preload("res://scripts/FFSaveCodec.gd")
 const CampLifeRules = preload("res://scripts/FFCampLifeRules.gd")
@@ -74,6 +75,7 @@ func _init() -> void:
     var hatchet_recipe: Dictionary = {}
     var crossbow_recipe: Dictionary = {}
     var lock_pick_recipe: Dictionary = {}
+    var cure_recipe: Dictionary = {}
     for recipe_value in D.RECIPES.get("Fire Pit", []):
         var fire_recipe: Dictionary = recipe_value
         if str(fire_recipe.get("id", "")) == "Bandage":
@@ -87,11 +89,16 @@ func _init() -> void:
     for recipe_value in D.RECIPES.get("Sewing Table", []):
         var recipe: Dictionary = recipe_value
         recipe_ids.append(str(recipe.get("id", "")))
+    for recipe_value in D.RECIPES.get("Infirmary", []):
+        var infirmary_recipe: Dictionary = recipe_value
+        if str(infirmary_recipe.get("id", "")) == "Zombie Cure":
+            cure_recipe = infirmary_recipe
     var found_only_guns := ["6-Shot Revolver", "12-Shot Automatic", "Double-Barrel Shotgun", "Pump Shotgun", "Medium Rifle", "Long Rifle"]
     var found_only_offhand := ["Flashlight", "Firecracker"]
     for gear_name in found_only_guns + found_only_offhand:
         if not _check(not recipe_ids.has(gear_name), "%s is found-only" % gear_name): return
     if not _check(not bandage_recipe.is_empty() and int(bandage_recipe.get("cost", {}).get("Cloth", 0)) == 1 and int(bandage_recipe.get("cost", {}).get("Clean Water", 0)) == 1 and int(bandage_recipe.get("gives_component", {}).get("Bandage", 0)) == 1, "bandage is craftable at the First Fire"): return
+    if not _check(not cure_recipe.is_empty() and int(cure_recipe.get("cost", {}).get("Zombie Corpse", 0)) == 2 and int(cure_recipe.get("gives_component", {}).get("Zombie Cure", 0)) == 1 and D.RESOURCE_ORDER.has("Zombie Corpse"), "zombie cure is craftable at the infirmary from two recovered corpses"): return
     if not _check(not recipe_ids.has("First Aid Kit") and not D.GEAR.has("First Aid Kit"), "first aid kit is found-only consumable rather than craftable gear"): return
     var nearby_medical: Dictionary = D.ZONES["Nearby Streets"]["loot"]
     var residential_medical: Dictionary = D.ZONES["Residential Blocks"]["loot"]
@@ -102,6 +109,13 @@ func _init() -> void:
     for pack_name in pack_names:
         if not _check(not recipe_ids.has(pack_name), "%s is found-only" % pack_name): return
     if not _check(int(D.GEAR["Worn Backpack"]["capacity"]) == 6 and int(D.GEAR["School Backpack"]["capacity"]) == 6 and int(D.GEAR["Improvised Pack"]["capacity"]) == 6 and int(D.GEAR["Hiking Pack"]["capacity"]) == 8 and int(D.GEAR["Reinforced Pack"]["capacity"]) == 8, "backpacks are six or eight carry found-only tiers"): return
+    for gear_value in D.GEAR.values():
+        var gear_data: Dictionary = gear_value
+        if not _check(not gear_data.has("weight") and not gear_data.has("size"), "gear carry uses item slots rather than weight or size metadata"): return
+    var timing_bare := {"skills":{"Combat":3}, "fatigue":35.0, "condition":"Healthy", "crouched":false, "equipment":{}}
+    var timing_loaded := timing_bare.duplicate(true)
+    timing_loaded["equipment"] = {"Weapon":"Sledgehammer","Secondary":"Flashlight","Tool":"Toolbox","Clothing":"Heavy Boots","Pack":"Reinforced Pack"}
+    if not _check(TacticalTime.movement_cost(timing_bare, false) == TacticalTime.movement_cost(timing_loaded, false) and TacticalTime.attack_cost(timing_bare, 100) == TacticalTime.attack_cost(timing_loaded, 100), "equipment weight no longer affects tactical timing"): return
     if not _check(int(hatchet_recipe.get("cost", {}).get("Scrap Metal", 0)) >= 5 and int(hatchet_recipe.get("cost", {}).get("Hardware", 0)) >= 4 and not Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Residential Blocks"]).has("Hatchet") and Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Commercial Fringe"]).has("Hatchet"), "one hit one hand hatchet is expensive and late field loot"): return
     if not _check(not D.RESOURCE_ORDER.has("Ammo") and not D.STARTING_RESOURCES.has("Ammo"), "camp ammo resource is retired in favor of tactical reloads"): return
     if not _check(Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Camp Perimeter"]).has("Flashlight") and Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Nearby Streets"]).has("Lock Pick") and Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE["Camp Perimeter"]).has("Firecracker"), "all three active off-hand items can be field finds"): return
@@ -152,6 +166,8 @@ func _init() -> void:
     if not _check(base_game_source.contains("inventory_gear_states") and base_game_source.contains("func _default_gear_state") and base_game_source.contains("uses_left") and base_game_source.contains("resources.erase(\"Ammo\")"), "camp persistence retains off-hand durability and removes legacy ammo"): return
     if not _check(base_game_source.contains("func _normalize_medical_supplies") and base_game_source.contains("resources.erase(\"Medicine\")") and base_game_source.contains("components.erase(\"Sterile Dressing\")") and base_game_source.contains("func _store_loot_item"), "schema-seven medical supplies normalize forward and tactical loot can store components"): return
     if not _check(base_game_source.contains("func survivor_carry_capacity") and base_game_source.contains("return 4") and base_combat_source.contains("func party_carry_capacity") and base_combat_source.contains("func _fit_loot_to_remaining_capacity") and combat_source.contains("CARRY %d/%d"), "tactical carry uses four base slots plus backpack party capacity"): return
+    if not _check(base_combat_source.contains("func harvest_zombie_corpse") and base_combat_source.contains("\"Zombie Corpse\"") and base_combat_source.contains("\"harvested\"") and base_combat_source.contains("Carry full — no slot available for the corpse."), "killed infected corpses are physical slot-limited tactical loot and persist across reloads"): return
+    if not _check(active_camp_source.contains("craft_station_pressed.emit(\"Infirmary\")"), "built infirmary exposes zombie cure crafting in the living camp"): return
     if not _check(combat_source.contains("nearest_exit_distance") and combat_source.contains("LOOT %d/%d"), "route-oriented tactical HUD"): return
     if not _check(not active_game_source.contains("SIM_TIME_SCALE") and base_game_source.contains("const DAY_SECONDS := 300.0") and active_game_source.contains("var camp_delta := float(delta)") and active_game_source.contains("func _advance_settlement_simulation") and active_game_source.contains("\"status\"] = \"Sleeping\"") and active_game_source.contains("func survivor_can_assign") and active_game_source.contains("func start_virus_treatment") and active_game_source.contains("func quarantine_survivor"), "single authoritative five-minute settlement day"): return
     if not _check(active_game_source.contains("func _begin_forced_rest_if_exhausted") and active_game_source.contains("\"status\"] = \"Exhausted\"") and active_game_source.contains("\"resume_task\":resume_task") and active_game_source.contains("survivor[\"fatigue\"] = maxf(0.0") and active_game_source.contains("survivor[\"fatigue\"] = 0.0") and not active_game_source.contains("AWAKE_FATIGUE_PER_SECOND"), "idle camp time lowers fatigue and 100 fatigue suspends work for forced full recovery"): return

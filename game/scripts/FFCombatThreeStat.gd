@@ -153,6 +153,8 @@ func dispatch_point(pos: Vector2):
     if manhattan(player.pos, cell) == 1:
         player.facing = delta
         if zombie_at(cell) != -1: melee(cell); return
+        var corpse_index := harvestable_corpse_at(cell)
+        if corpse_index != -1: harvest_zombie_corpse(corpse_index); return
         if loot_containers.has(cell): search_loot_container(cell); return
         if doors.has(cell) or glass.has(cell): interact(); return
         try_move(delta); return

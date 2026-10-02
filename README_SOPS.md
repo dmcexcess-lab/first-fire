@@ -66,7 +66,7 @@ Important current owners:
 - `FFTacticalVisuals.gd` — tactical character appearance, zombie variation, weapon silhouettes, and character drawing; presentation only.
 - `FFTacticalLighting.gd` — tactical day/night/power light profiles, Secondary light-item math, window daylight, and light-dependent sight thresholds.
 - `FFTacticalTiles.gd` — tactical sprite/tile atlas-region rendering; physical geometry remains outside presentation.
-- `FFTacticalTime.gd` — pure derived tactical action timing from gear load, survivor state, and infected pace/mass.
+- `FFTacticalTime.gd` — pure derived tactical action timing from survivor fatigue/condition plus weapon timing and infected pace/mass; equipment weight/size is not part of timing or carry.
 - `FFTacticalSound.gd` — pure tactical sound labeling/localization helpers; combat owns propagation and reactions.
 - `FFTacticalScenarios.gd` — tactical scenario/location/layout selection and future physical field-event definitions.
 - `FFExpeditionRules.gd` — expedition distance bands, authored route hours, party-size logistics, supply costs, vehicle-gated reach, zone caps, and haul rules.
@@ -231,9 +231,10 @@ Important bugs should leave behind a cheaper future check when practical.
 - infected weapon ladder is authored around fragile 7–10 HP bodies: fists 3–5 hits, Utility Knife 2–3, standard 1H melee 2, standard 2H melee 1–2, Sledgehammer 1, rare/expensive Hatchet 1; Crossbow is a one-shot/reload 2–3-hit medium-range weapon; firearms are found-only and use magazines/reloads with no camp Ammo resource—6-shot Revolver / 12-shot Automatic (short optimum), **one-handed 2-shot Double-Barrel** / 6-shot Pump Shotgun (physical pellet range; 3 tight vs 5 wide projectiles, Pump requires cycling), 20-round Medium Rifle, and 5-round Long Rifle; all non-shotgun firearms may fire to any visible target with accuracy falloff by distance;
 - individual infected stay weak and mob density creates pressure;
 - active off-hand items are Flashlight, Lock Pick, and Firecracker: Flashlight and Firecracker are found-only; Lock Pick can be found or crafted and breaks after **1–3 uses**; Flashlight charge depletes and Firecracker is single-use; tactical maps may contain locked doors and optional locked containers;
-- survivors carry **4 resource items by default**; backpacks are found-only and raise that per-survivor tactical capacity to **6 or 8**, with a two-survivor party pooling both capacities;
+- survivors have **4 tactical loot slots by default**; found-only backpacks raise that per-survivor capacity to **6 or 8**, with a two-survivor party pooling both capacities; each recovered resource/component unit—including a Zombie Corpse—uses one slot, with no weight/size calculation;
 - camp chore minigames **do not pause settlement time**; the assigned survivor continues the chore in the living camp and visibly animates while the player performs the touch interaction;
 - fatigue rises from productive camp work and expeditions, falls naturally while survivors are idle in camp, and at **100 fatigue** forces a **3–5 in-game-hour** bed rest that returns fatigue to 0;
+- killed infected can be physically harvested for **Zombie Corpses**; each corpse consumes one tactical loot slot, and a built Infirmary crafts **1 Zombie Cure from 2 Zombie Corpses** while Zombie Cure remains the rarest direct medical find;
 - infected attacks split into high-hit/low-damage Scratch and low-hit/high-damage Bite; only successful Bite can roll a fixed small per-bite virus exposure chance;
 - no AI director spawning threats simply to manufacture drama;
 - persistent consequences;

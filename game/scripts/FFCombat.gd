@@ -72,7 +72,7 @@ var game_over := false
 var msg := ""
 var submsg := ""
 var location_name := "Field Encounter"
-var stats := {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "containers": 0, "noise": 0, "damage": 0}
+var stats := {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "containers": 0, "corpses": 0, "noise": 0, "damage": 0}
 var active_touch_ids := {}
 var last_guard_action := ""
 var last_guard_ms := -10000
@@ -123,7 +123,7 @@ func start_encounter(data: Dictionary):
     rng.seed = int(context.get("seed", 1))
     initialized = true
     game_over = false
-    stats = {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "containers": 0, "noise": 0, "damage": 0}
+    stats = {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "containers": 0, "corpses": 0, "noise": 0, "damage": 0}
     sound_marks.clear()
     memory.clear()
     last_seen.clear()
@@ -609,7 +609,7 @@ func spawn_zombies():
             "target": player_spawn if state == "INVESTIGATE" else Vector2i(-1,-1),
             "heard": player_spawn if state == "INVESTIGATE" else Vector2i(-1,-1),
             "pace": int(timing.get("pace", 125)), "attack_cost": int(timing.get("attack_cost", 135)), "mass": mass,
-            "next": rng.randi_range(45, int(timing.get("pace", 125))), "dead": false,
+            "next": rng.randi_range(45, int(timing.get("pace", 125))), "dead": false, "harvested": false,
             "look": look
         })
 
@@ -702,6 +702,7 @@ func restore_runtime():
             zombies[i]["facing"] = Vector2i(int(zsave.get("fx", zombies[i].facing.x)), int(zsave.get("fy", zombies[i].facing.y)))
             zombies[i]["hp"] = int(zsave.get("hp", zombies[i].hp))
             zombies[i]["dead"] = bool(zsave.get("dead", false))
+            zombies[i]["harvested"] = bool(zsave.get("harvested", false))
             zombies[i]["state"] = str(zsave.get("state", "IDLE"))
             zombies[i]["target"] = Vector2i(int(zsave.get("tx", -1)), int(zsave.get("ty", -1)))
             zombies[i]["heard"] = Vector2i(int(zsave.get("hx", -1)), int(zsave.get("hy", -1)))
@@ -721,7 +722,7 @@ func persist_runtime():
     for z in zombies:
         zsave.append({
             "x": z.pos.x, "y": z.pos.y, "fx": z.facing.x, "fy": z.facing.y,
-            "hp": int(z.hp), "dead": bool(z.dead), "state": str(z.state),
+            "hp": int(z.hp), "dead": bool(z.dead), "harvested": bool(z.get("harvested", false)), "state": str(z.state),
             "tx": z.target.x, "ty": z.target.y, "hx": z.heard.x, "hy": z.heard.y,
             "next": int(z.next), "look": z.get("look", {}).duplicate(true)
         })
@@ -996,6 +997,10 @@ func check_objective_and_exit():
         finish_encounter("escaped")
 func interact():
     var p: Vector2i = player.pos + player.facing
+    var corpse_index := harvestable_corpse_at(p)
+    if corpse_index != -1:
+        harvest_zombie_corpse(corpse_index)
+        return
     if str(context.get("kind", "")) == "rescue" and rescuee_at(p):
         contact_rescuee()
         return
@@ -1351,7 +1356,31 @@ func collected_container_loot() -> Dictionary:
         var loot: Dictionary = container_contents.get(cell, {})
         for key in loot.keys():
             total[key] = int(total.get(key, 0)) + int(loot[key])
+    var corpse_count := 0
+    for zombie_value in zombies:
+        var zombie: Dictionary = zombie_value
+        if bool(zombie.get("dead", false)) and bool(zombie.get("harvested", false)):
+            corpse_count += 1
+    if corpse_count > 0:
+        total["Zombie Corpse"] = int(total.get("Zombie Corpse", 0)) + corpse_count
     return total
+
+func harvest_zombie_corpse(index: int) -> void:
+    if index < 0 or index >= zombies.size():
+        return
+    var zombie: Dictionary = zombies[index]
+    if not bool(zombie.get("dead", false)) or bool(zombie.get("harvested", false)):
+        return
+    if carried_loot_count() >= party_carry_capacity():
+        msg = "Carry full — no slot available for the corpse."
+        queue_redraw()
+        return
+    zombies[index]["harvested"] = true
+    stats["corpses"] = int(stats.get("corpses", 0)) + 1
+    player["guarding"] = false
+    msg = "Recovered Zombie Corpse — CARRY %d/%d." % [carried_loot_count(), party_carry_capacity()]
+    emit_noise(zombie.pos, 8, "corpse handling", true)
+    commit_action(TacticalTime.interaction_cost(player, 70))
 
 func kill_zombie(i: int, stealth: bool):
     if zombies[i].dead: return
@@ -1830,6 +1859,12 @@ func zombie_at(p: Vector2i) -> int:
         if not zombies[i].dead and zombies[i].pos == p: return i
     return -1
 
+func harvestable_corpse_at(p: Vector2i) -> int:
+    for i in range(zombies.size()):
+        if bool(zombies[i].get("dead", false)) and not bool(zombies[i].get("harvested", false)) and zombies[i].pos == p:
+            return i
+    return -1
+
 func ally_at(p: Vector2i) -> bool:
     return not ally.is_empty() and not ally.dead and ally.pos == p
 
@@ -1963,6 +1998,8 @@ func draw_units():
         if z.dead:
             if visible_cells.has(z.pos):
                 TacticalVisuals.draw_zombie_corpse(self, cell_center(z.pos), z)
+                if not bool(z.get("harvested", false)):
+                    draw_string(font, cell_center(z.pos) + Vector2(-24, -13), "CORPSE", HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color(.88,.76,.42))
             continue
         if not visible_cells.has(z.pos):
             continue
@@ -2109,9 +2146,8 @@ func draw_hud():
     draw_button(btn_light,"LIGHT ON" if player_light_on else "LIGHT OFF",has_portable_light and player_light_on,9)
     draw_button(btn_shove,"SHOVE",false,10)
     var step_cost := TacticalTime.movement_cost(player, false)
-    var load_label := TacticalTime.load_band(TacticalTime.equipment_weight(player))
     draw_string(font,Vector2(148,806),"T %d  STEP %d"%[tick,step_cost],HORIZONTAL_ALIGNMENT_CENTER,98,8,Color(.62,.68,.64))
-    draw_string(font,Vector2(148,821),"K %d  %s"%[int(stats.kills),load_label],HORIZONTAL_ALIGNMENT_CENTER,98,8,Color(.55,.60,.56))
+    draw_string(font,Vector2(148,821),"K %d  CARRY %d/%d"%[int(stats.kills),carried_loot_count(),party_carry_capacity()],HORIZONTAL_ALIGNMENT_CENTER,98,8,Color(.55,.60,.56))
 
 func draw_button(rect: Rect2, text: String, active: bool, size: int):
     var fill=Color(.24,.30,.25,.96) if active else Color(.08,.10,.09,.94)

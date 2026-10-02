@@ -144,6 +144,8 @@ func _draw_menu_affordances(origin: Vector2, tile: float) -> void:
         _draw_interaction_ring(_cell_center(building_cell("Workbench"), origin, tile), tile * 0.42)
     if bool(Game.buildings.get("Sewing Table", false)):
         _draw_interaction_ring(_cell_center(building_cell("Sewing Table"), origin, tile), tile * 0.42)
+    if bool(Game.buildings.get("Infirmary", false)):
+        _draw_interaction_ring(_cell_center(building_cell("Infirmary"), origin, tile), tile * 0.42)
     var gate_center := (_cell_center(Vector2i(7, GRID_H - 1), origin, tile) + _cell_center(Vector2i(8, GRID_H - 1), origin, tile)) * 0.5
     _draw_interaction_ring(gate_center, tile * 0.55)
 
@@ -254,6 +256,9 @@ func _handle_camp_press(local_pos: Vector2) -> void:
         return
     if cell == building_cell("Sewing Table") and bool(Game.buildings.get("Sewing Table", false)):
         craft_station_pressed.emit("Sewing Table")
+        return
+    if cell == building_cell("Infirmary") and bool(Game.buildings.get("Infirmary", false)):
+        craft_station_pressed.emit("Infirmary")
         return
     if cell.y == GRID_H - 1 and cell.x in [7, 8]:
         gate_pressed.emit()

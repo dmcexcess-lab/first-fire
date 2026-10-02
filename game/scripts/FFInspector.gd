@@ -19,6 +19,7 @@ const ITEM_DESCRIPTIONS := {
     "Hardware": "Fasteners, fittings, hinges, and other small mechanical parts. Frequently required for useful infrastructure.",
     "Ammo": "Shared firearm ammunition. Tactical gunfire consumes this camp supply directly.",
     "Seeds": "Planting stock used to establish and support food-growing infrastructure.",
+    "Zombie Corpse": "A recovered infected corpse. Each corpse uses one expedition carry slot and two corpses can be processed into one Zombie Cure at a built Infirmary.",
     "Bandage": "Craftable wound care made from Cloth and Clean Water. Used for Hurt and Wounded physical injuries.",
     "Framing Kit": "Prepared structural hardware and timber used in major shelter construction.",
     "Pack Frame": "A rigid pack component used to build higher-capacity carrying gear.",
@@ -42,7 +43,7 @@ const ITEM_DESCRIPTIONS := {
     "Bolt Cutters": "Specialized cutting tool for chains, wire, and similar physical barriers.",
     "Toolbox": "General-purpose field toolkit that improves Technical capability.",
     "First Aid Kit": "Rare found-only emergency medical supply consumed to stabilize Critical physical trauma.",
-    "Zombie Cure": "The rarest medical field find. Clears established zombie-virus infection; severe fever still needs an Infirmary.",
+    "Zombie Cure": "The rarest direct medical find. It can also be crafted at a built Infirmary from two recovered Zombie Corpses. Clears established infection; severe fever still needs the Infirmary.",
     "Pry Tool": "Compact breaching tool made for forcing open stubborn barriers.",
     "Work Gloves": "Basic protective workwear for hands-on camp and field activity.",
     "Heavy Boots": "Durable protective footwear suited to debris, rough ground, and hard travel.",
@@ -395,9 +396,6 @@ func _render_item() -> void:
             body.add_child(_make_label("Tool tag: %s" % str(data.get("tool", "")), 13))
         if data.has("light"):
             body.add_child(_make_label("Directional light: %.0f-tile reach  •  View range +%d" % [float(data.get("light_range", 0.0)), int(data.get("view_bonus", 0))], 13))
-        if data.has("weight"):
-            body.add_child(_make_label("Carried weight: %.1f" % float(data.get("weight", 0.0)), 13))
-        body.add_child(_make_label("Inventory size: %d" % int(data.get("size", 0)), 13))
     elif Game.components.has(current_item):
         body.add_child(_separator())
         body.add_child(_make_label("Crafted component. Used as an intermediate requirement for larger recipes or structures.", 13))

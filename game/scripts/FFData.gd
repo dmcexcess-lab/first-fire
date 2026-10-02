@@ -3,7 +3,8 @@ class_name FFData
 
 const RESOURCE_ORDER := [
     "Raw Food", "Cooked Food", "Dirty Water", "Clean Water",
-    "Wood", "Scrap Metal", "Cloth", "Plastic", "Hardware", "Seeds"
+    "Wood", "Scrap Metal", "Cloth", "Plastic", "Hardware",
+    "Zombie Corpse", "Seeds"
 ]
 
 const STARTING_RESOURCES := {
@@ -16,6 +17,7 @@ const STARTING_RESOURCES := {
     "Cloth": 0,
     "Plastic": 0,
     "Hardware": 0,
+    "Zombie Corpse": 0,
     "Seeds": 0,
 }
 
@@ -149,46 +151,46 @@ const ZONE_SUCCESS_TO_UNLOCK := {
 }
 
 const GEAR := {
-    "Utility Knife": {"slot": "Weapon", "combat": 1, "size": 2},
-    "Kitchen Knife": {"slot": "Weapon", "combat": 1, "size": 2},
-    "Wooden Club": {"slot": "Weapon", "combat": 2, "size": 3},
-    "Baseball Bat": {"slot": "Weapon", "combat": 2, "size": 3},
-    "Hammer": {"slot": "Weapon", "combat": 2, "size": 2, "tool": "Hammer"},
-    "Improvised Spear": {"slot": "Weapon", "combat": 2, "size": 3},
-    "Crowbar": {"slot": "Weapon", "combat": 2, "size": 3, "tool": "Breach"},
-    "Sledgehammer": {"slot": "Weapon", "combat": 4, "size": 4},
-    "Hatchet": {"slot": "Weapon", "combat": 5, "size": 2},
-    "Crossbow": {"slot": "Weapon", "combat": 3, "size": 3},
-    "6-Shot Revolver": {"slot": "Weapon", "combat": 5, "size": 2},
-    "12-Shot Automatic": {"slot": "Weapon", "combat": 5, "size": 2},
-    "Double-Barrel Shotgun": {"slot": "Weapon", "combat": 5, "size": 3},
-    "Pump Shotgun": {"slot": "Weapon", "combat": 5, "size": 3},
-    "Medium Rifle": {"slot": "Weapon", "combat": 5, "size": 3},
-    "Long Rifle": {"slot": "Weapon", "combat": 5, "size": 3},
-    "Pistol": {"slot": "Weapon", "combat": 5, "size": 2, "legacy_alias": "6-Shot Revolver"},
-    "Shotgun": {"slot": "Weapon", "combat": 5, "size": 3, "legacy_alias": "Double-Barrel Shotgun"},
-    "Rifle": {"slot": "Weapon", "combat": 5, "size": 3, "legacy_alias": "Long Rifle"},
-    "Flashlight": {"slot": "Secondary", "size": 2, "weight": 0.8, "light": "cone", "light_range": 8.5, "light_spread": 0.52, "light_strength": 1.0, "light_color": "edf5d6", "view_bonus": 2, "charge_max": 100.0, "charge_per_tick": 0.025},
-    "Lock Pick": {"slot": "Secondary", "size": 1, "weight": 0.1, "uses_min": 1, "uses_max": 3},
-    "Firecracker": {"slot": "Secondary", "size": 1, "weight": 0.1, "uses": 1},
-    "Headlamp": {"slot": "Secondary", "size": 1, "weight": 0.4, "light": "cone", "light_range": 7.0, "light_spread": 0.34, "light_strength": 0.88, "light_color": "f1edc5", "view_bonus": 1, "legacy": true},
-    "Lantern": {"slot": "Secondary", "size": 2, "weight": 1.4, "light": "radial", "light_range": 4.5, "light_strength": 0.88, "light_color": "ffc46f", "view_bonus": 0, "legacy": true},
-    "Glow Stick": {"slot": "Secondary", "size": 1, "weight": 0.2, "light": "radial", "light_range": 3.0, "light_strength": 0.58, "light_color": "71ef68", "view_bonus": 0, "legacy": true},
-    "Road Flare": {"slot": "Secondary", "size": 1, "weight": 0.3, "light": "radial", "light_range": 4.8, "light_strength": 0.92, "light_color": "ff5b48", "view_bonus": 0, "legacy": true},
-    "Screwdriver Set": {"slot": "Tool", "size": 2, "technical": 1},
-    "Bolt Cutters": {"slot": "Tool", "size": 3, "tool": "Cutters"},
-    "Toolbox": {"slot": "Tool", "size": 3, "technical": 1},
-    "Pry Tool": {"slot": "Tool", "size": 2, "tool": "Breach"},
-    "Work Gloves": {"slot": "Clothing", "size": 1},
-    "Heavy Boots": {"slot": "Clothing", "size": 2},
-    "Leather Jacket": {"slot": "Clothing", "size": 2, "protect": 0.10},
-    "Work Jacket": {"slot": "Clothing", "size": 2, "protect": 0.05},
-    "Padded Jacket": {"slot": "Clothing", "size": 2, "protect": 0.05},
-    "Worn Backpack": {"slot": "Pack", "capacity": 6, "size": 0},
-    "School Backpack": {"slot": "Pack", "capacity": 6, "size": 0},
-    "Improvised Pack": {"slot": "Pack", "capacity": 6, "size": 0},
-    "Hiking Pack": {"slot": "Pack", "capacity": 8, "size": 0},
-    "Reinforced Pack": {"slot": "Pack", "capacity": 8, "size": 0},
+    "Utility Knife": {"slot": "Weapon", "combat": 1},
+    "Kitchen Knife": {"slot": "Weapon", "combat": 1},
+    "Wooden Club": {"slot": "Weapon", "combat": 2},
+    "Baseball Bat": {"slot": "Weapon", "combat": 2},
+    "Hammer": {"slot": "Weapon", "combat": 2, "tool": "Hammer"},
+    "Improvised Spear": {"slot": "Weapon", "combat": 2},
+    "Crowbar": {"slot": "Weapon", "combat": 2, "tool": "Breach"},
+    "Sledgehammer": {"slot": "Weapon", "combat": 4},
+    "Hatchet": {"slot": "Weapon", "combat": 5},
+    "Crossbow": {"slot": "Weapon", "combat": 3},
+    "6-Shot Revolver": {"slot": "Weapon", "combat": 5},
+    "12-Shot Automatic": {"slot": "Weapon", "combat": 5},
+    "Double-Barrel Shotgun": {"slot": "Weapon", "combat": 5},
+    "Pump Shotgun": {"slot": "Weapon", "combat": 5},
+    "Medium Rifle": {"slot": "Weapon", "combat": 5},
+    "Long Rifle": {"slot": "Weapon", "combat": 5},
+    "Pistol": {"slot": "Weapon", "combat": 5, "legacy_alias": "6-Shot Revolver"},
+    "Shotgun": {"slot": "Weapon", "combat": 5, "legacy_alias": "Double-Barrel Shotgun"},
+    "Rifle": {"slot": "Weapon", "combat": 5, "legacy_alias": "Long Rifle"},
+    "Flashlight": {"slot": "Secondary", "light": "cone", "light_range": 8.5, "light_spread": 0.52, "light_strength": 1.0, "light_color": "edf5d6", "view_bonus": 2, "charge_max": 100.0, "charge_per_tick": 0.025},
+    "Lock Pick": {"slot": "Secondary", "uses_min": 1, "uses_max": 3},
+    "Firecracker": {"slot": "Secondary", "uses": 1},
+    "Headlamp": {"slot": "Secondary", "light": "cone", "light_range": 7.0, "light_spread": 0.34, "light_strength": 0.88, "light_color": "f1edc5", "view_bonus": 1, "legacy": true},
+    "Lantern": {"slot": "Secondary", "light": "radial", "light_range": 4.5, "light_strength": 0.88, "light_color": "ffc46f", "view_bonus": 0, "legacy": true},
+    "Glow Stick": {"slot": "Secondary", "light": "radial", "light_range": 3.0, "light_strength": 0.58, "light_color": "71ef68", "view_bonus": 0, "legacy": true},
+    "Road Flare": {"slot": "Secondary", "light": "radial", "light_range": 4.8, "light_strength": 0.92, "light_color": "ff5b48", "view_bonus": 0, "legacy": true},
+    "Screwdriver Set": {"slot": "Tool", "technical": 1},
+    "Bolt Cutters": {"slot": "Tool", "tool": "Cutters"},
+    "Toolbox": {"slot": "Tool", "technical": 1},
+    "Pry Tool": {"slot": "Tool", "tool": "Breach"},
+    "Work Gloves": {"slot": "Clothing"},
+    "Heavy Boots": {"slot": "Clothing"},
+    "Leather Jacket": {"slot": "Clothing", "protect": 0.10},
+    "Work Jacket": {"slot": "Clothing", "protect": 0.05},
+    "Padded Jacket": {"slot": "Clothing", "protect": 0.05},
+    "Worn Backpack": {"slot": "Pack", "capacity": 6},
+    "School Backpack": {"slot": "Pack", "capacity": 6},
+    "Improvised Pack": {"slot": "Pack", "capacity": 6},
+    "Hiking Pack": {"slot": "Pack", "capacity": 8},
+    "Reinforced Pack": {"slot": "Pack", "capacity": 8},
 }
 
 const TACTICAL_GEAR_UNLOCKS_BY_ZONE := {
@@ -243,6 +245,9 @@ const RECIPES := {
         {"id": "Work Jacket", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_gear": "Work Jacket"},
         {"id": "Padded Jacket", "time": 10.0, "cost": {"Cloth": 3, "Plastic": 1}, "gives_gear": "Padded Jacket"},
         {"id": "Weatherproofing Roll", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_component": {"Weatherproofing Roll": 1}},
+    ],
+    "Infirmary": [
+        {"id": "Zombie Cure", "time": 20.0, "cost": {"Zombie Corpse": 2}, "gives_component": {"Zombie Cure": 1}},
     ]
 }
 
@@ -257,7 +262,7 @@ const BUILDINGS := {
     "Cabin": {"time": 45.0, "cost": {"Wood": 4, "Scrap Metal": 2}, "component_cost": {"Framing Kit": 4, "Weatherproofing Roll": 2}, "requires": ["Workbench", "Sewing Table"], "description": "+4 shelter capacity and better idle recovery."},
     "Water Tank": {"time": 24.0, "cost": {"Scrap Metal": 5, "Plastic": 4, "Hardware": 2}, "requires": ["Rain Catcher", "Workbench"], "description": "Doubles daily Rain Catcher output."},
     "Communal Table": {"time": 18.0, "cost": {"Wood": 5, "Hardware": 2}, "requires": ["Cabin"], "description": "Improves idle stress recovery and enables shared-meal camp events."},
-    "Infirmary": {"time": 32.0, "cost": {"Wood": 5, "Cloth": 3, "Plastic": 3, "Hardware": 3}, "component_cost": {"Bandage": 2}, "requires": ["Cabin", "Workbench"], "description": "Speeds treatment and wound recovery; reduces untreated critical decline."},
+    "Infirmary": {"time": 32.0, "cost": {"Wood": 5, "Cloth": 3, "Plastic": 3, "Hardware": 3}, "component_cost": {"Bandage": 2}, "requires": ["Cabin", "Workbench"], "description": "Speeds treatment and wound recovery; can craft Zombie Cure from recovered zombie corpses."},
     "Watch Post": {"time": 28.0, "cost": {"Wood": 5, "Scrap Metal": 2, "Hardware": 2}, "requires": ["Noise Line", "Workbench"], "description": "Further reduces danger from camp-perimeter disturbances."},
     "Bunkhouse": {"time": 42.0, "cost": {"Wood": 8, "Cloth": 4, "Plastic": 2}, "component_cost": {"Framing Kit": 2, "Weatherproofing Roll": 1}, "requires": ["Cabin", "Sewing Table"], "description": "+6 shelter capacity."},
     "Armory": {"time": 38.0, "cost": {"Wood": 8, "Scrap Metal": 8, "Hardware": 6, "Plastic": 2}, "requires": ["Workbench", "Cabin"], "description": "Secure storage and readiness for field-found firearms."},
