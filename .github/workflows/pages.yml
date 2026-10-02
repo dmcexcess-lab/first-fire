@@ -100,6 +100,12 @@ jobs:
           grep -Fq 'founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "Flashlight"' game/scripts/Game.gd
           grep -q 'TACTICAL_GEAR_UNLOCKS_BY_ZONE' game/scripts/FFData.gd
           grep -Fq '"duration": 10.0, "danger": "Minimal"' game/scripts/FFData.gd
+          grep -Fq 'buildings["Storage Crate"] = true' game/scripts/Game.gd
+          grep -Fq 'buildings["Workbench"] = true' game/scripts/Game.gd
+          grep -q 'func start_training' game/scripts/GameSleepVirus.gd
+          grep -q 'func _draw_wilderness' game/scripts/FFCampViewSleepVirus.gd
+          if grep -q 'build_plot_pressed.emit' game/scripts/FFCampViewSleepVirus.gd; then exit 1; fi
+          grep -q 'func _start_training' game/scripts/FFInspectorThreeStat.gd
           grep -q 'func _pick_tactical_gear' game/scripts/Game.gd
           grep -q '"field_gear"' game/scripts/Game.gd
           grep -q 'field_gear_visual' game/scripts/FFTacticalVisuals.gd
