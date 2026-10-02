@@ -13,7 +13,7 @@ const CAMP_TUTORIAL_STEPS := [
     },
     {
         "title": "BUILD THE CAMP",
-        "body": "You begin with the First Fire, three rough bedroll spaces and communal storage. Until you build a Workbench, the fire only cooks food, boils water and makes Bandages. The first bench is deliberately light: 2 Wood + 1 Scrap Metal. Shelter then grows 3 → 7 → 12 → 18 through Large Tarp, Barracks and Dormitory; the fire grows into an evolving Tavern."
+        "body": "You begin with the First Fire, shelter for 3 and communal storage, but the camp only lays out one bed per living resident. Until you build a Workbench, the fire only cooks food, boils water and makes Bandages. The first bench is deliberately light: 2 Wood + 1 Scrap Metal. Shelter then grows 3 → 7 → 12 → 18 through Large Tarp, Barracks and Dormitory; the fire grows into an evolving Tavern."
     },
     {
         "title": "ASSIGN FROM THE CAMP",
@@ -668,6 +668,8 @@ func _activity_text(s):
     return status
 
 func _refresh_status():
+    if chore_minigame != null and chore_minigame.visible and Game.get_daily_chore(chore_minigame.active_chore_id).is_empty():
+        _close_chore_minigame()
     if status_label == null:
         return
     status_label.text = "D%d  %s  •  FOOD %d  WATER %d" % [
@@ -701,6 +703,11 @@ func _refresh_status():
                 active.append("%s %s: %.0fs" % [s["name"], camp_task.get("label", "work"), float(camp_task.get("remaining", 0.0))])
         elif status in ["Quarantined", "Sick"]:
             active.append("%s: %s" % [s["name"], _activity_text(s)])
+    var maintenance: Array = Game.daily_chores()
+    if not maintenance.is_empty():
+        var incident: Dictionary = maintenance[0]
+        var incident_id := str(incident.get("id", ""))
+        active.append("MAINTENANCE • %s • %.1fh LEFT" % [str(incident.get("label", "Camp issue")).to_upper(), Game.daily_chore_deadline_hours(incident_id)])
     var timer_text := "PAUSED" if Game.sim_paused else ""
     if not active.is_empty():
         timer_text += ("  •  " if timer_text != "" else "") + "  |  ".join(active)
@@ -709,10 +716,12 @@ func _refresh_status():
 
 func _draw_camp_work_board() -> void:
     content_box.add_child(_separator())
-    content_box.add_child(_heading("TODAY'S CAMP WORK", 19))
+    content_box.add_child(_heading("CAMP MAINTENANCE", 19))
     var chores: Array = Game.daily_chores()
-    var complete_count := chores.size() - Game.daily_chore_incomplete_count()
-    content_box.add_child(_make_label("%d / %d COMPLETE  •  Only one or two chores are needed each day." % [complete_count, chores.size()], 12))
+    if chores.is_empty():
+        content_box.add_child(_make_label("No urgent maintenance. Problems emerge irregularly as the camp wears down.", 12))
+    else:
+        content_box.add_child(_make_label("Maintenance is not a daily quota. Fix the active problem before its deadline or the camp takes the listed consequence.", 12))
 
     var has_unassigned := false
     for chore_value in chores:
@@ -734,6 +743,8 @@ func _draw_camp_work_board() -> void:
         if not bool(chore.get("complete", false)):
             state_text = "UNASSIGNED" if sid < 0 else (str(worker.get("name", "Assigned")) if worker != null else "ASSIGNED")
         column.add_child(_make_label("%s — %s" % [str(chore.get("label", "Camp Chore")).to_upper(), state_text], 15))
+        var chore_id := str(chore.get("id", ""))
+        column.add_child(_make_label("TIME LEFT %.1fh  •  MISS: %s" % [Game.daily_chore_deadline_hours(chore_id), Game.daily_chore_consequence_text(chore_id)], 12))
         if not bool(chore.get("complete", false)):
             if sid < 0:
                 var assign := Button.new()

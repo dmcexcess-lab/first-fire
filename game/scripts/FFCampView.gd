@@ -342,11 +342,42 @@ func _draw_structures(origin: Vector2, tile: float) -> void:
     if bool(Game.buildings.get("Armory", false)):
         _draw_armory(origin, tile)
 
-func _draw_bedroll(origin: Vector2, tile: float) -> void:
-    for cell in [Vector2i(4, 6), Vector2i(5, 6), Vector2i(6, 6)]:
-        var r := _cell_rect(cell, origin, tile).grow(-tile * 0.14)
+func _shelter_sleep_slots() -> Array:
+    if bool(Game.buildings.get("Dormitory", false)):
+        return [
+            Vector2i(9, 7), Vector2i(10, 7), Vector2i(11, 7),
+            Vector2i(9, 8), Vector2i(10, 8), Vector2i(11, 8),
+            Vector2i(8, 7), Vector2i(12, 7), Vector2i(8, 8), Vector2i(12, 8),
+            Vector2i(7, 7), Vector2i(13, 7), Vector2i(7, 8), Vector2i(13, 8),
+            Vector2i(9, 9), Vector2i(10, 9), Vector2i(11, 9), Vector2i(12, 9),
+        ]
+    if bool(Game.buildings.get("Barracks", false)):
+        return [
+            Vector2i(1, 7), Vector2i(2, 7), Vector2i(3, 7), Vector2i(4, 7), Vector2i(5, 7), Vector2i(6, 7),
+            Vector2i(1, 8), Vector2i(2, 8), Vector2i(3, 8), Vector2i(4, 8), Vector2i(5, 8), Vector2i(6, 8),
+        ]
+    if bool(Game.buildings.get("Large Tarp", false)):
+        return [
+            Vector2i(3, 5), Vector2i(4, 5), Vector2i(5, 5), Vector2i(6, 5),
+            Vector2i(3, 6), Vector2i(4, 6), Vector2i(5, 6),
+        ]
+    return [Vector2i(4, 6), Vector2i(5, 6), Vector2i(6, 6)]
+
+func _resident_bed_slots() -> Array:
+    var slots := _shelter_sleep_slots()
+    var resident_count := mini(Game.population(), slots.size())
+    if resident_count <= 0:
+        return []
+    return slots.slice(0, resident_count)
+
+func _draw_resident_beds(origin: Vector2, tile: float) -> void:
+    for cell_value in _resident_bed_slots():
+        var cell: Vector2i = cell_value
+        var r := _cell_rect(cell, origin, tile).grow(-tile * 0.20)
         Tiles.draw_prop(self, r, "bed")
-        draw_rect(Rect2(r.position + Vector2(tile * 0.10, tile * 0.60), Vector2(r.size.x * 0.70, tile * 0.10)), Color(0.25, 0.31, 0.28, 0.65))
+
+func _draw_bedroll(origin: Vector2, tile: float) -> void:
+    _draw_resident_beds(origin, tile)
 
 func _draw_rain_catcher(origin: Vector2, tile: float) -> void:
     var r := _cell_rect(building_cell("Rain Catcher"), origin, tile).grow(-tile * 0.08)
@@ -369,6 +400,7 @@ func _draw_large_tarp(origin: Vector2, tile: float) -> void:
     ]), Color("3c5043"))
     draw_line(r.position + Vector2(r.size.x * 0.50, r.size.y * 0.10), r.position + Vector2(r.size.x * 0.50, r.size.y * 0.92), Color("c1b690"), maxf(1.0, tile * 0.035))
     draw_line(r.position + Vector2(r.size.x * 0.04, r.size.y * 0.92), r.position + Vector2(r.size.x * 0.96, r.size.y * 0.92), Color("95876b"), maxf(1.0, tile * 0.04))
+    _draw_resident_beds(origin, tile)
 
 func _draw_storage(origin: Vector2, tile: float) -> void:
     var cell := building_cell("Storage Crate")
@@ -445,9 +477,8 @@ func _draw_barracks(origin: Vector2, tile: float) -> void:
         r.position + Vector2(r.size.x * 0.50, -tile * 0.10),
         r.position + Vector2(r.size.x + tile * 0.05, r.size.y * 0.24),
     ]), Color("70644f"))
-    for x in [0.10, 0.26, 0.42, 0.58, 0.74, 0.90]:
-        draw_rect(Rect2(r.position + Vector2(r.size.x * x - tile * 0.16, r.size.y * 0.48), Vector2(tile * 0.32, tile * 0.42)), Color("2c342f"))
     draw_rect(r, Color("a59674"), false, maxf(1.0, tile * 0.04))
+    _draw_resident_beds(origin, tile)
 
 func _draw_armory(origin: Vector2, tile: float) -> void:
     var r := _cell_rect(building_cell("Armory"), origin, tile).grow(-tile * 0.04)
@@ -458,15 +489,16 @@ func _draw_armory(origin: Vector2, tile: float) -> void:
     draw_line(r.position + Vector2(r.size.x * 0.74, r.size.y * 0.20), r.position + Vector2(r.size.x * 0.88, r.size.y * 0.76), Color("a5aaa2"), maxf(1.0, tile * 0.035))
 
 func _draw_dormitory(origin: Vector2, tile: float) -> void:
-    var r := Rect2(_cell_rect(Vector2i(8, 7), origin, tile).position, Vector2(tile * 5.0, tile * 3.0)).grow(-tile * 0.03)
+    var r := Rect2(_cell_rect(Vector2i(7, 7), origin, tile).position, Vector2(tile * 7.0, tile * 3.0)).grow(-tile * 0.03)
     draw_rect(r, Color("4d5a55"))
     draw_colored_polygon(PackedVector2Array([
         r.position + Vector2(-tile * 0.04, r.size.y * 0.26),
         r.position + Vector2(r.size.x * 0.50, -tile * 0.08),
         r.position + Vector2(r.size.x + tile * 0.04, r.size.y * 0.26),
     ]), Color("667064"))
-    Tiles.draw_window(self, Rect2(r.position + Vector2(r.size.x * 0.12, r.size.y * 0.36), r.size * 0.30))
-    Tiles.draw_window(self, Rect2(r.position + Vector2(r.size.x * 0.58, r.size.y * 0.36), r.size * 0.26))
+    Tiles.draw_window(self, Rect2(r.position + Vector2(r.size.x * 0.08, r.size.y * 0.18), Vector2(r.size.x * 0.22, r.size.y * 0.22)))
+    Tiles.draw_window(self, Rect2(r.position + Vector2(r.size.x * 0.70, r.size.y * 0.18), Vector2(r.size.x * 0.22, r.size.y * 0.22)))
+    _draw_resident_beds(origin, tile)
 
 func _draw_tavern(origin: Vector2, tile: float) -> void:
     var r := Rect2(_cell_rect(Vector2i(5, 3), origin, tile).position, Vector2(tile * 5.0, tile * 3.0)).grow(-tile * 0.05)

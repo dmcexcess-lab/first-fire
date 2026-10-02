@@ -50,6 +50,7 @@ var memory := {}
 var last_seen := {}
 var intent_reads := {}
 var sound_marks: Array = []
+var loot_feedback: Array = []
 var tick := 0
 var exit_cells: Array = []
 var player_spawn := Vector2i(2, H - 2)
@@ -107,7 +108,13 @@ func _process(delta):
     if not initialized:
         return
     var now := Time.get_ticks_msec()
-    var active := now < hit_flash_until_ms or now < muzzle_flash_until_ms
+    var active_feedback: Array = []
+    for entry_value in loot_feedback:
+        var entry: Dictionary = entry_value
+        if now < int(entry.get("until_ms", 0)):
+            active_feedback.append(entry)
+    loot_feedback = active_feedback
+    var active := now < hit_flash_until_ms or now < muzzle_flash_until_ms or not loot_feedback.is_empty()
     lighting_redraw_accum += float(delta)
     var lighting_animation_due := false
     if lighting_redraw_accum >= 0.12 and TacticalLighting.has_animated_sources(light_sources, power_on):
@@ -125,6 +132,7 @@ func start_encounter(data: Dictionary):
     game_over = false
     stats = {"kills": 0, "shots": 0, "melee": 0, "shoves": 0, "searches": 0, "containers": 0, "corpses": 0, "noise": 0, "damage": 0}
     sound_marks.clear()
+    loot_feedback.clear()
     memory.clear()
     last_seen.clear()
     intent_reads.clear()
@@ -158,9 +166,12 @@ func start_encounter(data: Dictionary):
         msg = "Reach %s at the marked SOS, then escort them out." % rescue_name
         submsg = "They are protected until contact. After contact they can be hurt."
     elif context.get("kind", "ambush") == "explore":
-        var field_gear := str(context.get("field_gear", "Field Loot"))
-        msg = "Open the marked containers and find %s." % field_gear
-        submsg = "Containers hold real supplies; loot only comes home if you escape."
+        var field_gear := str(context.get("field_gear", ""))
+        if field_gear != "":
+            msg = "Open the marked containers and find %s." % field_gear
+        else:
+            msg = "Search the marked containers for anything still worth carrying."
+        submsg = "Containers can be picked clean; recovered loot only comes home if you escape."
     else:
         msg = "You got jumped. Reach the marked exit."
         submsg = "Extraction is across the map. Pick a route; killing everything is optional."
@@ -516,8 +527,11 @@ func setup_explore_sites() -> void:
         explore_cells = loot_containers.keys().slice(0, wanted)
     if explore_cells.is_empty():
         return
-    explore_gear_cell = explore_cells[rng.randi_range(0, explore_cells.size() - 1)]
-    objective_cell = explore_gear_cell
+    if str(context.get("field_gear", "")) != "":
+        explore_gear_cell = explore_cells[rng.randi_range(0, explore_cells.size() - 1)]
+        objective_cell = explore_gear_cell
+    else:
+        objective_cell = explore_cells[explore_cells.size() - 1]
 
 func _reachable_distances(start: Vector2i) -> Dictionary:
     var distances := {start: 0}
@@ -1341,19 +1355,25 @@ func search_loot_container(cell: Vector2i) -> void:
     var loot_text := _format_loot(contents)
     if left_behind > 0:
         loot_text += " • %d left behind (carry full)" % left_behind
+    var feedback_text := _floating_loot_text(contents, left_behind, not original_contents.is_empty())
     var is_explore_site := str(context.get("kind", "")) == "explore" and explore_cells.has(cell)
     if is_explore_site:
         explore_searched[cell] = true
         stats["searches"] = int(stats.get("searches", 0)) + 1
         if cell == explore_gear_cell:
             objective_done = true
-            var field_gear := str(context.get("field_gear", "field gear"))
-            msg = "%s: %s. Found %s — extract when ready." % [TacticalBalance.container_label(container_kind).capitalize(), loot_text, field_gear]
+            var field_gear := str(context.get("field_gear", ""))
+            if field_gear != "":
+                feedback_text = ("%s  +%s" % [feedback_text, field_gear]) if feedback_text != "EMPTY" else "+%s" % field_gear
+                msg = "%s: %s. Found %s — extract when ready." % [TacticalBalance.container_label(container_kind).capitalize(), loot_text, field_gear]
         else:
             var remaining := explore_cells.size() - explore_searched.size()
+            if str(context.get("field_gear", "")) == "" and remaining <= 0:
+                objective_done = true
             msg = "%s: %s. %d marked container%s left." % [TacticalBalance.container_label(container_kind).capitalize(), loot_text, remaining, "" if remaining == 1 else "s"]
     else:
         msg = "%s: %s." % [TacticalBalance.container_label(container_kind).capitalize(), loot_text]
+    _show_loot_feedback(cell, feedback_text)
     emit_noise(cell, TacticalBalance.container_search_noise(container_kind), "rummaging", true)
     commit_action(TacticalBalance.container_search_cost(player))
 
@@ -1365,6 +1385,25 @@ func _format_loot(loot: Dictionary) -> String:
         bits.append("+%d %s" % [int(loot[key]), str(key)])
     bits.sort()
     return ", ".join(bits)
+
+func _floating_loot_text(loot: Dictionary, left_behind: int, had_contents: bool) -> String:
+    if loot.is_empty():
+        return "CARRY FULL" if had_contents and left_behind > 0 else "EMPTY"
+    var bits: Array = []
+    for key in loot.keys():
+        bits.append("+%d %s" % [int(loot[key]), str(key)])
+    bits.sort()
+    return "  ".join(bits)
+
+func _show_loot_feedback(cell: Vector2i, text_value: String) -> void:
+    loot_feedback.append({
+        "cell":cell,
+        "text":text_value,
+        "start_ms":Time.get_ticks_msec(),
+        "until_ms":Time.get_ticks_msec() + 1500,
+    })
+    fx_active_last_frame = true
+    queue_redraw()
 
 func collected_container_loot() -> Dictionary:
     var total: Dictionary = {}
@@ -1924,6 +1963,7 @@ func _draw():
     draw_objective_markers()
     draw_escape_markers()
     draw_sounds()
+    draw_loot_feedback()
     draw_character_fx()
     draw_set_transform(Vector2.ZERO)
     draw_hud()
@@ -2117,6 +2157,27 @@ func draw_sounds():
         draw_rect(box, Color(.78,.68,.30,.78), false, 1)
         draw_string(font,Vector2(box.position.x,c.y+2),label,HORIZONTAL_ALIGNMENT_CENTER,box.size.x,8,Color(.98,.86,.40))
 
+func draw_loot_feedback() -> void:
+    var now := Time.get_ticks_msec()
+    for entry_value in loot_feedback:
+        var entry: Dictionary = entry_value
+        var cell: Vector2i = entry.get("cell", Vector2i.ZERO)
+        var text_value := str(entry.get("text", ""))
+        var start_ms := int(entry.get("start_ms", now))
+        var until_ms := int(entry.get("until_ms", now))
+        var lifetime := maxi(1, until_ms - start_ms)
+        var progress := clampf(float(now - start_ms) / float(lifetime), 0.0, 1.0)
+        var alpha := clampf(1.0 - progress * 0.75, 0.20, 1.0)
+        var center := cell_center(cell) + Vector2(0, -18.0 - 12.0 * progress)
+        var width := clampf(36.0 + float(text_value.length()) * 5.0, 72.0, 180.0)
+        var color := Color(0.86, 0.88, 0.82, alpha) if text_value == "EMPTY" else Color(0.98, 0.84, 0.34, alpha)
+        if text_value == "CARRY FULL":
+            color = Color(1.0, 0.52, 0.28, alpha)
+        var box := Rect2(center.x - width * 0.5, center.y - 13.0, width, 18.0)
+        draw_rect(box, Color(0.03, 0.04, 0.04, 0.78 * alpha))
+        draw_rect(box, color, false, 1.0)
+        draw_string(font, Vector2(box.position.x, center.y), text_value, HORIZONTAL_ALIGNMENT_CENTER, box.size.x, 9, color)
+
 func draw_hud():
     draw_rect(Rect2(0,0,SCREEN_W,INFO_H),Color(.035,.045,.04,.99))
     var scene_label := "%s  •  %s  •  %s" % [location_name, scene_time.to_upper(), "POWER" if power_on else "NO POWER"]
@@ -2138,8 +2199,10 @@ func draw_hud():
             else:
                 objective_text = "REACH %s" % rescue_name
         "explore":
-            var field_gear := str(context.get("field_gear", "LOOT"))
-            if objective_done:
+            var field_gear := str(context.get("field_gear", ""))
+            if field_gear == "":
+                objective_text = ("SEARCH COMPLETE" if objective_done else "SCAVENGE") + " | %d/%d" % [explore_searched.size(), explore_cells.size()]
+            elif objective_done:
                 objective_text = "FOUND %s | SEARCH %d/%d" % [field_gear, explore_searched.size(), explore_cells.size()]
             else:
                 objective_text = "SEARCH %d/%d | FIND %s" % [explore_searched.size(), explore_cells.size(), field_gear]

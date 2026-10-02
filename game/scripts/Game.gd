@@ -1183,9 +1183,18 @@ func _tactical_gear_pool(zone: String) -> Array:
         pool.append_array(Array(D.TACTICAL_GEAR_UNLOCKS_BY_ZONE.get(tier_zone, [])))
     return pool
 
+func _tactical_gear_find_chance(zone: String) -> float:
+    return float({
+        "Camp Perimeter": 0.30,
+        "Nearby Streets": 0.50,
+        "Residential Blocks": 1.0,
+        "Commercial Fringe": 1.0,
+        "Industrial Edge": 1.0,
+    }.get(zone, 1.0))
+
 func _pick_tactical_gear(zone: String) -> String:
     var pool := _tactical_gear_pool(zone)
-    if pool.is_empty():
+    if pool.is_empty() or rng.randf() > _tactical_gear_find_chance(zone):
         return ""
     return str(pool[rng.randi_range(0, pool.size() - 1)])
 
@@ -1444,11 +1453,16 @@ func resolve_combat(result):
             inventory_gear.append(recovered_gear)
             reward = (reward + ", " if reward != "" else "") + recovered_gear
         if bool(result.get("objective_done", false)):
-            _queue_field_result(event, "%s Searched" % place, "You searched %d/%d marked spots, recovered the target gear, and got back out. Find: %s." % [searches, total_sites, reward if reward != "" else "nothing extra"], "The party searched %s tactically and escaped with %s." % [place, recovered_gear if recovered_gear != "" else "supplies"])
+            if recovered_gear != "":
+                _queue_field_result(event, "%s Searched" % place, "You searched %d/%d marked spots, recovered the target gear, and got back out. Find: %s." % [searches, total_sites, reward if reward != "" else "nothing extra"], "The party searched %s tactically and escaped with %s." % [place, recovered_gear])
+            else:
+                _queue_field_result(event, "%s Searched" % place, "You finished searching %d/%d marked spots and got back out. There was no special gear cache this time. Find: %s." % [searches, total_sites, reward if reward != "" else "nothing useful"], "The party fully scavenged %s and escaped." % place)
         elif searches > 0:
-            _queue_field_result(event, "Partial Search of %s" % place, "You searched %d/%d marked spots and escaped before finding the target gear. You still keep the supplies you physically recovered: %s." % [searches, total_sites, reward if reward != "" else "nothing useful"], "The party partially searched %s and withdrew alive." % place)
+            var partial_reason := "before finding the target gear" if str(result.get("field_gear", "")) != "" else "before checking every marked spot"
+            _queue_field_result(event, "Partial Search of %s" % place, "You searched %d/%d marked spots and escaped %s. You still keep the supplies you physically recovered: %s." % [searches, total_sites, partial_reason, reward if reward != "" else "nothing useful"], "The party partially searched %s and withdrew alive." % place)
         else:
-            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out before committing to the search. The outing is over, and the marked gear opportunity here is gone.", "The party withdrew from %s before searching the tactical objective." % place)
+            var opportunity_text := "the marked gear opportunity here is gone" if str(result.get("field_gear", "")) != "" else "you leave without searching the marked containers"
+            _queue_field_result(event, "Withdrew from %s" % place, "You found a way out before committing to the search; %s." % opportunity_text, "The party withdrew from %s before searching the tactical objective." % place)
     elif kind == "rescue" and not bool(result.get("objective_done", false)):
         var rescue_name := str(encounter.get("rescue_candidate", {}).get("name", "the survivor"))
         if not bool(result.get("rescue_survivor_alive", true)):

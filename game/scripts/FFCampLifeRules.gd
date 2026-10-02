@@ -43,7 +43,12 @@ const MISSED_MEAL_HUNGER_PENALTY := 24.0
 const MISSED_WATER_THIRST_PENALTY := 32.0
 const MISSED_SLEEP_FATIGUE_PENALTY := 18.0
 const DAILY_CHORE_KINDS := ["poke_fire", "chop_wood", "clear_area", "stack_supplies"]
-const DAILY_CHORE_NEGLECT_LOSS := 4.0
+# Maintenance incidents replace the old guaranteed 1–2 chores per day.
+# At most one is active. Gaps are deliberately irregular and can span days.
+const CHORE_INCIDENT_GAP_MIN_SECONDS := 240.0
+const CHORE_INCIDENT_GAP_MAX_SECONDS := 540.0
+const CHORE_INCIDENT_RESPONSE_MIN_SECONDS := 90.0
+const CHORE_INCIDENT_RESPONSE_MAX_SECONDS := 150.0
 const DUTY_ROTATION_DAYS := 5
 const CHORE_TARGET_COUNT := 6
 const DAILY_CHORE_CATALOG := {
@@ -238,40 +243,58 @@ static func daily_chore_target_index(kind: String, seed: int, progress: int) -> 
     var kind_index := maxi(0, DAILY_CHORE_KINDS.find(kind))
     return posmod(seed + progress * 17 + kind_index * 11, CHORE_TARGET_COUNT)
 
-static func generate_daily_chores(day_value: int, rng: RandomNumberGenerator) -> Array:
-    var result: Array = []
-    var count := 1 + (1 if rng.randf() < 0.5 else 0)
-    for index in range(count):
-        var kind := str(DAILY_CHORE_KINDS[rng.randi_range(0, DAILY_CHORE_KINDS.size() - 1)])
-        var seed := rng.randi_range(1, 2147483000)
-        result.append({
-            "id":"%d-%d-%s" % [day_value, index, kind],
-            "day":day_value,
-            "kind":kind,
-            "label":daily_chore_label(kind),
-            "assigned_survivor_id":-1,
-            "eligible_ids":[],
-            "minigame_seed":seed,
-            "minigame_progress":0,
-            "minigame_goal":daily_chore_goal(kind, seed),
-            "interaction_complete":false,
-            "complete":false,
-            "rewarded":false,
-        })
-    return result
+static func maintenance_incident_gap(rng: RandomNumberGenerator) -> float:
+    return rng.randf_range(CHORE_INCIDENT_GAP_MIN_SECONDS, CHORE_INCIDENT_GAP_MAX_SECONDS)
 
-static func normalize_daily_chores(value, day_value: int) -> Array:
+static func generate_maintenance_incident(day_value: int, now_seconds: float, rng: RandomNumberGenerator) -> Dictionary:
+    var kind := str(DAILY_CHORE_KINDS[rng.randi_range(0, DAILY_CHORE_KINDS.size() - 1)])
+    var seed := rng.randi_range(1, 2147483000)
+    var response_window := rng.randf_range(CHORE_INCIDENT_RESPONSE_MIN_SECONDS, CHORE_INCIDENT_RESPONSE_MAX_SECONDS)
+    return {
+        "id":"%d-%s-%d" % [day_value, kind, seed],
+        "day":day_value,
+        "kind":kind,
+        "label":daily_chore_label(kind),
+        "assigned_survivor_id":-1,
+        "eligible_ids":[],
+        "minigame_seed":seed,
+        "minigame_progress":0,
+        "minigame_goal":daily_chore_goal(kind, seed),
+        "interaction_complete":false,
+        "complete":false,
+        "rewarded":false,
+        "deadline_at":now_seconds + response_window,
+    }
+
+static func maintenance_incident_consequence(kind: String) -> Dictionary:
+    match kind:
+        "poke_fire": return {"fire_loss":30.0}
+        "chop_wood": return {"fire_loss":18.0}
+        "clear_area": return {"condition_loss":16.0}
+        "stack_supplies": return {"condition_loss":12.0}
+    return {"condition_loss":10.0}
+
+static func maintenance_incident_consequence_text(kind: String) -> String:
+    var effect := maintenance_incident_consequence(kind)
+    if float(effect.get("fire_loss", 0.0)) > 0.0:
+        return "First Fire -%.0f%%" % float(effect["fire_loss"])
+    return "Camp condition -%.0f%%" % float(effect.get("condition_loss", 0.0))
+
+static func normalize_daily_chores(value, _day_value: int) -> Array:
+    # Compatibility name retained for the work-board callers. The collection now
+    # contains zero or one timed maintenance incident and may cross midnight.
     if not (value is Array): return []
     var incoming: Array = value
-    if incoming.size() < 1 or incoming.size() > 2: return []
+    if incoming.size() > 1: return []
     var result: Array = []
     for item_value in incoming:
         if not (item_value is Dictionary): return []
         var item: Dictionary = item_value.duplicate(true)
         var kind := str(item.get("kind", ""))
-        if kind not in DAILY_CHORE_KINDS or int(item.get("day", -1)) != day_value: return []
+        if kind not in DAILY_CHORE_KINDS or not item.has("deadline_at"): return []
         var seed := maxi(1, int(item.get("minigame_seed", 1)))
         var goal := clampi(int(item.get("minigame_goal", daily_chore_goal(kind, seed))), 1, 8)
+        item["day"] = int(item.get("day", 1))
         item["label"] = daily_chore_label(kind)
         item["assigned_survivor_id"] = int(item.get("assigned_survivor_id", -1))
         item["eligible_ids"] = item.get("eligible_ids", []).duplicate(true) if item.get("eligible_ids", []) is Array else []
@@ -281,6 +304,7 @@ static func normalize_daily_chores(value, day_value: int) -> Array:
         item["interaction_complete"] = bool(item.get("interaction_complete", false)) or int(item["minigame_progress"]) >= goal
         item["complete"] = bool(item.get("complete", false))
         item["rewarded"] = bool(item.get("rewarded", false))
+        item["deadline_at"] = maxf(0.0, float(item.get("deadline_at", 0.0)))
         result.append(item)
     return result
 

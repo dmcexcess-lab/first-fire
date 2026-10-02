@@ -1,3 +1,14 @@
+## Beta Candidate — Field Feedback, Resident Beds & Timed Maintenance — 2026-10-02
+
+- Added **floating tactical search feedback directly over the searched container**. Physical loot displays values such as `+1 Dirty Water`; genuinely stripped containers display **EMPTY**; a container blocked entirely by carry capacity displays **CARRY FULL**. Named objective gear joins the same floating result when recovered.
+- Near-camp Explore no longer guarantees a special gear cache. **Camp Perimeter = 30%** and **Nearby Streets = 50%** chance of a named gear opportunity; Medium/Far/Very Far remain guaranteed for now. When no special gear exists, Explore becomes a full marked-container scavenging objective and reports that honestly in the HUD/result text.
+- Changed living-camp sleeping presentation so **visible beds equal current living population**, not shelter capacity. A founder-only camp shows one bed even though starter shelter can hold 3; beds appear as residents join, while the hard 3/7/12/18 population caps remain unchanged. Rendering and sleep placement now share one shelter-slot geometry owner.
+- Replaced the forced **1–2 chores every day** loop with irregular **timed maintenance incidents**. At most one problem is active; the next is normally scheduled 240–540 settlement seconds after the prior one resolves/fails, and each active problem gives 90–150 settlement seconds to respond.
+- The work board and top activity strip show the live maintenance countdown. Each card also states exactly what failure costs: Poke Fire **First Fire -30%**, Chop Wood **First Fire -18%**, Clear Area **Camp condition -16%**, Stack Supplies **Camp condition -12%**.
+- Maintenance still uses the existing touch-first minigames without pausing camp time. Completing one preserves its positive effect and schedules the next problem; missing its own deadline applies the consequence immediately instead of waiting for midnight.
+- Existing unresolved maintenance can expire across expedition return-time settlement advancement, but **new** maintenance incidents are not spawned invisibly during that hidden time jump. The player is only punished for a problem that was already visible before leaving.
+- Existing schema-8 saves migrate in place from the old daily-chore model: stale daily duties are cleared/released and a future timed maintenance incident is scheduled. Save schema remains **8**.
+
 ## Beta Candidate — Tactical Loot Scarcity & Container Identity — 2026-10-02
 
 - Made **Very Short / Camp Perimeter intentionally scarce at 1–2 searchable containers** and **Short / Nearby Streets 2–3**, rising to 3–5 / 4–6 / 5–7 through Medium / Far / Very Far.

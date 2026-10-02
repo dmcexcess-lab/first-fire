@@ -273,25 +273,9 @@ func _handle_camp_press(local_pos: Vector2) -> void:
         return
 
 func _sleep_slots() -> Array:
-    if bool(Game.buildings.get("Dormitory", false)):
-        return [
-            Vector2i(9, 7), Vector2i(10, 7), Vector2i(11, 7),
-            Vector2i(9, 8), Vector2i(10, 8), Vector2i(11, 8),
-            Vector2i(8, 7), Vector2i(12, 7), Vector2i(8, 8), Vector2i(12, 8),
-            Vector2i(7, 7), Vector2i(13, 7), Vector2i(7, 8), Vector2i(13, 8),
-            Vector2i(9, 9), Vector2i(10, 9), Vector2i(11, 9), Vector2i(12, 9),
-        ]
-    if bool(Game.buildings.get("Barracks", false)):
-        return [
-            Vector2i(1, 7), Vector2i(2, 7), Vector2i(3, 7), Vector2i(4, 7), Vector2i(5, 7), Vector2i(6, 7),
-            Vector2i(1, 8), Vector2i(2, 8), Vector2i(3, 8), Vector2i(4, 8), Vector2i(5, 8), Vector2i(6, 8),
-        ]
-    if bool(Game.buildings.get("Large Tarp", false)):
-        return [
-            Vector2i(3, 5), Vector2i(4, 5), Vector2i(5, 5), Vector2i(6, 5),
-            Vector2i(3, 6), Vector2i(4, 6), Vector2i(5, 6),
-        ]
-    return [Vector2i(4, 6), Vector2i(5, 6), Vector2i(6, 6)]
+    # Base camp view owns shelter geometry so rendered beds and sleep targets
+    # can never disagree about where current residents sleep.
+    return _shelter_sleep_slots()
 
 func _sleep_cell_for_survivor(survivor: Dictionary) -> Vector2i:
     var slots := _sleep_slots()

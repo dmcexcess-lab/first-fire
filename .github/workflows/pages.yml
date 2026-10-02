@@ -117,13 +117,27 @@ jobs:
           grep -q 'tavern_drink' game/scripts/FFCampLifeRules.gd
           grep -Fq 'resources["Beer"] = int(resources.get("Beer", 0)) - 1' game/scripts/GameSleepVirus.gd
           grep -q 'func start_training' game/scripts/GameSleepVirus.gd
+          grep -Fq 'timed-maintenance-v1' game/scripts/GameSleepVirus.gd
+          grep -q 'func _process_maintenance_incidents' game/scripts/GameSleepVirus.gd
+          grep -q 'func daily_chore_deadline_hours' game/scripts/GameSleepVirus.gd
+          if grep -q 'func _generate_daily_chore_set' game/scripts/GameSleepVirus.gd; then exit 1; fi
+          grep -Fq 'CAMP MAINTENANCE' game/scripts/MainSleepVirus.gd
+          grep -Fq 'TIME LEFT' game/scripts/MainSleepVirus.gd
+          grep -Fq 'MISS:' game/scripts/MainSleepVirus.gd
           grep -q 'func _draw_wilderness' game/scripts/FFCampViewSleepVirus.gd
           if grep -q 'build_plot_pressed.emit' game/scripts/FFCampViewSleepVirus.gd; then exit 1; fi
           grep -q 'func _start_training' game/scripts/FFInspectorThreeStat.gd
           grep -q 'func _pick_tactical_gear' game/scripts/Game.gd
+          grep -q 'func _tactical_gear_find_chance' game/scripts/Game.gd
+          grep -Fq '"Camp Perimeter": 0.30' game/scripts/Game.gd
+          grep -Fq '"Nearby Streets": 0.50' game/scripts/Game.gd
           grep -q '"field_gear"' game/scripts/Game.gd
           grep -q 'field_gear_visual' game/scripts/FFTacticalVisuals.gd
           grep -q 'func search_loot_container' game/scripts/FFCombat.gd
+          grep -q 'var loot_feedback' game/scripts/FFCombat.gd
+          grep -q 'func draw_loot_feedback' game/scripts/FFCombat.gd
+          grep -Fq '"EMPTY"' game/scripts/FFCombat.gd
+          grep -Fq '"CARRY FULL"' game/scripts/FFCombat.gd
           grep -q '"container_loot"' game/scripts/FFCombat.gd
           grep -q 'const CampView = preload' game/scripts/Main.gd
           grep -Fq '"Workbench": Vector2i(10, 2)' game/scripts/FFCampView.gd
@@ -131,6 +145,9 @@ jobs:
           grep -Fq '"Tavern": Vector2i(7, 4)' game/scripts/FFCampView.gd
           grep -Fq '"Barracks": Vector2i(3, 7)' game/scripts/FFCampView.gd
           grep -Fq '"Dormitory": Vector2i(10, 7)' game/scripts/FFCampView.gd
+          grep -q 'func _resident_bed_slots' game/scripts/FFCampView.gd
+          grep -Fq 'Game.population()' game/scripts/FFCampView.gd
+          grep -Fq 'return _shelter_sleep_slots()' game/scripts/FFCampViewSleepVirus.gd
           grep -q 'func _day_phase' game/scripts/FFCampView.gd
           grep -q 'func _draw_chatter' game/scripts/FFCampView.gd
           grep -q 'func roll_chatter' game/scripts/FFCampSocial.gd

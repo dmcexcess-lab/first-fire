@@ -13,8 +13,10 @@ func new_game():
         survivor["duty_eligible_days"] = []
     flags["virus_model"] = "zombie-virus-v1"
     flags["camp_condition_model"] = "camp-condition-activity-v1"
-    flags["daily_chores"] = _generate_daily_chore_set()
+    flags["camp_chore_model"] = "timed-maintenance-v1"
+    flags["daily_chores"] = []
     flags["previous_daily_chores"] = []
+    flags["next_chore_at"] = _camp_clock() + CampLifeRules.maintenance_incident_gap(rng)
     save_game()
 
 func load_game():
@@ -36,10 +38,30 @@ func load_game():
         _normalize_health_status(survivor)
     flags["virus_model"] = "zombie-virus-v1"
     flags["camp_condition_model"] = "camp-condition-activity-v1"
-    var normalized_chores := CampLifeRules.normalize_daily_chores(flags.get("daily_chores", []), day)
-    flags["daily_chores"] = normalized_chores if not normalized_chores.is_empty() else _generate_daily_chore_set()
-    if not flags.has("previous_daily_chores"):
+    if str(flags.get("camp_chore_model", "")) != "timed-maintenance-v1":
+        # Schema-8 saves from the old guaranteed-daily system convert in place.
+        # Any in-progress daily duty is released rather than inheriting a fake deadline.
+        for survivor in survivors:
+            var task: Dictionary = survivor.get("task", {})
+            if str(task.get("kind", "")) == "daily_chore":
+                survivor["task"] = {}
+                survivor["status"] = _home_idle_status(survivor)
+            elif str(task.get("kind", "")) == "forced_rest":
+                var resume_value = task.get("resume_task", {})
+                var resume_task: Dictionary = resume_value if resume_value is Dictionary else {}
+                if str(resume_task.get("kind", "")) == "daily_chore":
+                    survivor["task"]["resume_task"] = {}
+                    survivor["task"]["resume_status"] = ""
+        flags["camp_chore_model"] = "timed-maintenance-v1"
+        flags["daily_chores"] = []
         flags["previous_daily_chores"] = []
+        flags["next_chore_at"] = _camp_clock() + CampLifeRules.maintenance_incident_gap(rng)
+    else:
+        flags["daily_chores"] = CampLifeRules.normalize_daily_chores(flags.get("daily_chores", []), day)
+        if not flags.has("previous_daily_chores"):
+            flags["previous_daily_chores"] = []
+        if not flags.has("next_chore_at"):
+            flags["next_chore_at"] = _camp_clock() + CampLifeRules.maintenance_incident_gap(rng)
     sim_paused = true
     save_game()
     state_changed.emit()
@@ -68,6 +90,7 @@ func _advance_settlement_simulation(amount: float, include_expeditions: bool = t
         _process_pets(step)
         _process_survivors(step)
         _process_camp_chatter(step)
+        _process_maintenance_incidents(allow_camp_events)
         if include_expeditions:
             _process_expeditions(step)
             if sim_paused:
@@ -140,11 +163,80 @@ func survivor_recent_activity(sid: int) -> Dictionary:
 func survivor_workload_pressure(sid: int) -> int:
     return CampLifeRules.daily_workload_pressure(survivor_activity_today(sid), day)
 
+func _camp_clock() -> float:
+    return float(maxi(0, day - 1)) * DAY_SECONDS + day_elapsed
+
+func _schedule_next_maintenance_incident(from_time: float = -1.0) -> void:
+    var base_time := _camp_clock() if from_time < 0.0 else from_time
+    flags["next_chore_at"] = base_time + CampLifeRules.maintenance_incident_gap(rng)
+
 func daily_chores() -> Array:
+    # Compatibility name retained for work-board/minigame code. There is now
+    # zero or one active timed maintenance incident, never a daily quota.
     return CampLifeRules.normalize_daily_chores(flags.get("daily_chores", []), day)
 
-func _generate_daily_chore_set() -> Array:
-    return CampLifeRules.generate_daily_chores(day, rng)
+func _spawn_maintenance_incident() -> void:
+    if not daily_chores().is_empty():
+        return
+    var incident := CampLifeRules.generate_maintenance_incident(day, _camp_clock(), rng)
+    flags["daily_chores"] = [incident]
+    var hours := daily_chore_deadline_hours(str(incident.get("id", "")))
+    toast_requested.emit("%s needs attention — %.1fh to fix it." % [str(incident.get("label", "Camp maintenance")), hours])
+    _add_history("Day %d — Maintenance problem: %s." % [day, str(incident.get("label", "camp maintenance"))])
+    save_game()
+    state_changed.emit()
+
+func _fail_maintenance_incident(chore: Dictionary) -> void:
+    var effect := CampLifeRules.maintenance_incident_consequence(str(chore.get("kind", "")))
+    fire_level = maxf(0.0, fire_level - float(effect.get("fire_loss", 0.0)))
+    camp_maintenance = maxf(0.0, camp_maintenance - float(effect.get("condition_loss", 0.0)))
+    var chore_id := str(chore.get("id", ""))
+    for survivor in survivors:
+        var task: Dictionary = survivor.get("task", {})
+        if str(task.get("kind", "")) == "daily_chore" and str(task.get("chore_id", "")) == chore_id:
+            survivor["task"] = {}
+            survivor["status"] = _home_idle_status(survivor)
+        elif str(task.get("kind", "")) == "forced_rest":
+            var resume_value = task.get("resume_task", {})
+            var resume_task: Dictionary = resume_value if resume_value is Dictionary else {}
+            if str(resume_task.get("kind", "")) == "daily_chore" and str(resume_task.get("chore_id", "")) == chore_id:
+                survivor["task"]["resume_task"] = {}
+                survivor["task"]["resume_status"] = ""
+    var failed := chore.duplicate(true)
+    failed["failed"] = true
+    flags["previous_daily_chores"] = [failed]
+    flags["daily_chores"] = []
+    _schedule_next_maintenance_incident()
+    var consequence := CampLifeRules.maintenance_incident_consequence_text(str(chore.get("kind", "")))
+    _add_history("Day %d — %s was ignored: %s." % [day, str(chore.get("label", "Camp maintenance")), consequence])
+    toast_requested.emit("%s was ignored — %s." % [str(chore.get("label", "Camp maintenance")), consequence])
+    save_game()
+    state_changed.emit()
+
+func _process_maintenance_incidents(allow_spawn: bool) -> void:
+    var chores := daily_chores()
+    if not chores.is_empty():
+        var chore: Dictionary = chores[0]
+        if not bool(chore.get("complete", false)) and _camp_clock() >= float(chore.get("deadline_at", 0.0)):
+            _fail_maintenance_incident(chore)
+        return
+    if allow_spawn and _camp_clock() >= float(flags.get("next_chore_at", 999999999.0)):
+        _spawn_maintenance_incident()
+
+func daily_chore_deadline_seconds(chore_id: String) -> float:
+    var chore := get_daily_chore(chore_id)
+    if chore.is_empty():
+        return 0.0
+    return maxf(0.0, float(chore.get("deadline_at", _camp_clock())) - _camp_clock())
+
+func daily_chore_deadline_hours(chore_id: String) -> float:
+    return daily_chore_deadline_seconds(chore_id) / (DAY_SECONDS / 24.0)
+
+func daily_chore_consequence_text(chore_id: String) -> String:
+    var chore := get_daily_chore(chore_id)
+    if chore.is_empty():
+        return ""
+    return CampLifeRules.maintenance_incident_consequence_text(str(chore.get("kind", "")))
 
 func _find_daily_chore_index(chore_id: String) -> int:
     var chores := daily_chores()
@@ -193,6 +285,9 @@ func assign_daily_chore(chore_id: String, sid: int) -> bool:
     if index < 0: return false
     var chore: Dictionary = chores[index]
     if bool(chore.get("complete", false)) or int(chore.get("assigned_survivor_id", -1)) >= 0:
+        return false
+    if _camp_clock() >= float(chore.get("deadline_at", 0.0)):
+        _fail_maintenance_incident(chore)
         return false
     var survivor: Variant = get_survivor(sid)
     if not survivor_can_assign(survivor):
@@ -305,7 +400,7 @@ func camp_chore_needed(_chore: String) -> bool:
     return false
 
 func start_camp_chore(_sid: int, _chore: String) -> bool:
-    toast_requested.emit("Daily camp chores are assigned from the camp work board.")
+    toast_requested.emit("Timed camp maintenance is handled from the camp work board.")
     return false
 
 func start_training(sid: int, stat: String) -> bool:
@@ -634,8 +729,9 @@ func _complete_task(survivor):
             chore["rewarded"] = true
         chore["complete"] = true
         chore["interaction_complete"] = true
-        chores[chore_index] = chore
-        flags["daily_chores"] = chores
+        flags["previous_daily_chores"] = [chore.duplicate(true)]
+        flags["daily_chores"] = []
+        _schedule_next_maintenance_incident()
         _record_duty_completion(survivor, chore.get("eligible_ids", []))
         survivor["task"] = {}
         survivor["status"] = _home_idle_status(survivor)
@@ -861,26 +957,12 @@ func _daily_tick():
             continue
         completed_activity[str(survivor["id"])] = CampLifeRules.finalize_daily_activity(survivor.get("daily_activity", {}), day)
 
-    var ending_chores := daily_chores()
-    var unfinished := CampLifeRules.unfinished_daily_chore_count(ending_chores)
-    if unfinished > 0:
-        camp_maintenance = CampLifeRules.apply_unfinished_chore_neglect(camp_maintenance, ending_chores)
-        _add_history("Day %d — %d required camp chore%s went unfinished." % [day, unfinished, "" if unfinished == 1 else "s"])
-    flags["previous_daily_chores"] = ending_chores.duplicate(true)
-    for chore_value in ending_chores:
-        var chore: Dictionary = chore_value
-        if bool(chore.get("complete", false)): continue
-        var sid := int(chore.get("assigned_survivor_id", -1))
-        var worker: Variant = get_survivor(sid)
-        if worker != null and str(worker.get("task", {}).get("kind", "")) == "daily_chore" and str(worker.get("task", {}).get("chore_id", "")) == str(chore.get("id", "")):
-            worker["task"] = {}
-            worker["status"] = _home_idle_status(worker)
-
+    # Timed maintenance incidents are independent of midnight. They persist
+    # across days until completed or until their own deadline expires.
     super._daily_tick()
     if game_over:
         return
 
-    flags["daily_chores"] = _generate_daily_chore_set()
     for survivor in survivors:
         if survivor["condition"] == "Dead":
             continue
