@@ -1,3 +1,12 @@
+## Beta Candidate — Living Wilderness Camp — 2026-10-01
+
+- Reframed the camp as the Sims-style home screen: a sparse wilderness start with First Fire, one bedroll, communal storage, and a starter Workbench rather than visible future-building placeholders.
+- Survivor inspectors now own deliberate camp assignment: Combat/Agility/Leadership training, maintenance work, treatment, and expedition handoff.
+- Camp chores and pet care now run as timed survivor activity after assignment instead of repeated WORK-button tapping.
+- Added capped survivor training: two sessions per survivor per day, two in-game hours per session, awarding 5 stat XP plus fatigue.
+- Expanded autonomous mood-driven camp behavior so unassigned survivors visibly sleep, check rations/water, wash, watch the treeline, wander, watch the fire, and continue social chatter.
+- Future build anchors remain code/data only; the starter camp no longer renders empty plot placeholders or a work-board management prop.
+
 ## Beta Candidate — Settlement Clock Retune — 2026-09-14
 
 - Retuned settlement time to a direct **5 real seconds = 1 in-game hour** mapping. A full in-game day now takes 120 real active seconds (2 minutes).
