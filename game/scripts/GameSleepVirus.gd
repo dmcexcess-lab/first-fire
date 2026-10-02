@@ -14,6 +14,9 @@ func load_game():
     super.load_game()
     if survivors.is_empty():
         return
+    # These are the physical baseline of the camp, not progression unlocks.
+    buildings["Storage Crate"] = true
+    buildings["Workbench"] = true
     for survivor in survivors:
         survivor["virus"] = VirusRules.normalize(survivor.get("virus", {}))
         _migrate_passive_sleep(survivor)
