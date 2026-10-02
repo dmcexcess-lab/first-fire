@@ -272,17 +272,19 @@ func shoot(i: int):
     commit_action(TimeThree.attack_cost(player, int(player.weapon.gtime)))
 
 func _inside_shotgun_cone(cell: Vector2i, max_range: int) -> bool:
-    var rel := cell - player.pos
-    var forward := rel.x * player.facing.x + rel.y * player.facing.y
+    var origin: Vector2i = player.pos
+    var facing: Vector2i = player.facing
+    var rel: Vector2i = cell - origin
+    var forward: int = rel.x * facing.x + rel.y * facing.y
     if forward < 1 or forward > max_range:
         return false
-    var side_axis := Vector2i(-player.facing.y, player.facing.x)
-    var lateral := absi(rel.x * side_axis.x + rel.y * side_axis.y)
-    var half_width := maxi(1, int(ceil(float(forward) * 0.5)))
+    var side_axis: Vector2i = Vector2i(-facing.y, facing.x)
+    var lateral: int = absi(rel.x * side_axis.x + rel.y * side_axis.y)
+    var half_width: int = maxi(1, int(ceil(float(forward) * 0.5)))
     return lateral <= half_width
 
 func apply_shotgun_cone(primary_index: int, damage: int) -> void:
-    var max_range := ThreeStatRules.weapon_range(player.weapon)
+    var max_range: int = ThreeStatRules.weapon_range(player.weapon)
     for j in range(zombies.size()):
         if j == primary_index or zombies[j].dead:
             continue
