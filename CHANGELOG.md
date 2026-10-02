@@ -1,3 +1,15 @@
+## Beta Candidate — Camp Expansion & Building Progression — 2026-10-02
+
+- Rebuilt camp growth around four readable lanes: **Shelter**, **Hearth**, **Utility**, and **Security**. The physical work board is now the permanent construction planner while unbuilt map anchors remain hidden.
+- New games now start with only the **First Fire, one sleeping bag, and communal storage**. Workbench is no longer granted for free.
+- Replaced additive legacy housing with a tiered shelter path: **Sleeping Bag (1) → Large Tarp (4) → Barracks (10) → Dormitory (18)**. Higher tiers replace the earlier sleeping presentation rather than stacking disconnected housing.
+- Added **Tavern** as the First Fire upgrade. It improves autonomous social/fun downtime, enables shared-meal camp events, and unlocks **Community Stew** (2 Raw Food → 5 Cooked Food) at the hearth.
+- Workbench remains the basic weapon/tool/component station after construction. **Crossbow, Sledgehammer, Hatchet, Bolt Cutters, and Toolbox now require the Armory**; Lock Pick and other basic Workbench recipes remain available without Armory.
+- Retired the active **Makeshift Shelter, Cabin, Communal Table, and Bunkhouse** building identities. Barracks/Tavern absorb their housing/social roles; Storage Crate remains a baseline camp fixture rather than a build project.
+- Preserved and clarified utility roles: Rain Catcher produces water, Water Tank doubles its yield and supports hygiene, Garden Plot produces food when tended, Infirmary improves medical recovery and crafts Zombie Cure, Noise Line/Watch Post improve perimeter safety, and Armory unlocks advanced fabrication.
+- Added duplicate-safe construction ownership, work-board build progress, upgraded living-camp visuals for tarp/tavern/barracks/dormitory, and deterministic regression coverage for the new progression and recipe gates.
+- Save schema advances to **8**. Schema-7 saves are intentionally invalidated instead of mapping old Cabin/Bunkhouse/Communal Table state into the new progression.
+
 ## Beta Candidate — Corpse Cure Crafting & Count-Only Carry — 2026-10-02
 
 - Added **Zombie Corpse** as physical tactical loot. A killed infected corpse can be harvested from the board; harvesting persists across tactical reloads and each recovered corpse consumes exactly one pooled expedition carry slot.

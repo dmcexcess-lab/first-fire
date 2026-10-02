@@ -9,11 +9,11 @@ const CampData = preload("res://scripts/FFData.gd")
 const CAMP_TUTORIAL_STEPS := [
     {
         "title": "YOUR CAMP IS THE MENU",
-        "body": "Watch First Fire directly. Drag the wilderness camp to look around. Tap survivors to inspect and assign them, the storage box for communal inventory, the fire or workbench to craft, and the camp edge to leave."
+        "body": "Watch First Fire directly. Drag the wilderness camp to look around. Tap survivors to inspect them, storage for inventory, the fire to craft, the work board to expand camp, and the gate to leave."
     },
     {
-        "title": "CRAFT AT THE FIRE",
-        "body": "The First Fire handles basic survival crafting. The starter Workbench handles tools and gear. Both are physical objects in camp—there is no separate Craft menu."
+        "title": "BUILD THE CAMP",
+        "body": "You begin with the First Fire, one sleeping bag and communal storage. Use the work board to build a Large Tarp, Workbench and later structures. The tarp grows into Barracks and Dormitory housing; the fire can grow into a Tavern."
     },
     {
         "title": "ASSIGN FROM THE CAMP",
@@ -261,7 +261,8 @@ func _on_camp_gate_pressed() -> void:
     _open_camp_context("gate")
 
 func _draw_station_context(station_name: String) -> void:
-    _draw_context_header(station_name, "Choose a free survivor, then make only what this station can produce.")
+    var station_title := "TAVERN FIRE" if station_name == "Fire Pit" and bool(Game.buildings.get("Tavern", false)) else station_name
+    _draw_context_header(station_title, "Choose a free survivor, then make only what this station can produce. Locked recipes show the camp structure they still require.")
     if station_name != "Fire Pit" and not bool(Game.buildings.get(station_name, false)):
         content_box.add_child(_make_label("This station has not been built yet.", 13))
         return
@@ -357,7 +358,7 @@ func _draw_building_context(building_name: String) -> void:
     content_box.add_child(build)
 
 func _draw_duties_context() -> void:
-    _draw_context_header("CAMP WORK BOARD", "Assign productive camp work here. Everyday eating, drinking, sleep and fun remain autonomous.")
+    _draw_context_header("CAMP WORK BOARD", "Assign daily duties and permanent camp expansion here. Everyday eating, drinking, sleep and fun remain autonomous.")
     _draw_camp_work_board()
 
 func _prepare_gate_context(preferred_id: int = -1) -> void:
@@ -754,6 +755,8 @@ func _draw_camp_work_board() -> void:
     content_box.add_child(_make_label("Camp condition: %s  •  Mood %s  •  %.0f%%" % [str(condition_summary.get("band", "Acceptable")).to_upper(), condition_mood_text, float(condition_summary.get("score", Game.camp_maintenance))], 12))
     content_box.add_child(_make_label("First Fire %.0f%%" % Game.fire_level, 12))
 
+    _draw_camp_expansion()
+
     content_box.add_child(_separator())
     content_box.add_child(_heading("Pets", 19))
     if Game.pets.is_empty():
@@ -779,6 +782,79 @@ func _draw_camp_work_board() -> void:
             button.pressed.connect(Game.start_pet_care.bind(selected_worker_id, int(pet["id"]), action))
             buttons.add_child(button)
         v.add_child(buttons)
+        content_box.add_child(panel)
+
+func _draw_camp_expansion() -> void:
+    content_box.add_child(_separator())
+    content_box.add_child(_heading("CAMP EXPANSION", 19))
+    content_box.add_child(_make_label("Shelter %d / %d  •  Build permanent upgrades with a free survivor. Construction consumes materials when work begins." % [Game.shelter_capacity(), Game.MAX_POPULATION], 12))
+    content_box.add_child(_worker_picker())
+    _draw_expansion_group("SHELTER", ["Large Tarp", "Barracks", "Dormitory"])
+    _draw_expansion_group("HEARTH", ["Tavern"])
+    _draw_expansion_group("UTILITY", ["Rain Catcher", "Workbench", "Sewing Table", "Garden Plot", "Water Tank", "Infirmary", "Armory"])
+    _draw_expansion_group("SECURITY", ["Noise Line", "Watch Post"])
+
+func _draw_expansion_group(group_name: String, building_names: Array) -> void:
+    content_box.add_child(_make_label(group_name, 13))
+    for building_value in building_names:
+        var building_name := str(building_value)
+        if not CampData.BUILDINGS.has(building_name):
+            continue
+        var data: Dictionary = CampData.BUILDINGS[building_name]
+        var panel := PanelContainer.new()
+        var column := VBoxContainer.new()
+        panel.add_child(column)
+        var built := bool(Game.buildings.get(building_name, false))
+        var active_worker: Variant = null
+        var construction_paused := false
+        for survivor_value in Game.survivors:
+            var survivor: Dictionary = survivor_value
+            var task: Dictionary = survivor.get("task", {})
+            if str(survivor.get("status", "")) == "Building" and str(task.get("building", "")) == building_name:
+                active_worker = survivor
+                break
+            if str(task.get("kind", "")) == "forced_rest":
+                var resume_value = task.get("resume_task", {})
+                var resume_task: Dictionary = resume_value if resume_value is Dictionary else {}
+                if str(resume_task.get("kind", "")) == "build" and str(resume_task.get("building", "")) == building_name:
+                    active_worker = survivor
+                    construction_paused = true
+                    break
+        var state_text := "BUILT" if built else ("BUILDING" if active_worker != null else "PLANNED")
+        column.add_child(_make_label("%s — %s" % [building_name.to_upper(), state_text], 14))
+        column.add_child(_make_label(str(data.get("description", "Camp expansion.")), 11))
+        if built:
+            content_box.add_child(panel)
+            continue
+        if active_worker != null:
+            var task: Dictionary = active_worker.get("task", {})
+            var remaining := float(task.get("remaining", 0.0))
+            if construction_paused:
+                var paused_value = task.get("resume_task", {})
+                var paused_task: Dictionary = paused_value if paused_value is Dictionary else {}
+                remaining = float(paused_task.get("remaining", remaining))
+            var work_state := "resting, then resumes" if construction_paused else "working"
+            column.add_child(_make_label("%s %s  •  %.0fs construction remaining" % [str(active_worker.get("name", "Survivor")), work_state, remaining], 11))
+            content_box.add_child(panel)
+            continue
+        column.add_child(_make_label(_format_cost(data.get("cost", {}), data.get("component_cost", {})) + "  •  %.0fs base" % float(data.get("time", 0.0)), 11))
+        var requirements: Array = data.get("requires", [])
+        var req_ok := true
+        if not requirements.is_empty():
+            var req_states: Array = []
+            for requirement_value in requirements:
+                var requirement := str(requirement_value)
+                var have := bool(Game.buildings.get(requirement, false))
+                if not have:
+                    req_ok = false
+                req_states.append("%s %s" % [requirement, "✓" if have else "LOCKED"])
+            column.add_child(_make_label("Requires: " + "  •  ".join(req_states), 10))
+        var build := Button.new()
+        build.text = "BUILD %s" % building_name.to_upper()
+        build.custom_minimum_size = Vector2(0, 44)
+        build.disabled = selected_worker_id < 0 or not req_ok or not _can_pay_ui(data.get("cost", {}), data.get("component_cost", {}))
+        build.pressed.connect(_on_build_pressed.bind(building_name))
+        column.add_child(build)
         content_box.add_child(panel)
 
 func _assign_daily_chore(chore_id: String) -> void:

@@ -6,7 +6,7 @@ First Fire is now in **feature freeze** and shelved for Beta testing/release wor
 
 **Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare a one- or two-survivor expedition → choose a distance and commit any party-scaled supplies → tactical field situation immediately → escape with physically recovered resources/rescues → advance the authored route hours on return → come back to a visibly changing camp → repeat.**
 
-The living camp is the primary home/menu surface. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. On phones the camp is zoomed and pannable so structures and people remain readable instead of shrinking the full 18×11 settlement into one strip. Normal management starts by touching the camp itself: survivors open inspection and deliberate assignments, the communal stash opens inventory/resources, the First Fire and starter Workbench provide physical crafting, built structures expose contextual interactions, and the camp edge/gate owns expedition dispatch. The starter scene is mostly wilderness; future construction locations are not shown as empty placeholders. Contextual sheets may reuse mature underlying UI logic, but they are entered from physical camp objects and return to the camp.
+The living camp is the primary home/menu surface. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. On phones the camp is zoomed and pannable so structures and people remain readable instead of shrinking the full 18×11 settlement into one strip. Normal management starts by touching the camp itself: survivors open inspection and deliberate assignments, the communal stash opens inventory/resources, the First Fire provides survival crafting, the work board owns camp expansion, built crafting stations expose their recipe sets, and the camp edge/gate owns expedition dispatch. The starter scene is mostly wilderness; future construction locations are not shown as empty placeholders until work begins. Contextual sheets may reuse mature underlying UI logic, but they are entered from physical camp objects and return to the camp.
 
 The game has **no scripted ending**. A settlement with every building completed and roughly **15–18 living survivors** is the mature/top-level state; play can continue indefinitely after that.
 
@@ -74,29 +74,27 @@ Every active `FFData.GEAR` item must be represented in the finished equipment lo
 
 The tactical HUD exposes all five equipment slots: Weapon, Secondary, Tool, Clothing and Pack. Explore objectives also place a real named gear pickup on the board; it is only retained after physical recovery and successful escape. Every current gear catalog entry belongs to a zone-tiered field-loot pool.
 
-Crafting is contextual camp interaction, not a standalone navigation mode. **First Fire / Fire Pit is always present from Day 1** and supplies the default Cook Food, Boil Water, and Bandage recipes. First Aid Kits are rare found-only medical supplies. Zombie Cure is the rarest direct medical find and can also be crafted at a built Infirmary from **2 Zombie Corpses** physically harvested from killed infected; each corpse costs one expedition carry slot. Built Workbench, Sewing Table, and Infirmary objects expose their own recipe sets when tapped.
+Crafting is contextual camp interaction, not a standalone navigation mode. **First Fire / Fire Pit is always present from Day 1** and supplies Cook Food, Boil Water, and Bandage. Tavern upgrades that same hearth and unlocks Community Stew. Workbench is now a camp build: basic tools/weapons/components live there, while **Crossbow, Sledgehammer, Hatchet, Bolt Cutters, and Toolbox require a built Armory**. First Aid Kits are rare found-only medical supplies. Zombie Cure is the rarest direct medical find and can also be crafted at a built Infirmary from **2 Zombie Corpses** physically harvested from killed infected; each corpse costs one expedition carry slot. Built Workbench, Sewing Table, and Infirmary objects expose their own recipe sets when tapped.
 
 ### Final building tree
 
 The final build list is:
 
-1. Rain Catcher
-2. Makeshift Shelter
-3. Storage Crate
-4. Workbench
-5. Sewing Table
-6. Garden Plot
-7. Noise Line
-8. Cabin
-9. Water Tank
-10. Communal Table
-11. Infirmary
-12. Watch Post
-13. Bunkhouse
-14. Armory
-15. Dormitory
+1. Large Tarp
+2. Rain Catcher
+3. Workbench
+4. Noise Line
+5. Tavern
+6. Sewing Table
+7. Garden Plot
+8. Water Tank
+9. Barracks
+10. Infirmary
+11. Watch Post
+12. Armory
+13. Dormitory
 
-Housing grows additively to the final 18-person ceiling. Utility buildings deepen existing food/water/recovery/security/social/crafting rules rather than creating new minigames. Future construction anchors remain data/code only for now; the wilderness camp does not show empty build placeholders. Built structures remain tappable for contextual information and active interactions.
+The camp now grows through readable upgrade lanes instead of additive housing clutter. **Shelter:** Sleeping Bag (1) → Large Tarp (4) → Barracks (10) → Dormitory (18). **Hearth:** First Fire → Tavern, which adds efficient cooking and social recovery. **Utility:** Workbench → Sewing/Water/Garden/Infirmary/Armory dependencies. **Security:** Noise Line → Watch Post. Storage remains a baseline camp fixture rather than a build project. The physical work board is the construction planner; unbuilt anchors stay hidden, active construction appears at its destination, and completed structures remain tappable.
 
 ### Mature settlement state
 
@@ -125,4 +123,4 @@ When all six gates pass, that build becomes **First Fire 1.0**. Until then the p
 
 As of this scope lock, First Fire is intentionally shelved while work moves to the next project. Returning to First Fire means **Beta verification against the release gate above**, not reopening the feature roadmap.
 
-Schema 7 is intended as the final deliberate Alpha reset. Once Beta testing begins, save compatibility becomes a player-facing promise and schema changes should be treated much more conservatively.
+Schema **8** is the deliberate camp-progression reset created by replacing the old additive Cabin/Bunkhouse/Communal Table tree and removing the free starter Workbench. Once Beta testing begins from this structure, save compatibility becomes a player-facing promise and further schema changes should be treated much more conservatively.

@@ -21,9 +21,9 @@ func load_game():
     super.load_game()
     if survivors.is_empty():
         return
-    # These are the physical baseline of the camp, not progression unlocks.
+    # Communal storage is a physical baseline fixture. Workbench and all
+    # expansion structures are progression projects under schema 8.
     buildings["Storage Crate"] = true
-    buildings["Workbench"] = true
     for survivor in survivors:
         survivor["virus"] = VirusRules.normalize(survivor.get("virus", {}))
         _normalize_survivor_equipment_state(survivor)
@@ -501,7 +501,12 @@ func _process_survivors(delta):
         if leader_id != -1:
             var leader: Variant = get_survivor(leader_id)
             caretaker = leader != null and leader["leader_ability"] == "Caretaker"
-        var recovery := CampLifeRules.idle_recovery_rates(bool(buildings.get("Cabin", false)), caretaker, bool(buildings.get("Communal Table", false)))
+        var recovery := CampLifeRules.idle_recovery_rates(
+            bool(buildings.get("Barracks", false)),
+            caretaker,
+            bool(buildings.get("Tavern", false)),
+            bool(buildings.get("Dormitory", false))
+        )
 
         if status == "Available":
             survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta))
@@ -541,7 +546,7 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
             fire_level,
             int(resources.get("Wood", 0)),
             pop,
-            bool(buildings.get("Communal Table", false)),
+            bool(buildings.get("Tavern", false)),
             hygiene_support,
             rng,
             CampLifeRules.settlement_hour(day_elapsed, DAY_SECONDS),
@@ -587,8 +592,8 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
         var result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), kind)
         survivor["needs"] = result.get("needs", survivor.get("needs", {}))
         survivor["fatigue"] = float(result.get("fatigue", survivor.get("fatigue", 0.0)))
-        if kind in ["watch_fire", "cards", "guitar"]:
-            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - 2.0)
+        if kind in ["watch_fire", "tavern_social", "cards", "guitar"]:
+            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - (4.0 if kind == "tavern_social" else 2.0))
     survivor["camp_activity"] = {}
 
 func _complete_task(survivor):

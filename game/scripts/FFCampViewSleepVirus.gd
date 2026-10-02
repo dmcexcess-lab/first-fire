@@ -273,16 +273,23 @@ func _handle_camp_press(local_pos: Vector2) -> void:
         return
 
 func _sleep_slots() -> Array:
-    var slots: Array = [SLEEP_CELL]
-    if bool(Game.buildings.get("Makeshift Shelter", false)):
-        slots.append_array([Vector2i(3, 6), Vector2i(4, 6)])
-    if bool(Game.buildings.get("Cabin", false)):
-        slots.append_array([Vector2i(11, 5), Vector2i(12, 5), Vector2i(13, 5), Vector2i(12, 6)])
-    if bool(Game.buildings.get("Bunkhouse", false)):
-        slots.append_array([Vector2i(2, 7), Vector2i(3, 7), Vector2i(4, 7), Vector2i(2, 8), Vector2i(3, 8), Vector2i(4, 8)])
     if bool(Game.buildings.get("Dormitory", false)):
-        slots.append_array([Vector2i(9, 7), Vector2i(10, 7), Vector2i(11, 7), Vector2i(9, 8), Vector2i(11, 8)])
-    return slots
+        return [
+            Vector2i(9, 7), Vector2i(10, 7), Vector2i(11, 7),
+            Vector2i(9, 8), Vector2i(10, 8), Vector2i(11, 8),
+            Vector2i(8, 7), Vector2i(12, 7), Vector2i(8, 8), Vector2i(12, 8),
+            Vector2i(7, 7), Vector2i(13, 7), Vector2i(7, 8), Vector2i(13, 8),
+            Vector2i(9, 9), Vector2i(10, 9), Vector2i(11, 9), Vector2i(12, 9),
+        ]
+    if bool(Game.buildings.get("Barracks", false)):
+        return [
+            Vector2i(2, 7), Vector2i(3, 7), Vector2i(4, 7),
+            Vector2i(2, 8), Vector2i(3, 8), Vector2i(4, 8),
+            Vector2i(1, 7), Vector2i(5, 7), Vector2i(1, 8), Vector2i(5, 8),
+        ]
+    if bool(Game.buildings.get("Large Tarp", false)):
+        return [Vector2i(4, 5), Vector2i(5, 5), Vector2i(4, 6), Vector2i(5, 6)]
+    return [SLEEP_CELL]
 
 func _sleep_cell_for_survivor(survivor: Dictionary) -> Vector2i:
     var slots := _sleep_slots()
@@ -332,6 +339,7 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
     var activity: Dictionary = survivor.get("camp_activity", {})
     match str(activity.get("kind", "")):
         "maintain_fire", "watch_fire": return FIRE_CELL + Vector2i(0, 1)
+        "tavern_social": return FIRE_CELL + Vector2i(1, 0)
         "check_food": return CAMP_CHEST_CELL + Vector2i(-1, 0)
         "check_water": return CAMP_CHEST_CELL + Vector2i(0, 1)
         "keep_watch": return Vector2i(15, 5)

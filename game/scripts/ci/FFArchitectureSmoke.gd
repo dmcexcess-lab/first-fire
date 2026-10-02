@@ -72,6 +72,7 @@ func _init() -> void:
     if not _check(int(revolver["gmin"]) >= all_hp_max and int(auto_pistol["gmin"]) >= all_hp_max and int(double_barrel["gmin"]) >= all_hp_max and int(pump_shotgun["gmin"]) >= all_hp_max and int(medium_rifle["gmin"]) >= all_hp_max and int(long_rifle["gmin"]) >= all_hp_max, "all firearms retain one-projectile one-hit infected lethality"): return
     var recipe_ids: Array = []
     var bandage_recipe: Dictionary = {}
+    var tavern_recipe: Dictionary = {}
     var hatchet_recipe: Dictionary = {}
     var crossbow_recipe: Dictionary = {}
     var lock_pick_recipe: Dictionary = {}
@@ -80,6 +81,8 @@ func _init() -> void:
         var fire_recipe: Dictionary = recipe_value
         if str(fire_recipe.get("id", "")) == "Bandage":
             bandage_recipe = fire_recipe
+        if str(fire_recipe.get("id", "")) == "Community Stew":
+            tavern_recipe = fire_recipe
     for recipe_value in D.RECIPES.get("Workbench", []):
         var recipe: Dictionary = recipe_value
         recipe_ids.append(str(recipe.get("id", "")))
@@ -98,13 +101,14 @@ func _init() -> void:
     for gear_name in found_only_guns + found_only_offhand:
         if not _check(not recipe_ids.has(gear_name), "%s is found-only" % gear_name): return
     if not _check(not bandage_recipe.is_empty() and int(bandage_recipe.get("cost", {}).get("Cloth", 0)) == 1 and int(bandage_recipe.get("cost", {}).get("Clean Water", 0)) == 1 and int(bandage_recipe.get("gives_component", {}).get("Bandage", 0)) == 1, "bandage is craftable at the First Fire"): return
+    if not _check(not tavern_recipe.is_empty() and Array(tavern_recipe.get("requires", [])).has("Tavern") and int(tavern_recipe.get("gives_resource", {}).get("Cooked Food", 0)) == 5, "tavern upgrades the fire with efficient community cooking"): return
     if not _check(not cure_recipe.is_empty() and int(cure_recipe.get("cost", {}).get("Zombie Corpse", 0)) == 2 and int(cure_recipe.get("gives_component", {}).get("Zombie Cure", 0)) == 1 and D.RESOURCE_ORDER.has("Zombie Corpse"), "zombie cure is craftable at the infirmary from two recovered corpses"): return
     if not _check(not recipe_ids.has("First Aid Kit") and not D.GEAR.has("First Aid Kit"), "first aid kit is found-only consumable rather than craftable gear"): return
     var nearby_medical: Dictionary = D.ZONES["Nearby Streets"]["loot"]
     var residential_medical: Dictionary = D.ZONES["Residential Blocks"]["loot"]
     if not _check(int(nearby_medical.get("First Aid Kit", 0)) > 0 and int(nearby_medical.get("Zombie Cure", 0)) == 0 and int(residential_medical.get("First Aid Kit", 0)) > int(residential_medical.get("Zombie Cure", 0)) and int(residential_medical.get("Zombie Cure", 0)) > 0, "first aid is rare and zombie cure is the rarer later medical find"): return
-    if not _check(recipe_ids.has("Crossbow") and not Array(crossbow_recipe.get("requires", [])).has("Armory"), "crossbow remains craftable without Armory"): return
-    if not _check(not lock_pick_recipe.is_empty() and int(D.GEAR["Lock Pick"].get("uses_min", 0)) == 1 and int(D.GEAR["Lock Pick"].get("uses_max", 0)) == 3, "lock pick is craftable and lasts one to three unlocks"): return
+    if not _check(recipe_ids.has("Crossbow") and Array(crossbow_recipe.get("requires", [])).has("Armory") and Array(hatchet_recipe.get("requires", [])).has("Armory"), "advanced workbench weapons require the Armory"): return
+    if not _check(not lock_pick_recipe.is_empty() and not Array(lock_pick_recipe.get("requires", [])).has("Armory") and int(D.GEAR["Lock Pick"].get("uses_min", 0)) == 1 and int(D.GEAR["Lock Pick"].get("uses_max", 0)) == 3, "lock pick stays basic workbench crafting and lasts one to three unlocks"): return
     var pack_names := ["Worn Backpack", "School Backpack", "Improvised Pack", "Hiking Pack", "Reinforced Pack"]
     for pack_name in pack_names:
         if not _check(not recipe_ids.has(pack_name), "%s is found-only" % pack_name): return
@@ -164,7 +168,7 @@ func _init() -> void:
     if not _check(combat_source.contains("func use_secondary_item") and combat_source.contains("Flashlight") and combat_source.contains("Firecracker") and combat_source.contains("charge_per_tick"), "active off-hand runtime supports flashlight charge lock pick and one-use firecracker"): return
     if not _check(active_combat_source.contains("lead_secondary_item") and active_combat_source.contains("lead_secondary_state"), "tactical result returns persistent off-hand state"): return
     if not _check(base_game_source.contains("inventory_gear_states") and base_game_source.contains("func _default_gear_state") and base_game_source.contains("uses_left") and base_game_source.contains("resources.erase(\"Ammo\")"), "camp persistence retains off-hand durability and removes legacy ammo"): return
-    if not _check(base_game_source.contains("func _normalize_medical_supplies") and base_game_source.contains("resources.erase(\"Medicine\")") and base_game_source.contains("components.erase(\"Sterile Dressing\")") and base_game_source.contains("func _store_loot_item"), "schema-seven medical supplies normalize forward and tactical loot can store components"): return
+    if not _check(base_game_source.contains("const SAVE_SCHEMA_VERSION := 8") and base_game_source.contains("func _normalize_medical_supplies") and base_game_source.contains("resources.erase(\"Medicine\")") and base_game_source.contains("components.erase(\"Sterile Dressing\")") and base_game_source.contains("func _store_loot_item"), "schema-eight camp expansion reset retains medical normalization and tactical component loot"): return
     if not _check(base_game_source.contains("func survivor_carry_capacity") and base_game_source.contains("return 4") and base_combat_source.contains("func party_carry_capacity") and base_combat_source.contains("func _fit_loot_to_remaining_capacity") and combat_source.contains("CARRY %d/%d"), "tactical carry uses four base slots plus backpack party capacity"): return
     if not _check(base_combat_source.contains("func harvest_zombie_corpse") and base_combat_source.contains("\"Zombie Corpse\"") and base_combat_source.contains("\"harvested\"") and base_combat_source.contains("Carry full — no slot available for the corpse."), "killed infected corpses are physical slot-limited tactical loot and persist across reloads"): return
     if not _check(active_camp_source.contains("craft_station_pressed.emit(\"Infirmary\")"), "built infirmary exposes zombie cure crafting in the living camp"): return
@@ -179,7 +183,9 @@ func _init() -> void:
     if not _check(active_main_source.contains("CampChoreMinigame") and active_main_source.contains("ASSIGN & PLAY") and active_main_source.contains("TODAY'S CAMP WORK") and not active_main_source.contains("chore_pause_before") and not active_main_source.contains("Game.set_paused(true)"), "camp chore minigame runs without pausing settlement time"): return
     if not _check(chore_minigame_source.contains("signal action_requested") and chore_minigame_source.contains("CHOP") and chore_minigame_source.contains("DEBRIS") and chore_minigame_source.contains("CRATE") and chore_minigame_source.contains("working in camp while you play"), "shared touch-first chore minigame supports four chore fantasies over live camp"): return
     if not _check(active_camp_source.contains("WORK_BOARD_CELL") and active_camp_source.contains("duties_pressed.emit()") and active_camp_source.contains("daily_chore_incomplete_count"), "physical work board is visible active chore entry point"): return
-    if not _check(base_game_source.contains("buildings[\"Storage Crate\"] = true") and base_game_source.contains("buildings[\"Workbench\"] = true"), "starter camp physical essentials"): return
+    if not _check(base_game_source.contains("buildings = {\"Fire Pit\": true, \"Sleeping Bag\": true, \"Storage Crate\": true}") and not base_game_source.contains("buildings[\"Workbench\"] = true") and not active_game_source.contains("buildings[\"Workbench\"] = true"), "starter camp begins with fire bedroll storage but no free workbench"): return
+    if not _check(base_game_source.contains("func building_under_construction") and base_game_source.contains("building_under_construction(str(building))") and active_main_source.contains("CAMP EXPANSION") and active_main_source.contains("_draw_expansion_group") and active_main_source.contains("\"Large Tarp\", \"Barracks\", \"Dormitory\""), "work board owns duplicate-safe permanent camp expansion"): return
+    if not _check(base_game_source.contains("if buildings.get(\"Dormitory\", false)") and base_game_source.contains("if buildings.get(\"Barracks\", false)") and base_game_source.contains("if buildings.get(\"Large Tarp\", false)") and base_game_source.contains("return 10") and base_game_source.contains("return 4"), "shelter capacity is tiered one four ten eighteen"): return
     if not _check(base_game_source.contains("founder[\"equipment\"] = {\"Weapon\": \"Utility Knife\", \"Secondary\": \"\", \"Clothing\": \"\", \"Pack\": \"\", \"Tool\": \"\"}"), "founder starts with exactly one carried loot item"): return
     if not _check(active_camp_source.contains("func _draw_wilderness") and active_camp_source.contains("remain code/data only") and not active_camp_source.contains("build_plot_pressed.emit"), "sparse wilderness hides future build placeholders"): return
     if not _check(inspector_source.contains("CAMP LIFE") and inspector_source.contains("_start_training") and inspector_source.contains("physical camp work board") and not inspector_source.contains("camp_chore_needed"), "survivor inspector routes daily chores to physical work board"): return
@@ -307,14 +313,19 @@ func _init() -> void:
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,false,false,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
     if not _check(base_game_source.contains("var pets := []") and base_game_source.contains("func start_camp_chore") and base_game_source.contains("func perform_camp_task_tap") and base_game_source.contains("rescue_is_pet"), "active camp work and pet rescue state"): return
     if not _check(CampSocial.candidate_standing({"id":1,"condition":"Healthy","skills":{"Leadership":5},"reputation":0,"relationships":{}}, []) == 30, "leadership drives politics"): return
-    if not _check(D.BUILD_ORDER.size() == 15 and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory"), "final building tree"): return
+    if not _check(D.BUILD_ORDER.size() == 13 and D.BUILDINGS.has("Large Tarp") and D.BUILDINGS.has("Tavern") and D.BUILDINGS.has("Barracks") and D.BUILDINGS.has("Dormitory") and D.BUILDINGS.has("Armory") and not D.BUILDINGS.has("Cabin") and not D.BUILDINGS.has("Bunkhouse") and not D.BUILDINGS.has("Communal Table"), "camp expansion building tree"): return
+    if not _check(Array(D.BUILDINGS["Tavern"].get("requires", [])).has("Large Tarp") and Array(D.BUILDINGS["Barracks"].get("requires", [])).has("Sewing Table") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Tavern"), "shelter hearth utility prerequisites form a readable expansion ladder"): return
+    var base_recovery := CampLifeRules.idle_recovery_rates(false, false, false, false)
+    var barracks_recovery := CampLifeRules.idle_recovery_rates(true, false, false, false)
+    var dorm_recovery := CampLifeRules.idle_recovery_rates(true, false, true, true)
+    if not _check(barracks_recovery.x > base_recovery.x and dorm_recovery.x > barracks_recovery.x and dorm_recovery.y > barracks_recovery.y, "barracks dormitory and tavern improve camp recovery"): return
     if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary"): return
     if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
     if not _check(str(TacticalVisuals.weapon_visual("Pistol").get("kind", "")) == "pistol", "weapon visual catalog"): return
     if not _check(TacticalSound.display_label("gunshot") != "", "sound catalog"): return
 
     var path := "user://ff_architecture_smoke.json"
-    var payload := {"save_schema": 7, "stat_model": THREE_STAT_MODEL, "virus_model": "zombie-virus-v1", "ok": true}
+    var payload := {"save_schema": 8, "stat_model": THREE_STAT_MODEL, "virus_model": "zombie-virus-v1", "ok": true}
     if not _check(SaveCodec.write_json(path, payload), "save write"): return
     var loaded = SaveCodec.read_json(path)
     if not _check(loaded != null and str(loaded.get("stat_model", "")) == THREE_STAT_MODEL and str(loaded.get("virus_model", "")) == "zombie-virus-v1", "save read"): return

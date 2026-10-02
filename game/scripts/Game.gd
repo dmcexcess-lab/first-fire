@@ -18,7 +18,7 @@ const TacticalVisuals = preload("res://scripts/FFTacticalVisuals.gd")
 const TacticalBalance = preload("res://scripts/FFTacticalBalance.gd")
 # Alpha saves are disposable; the filename remains stable while schema changes invalidate old state cleanly.
 const SAVE_PATH := "user://first_fire_alpha01.json"
-const SAVE_SCHEMA_VERSION := 7
+const SAVE_SCHEMA_VERSION := 8
 const DAY_SECONDS := 300.0
 const MAX_POPULATION := 18
 
@@ -99,12 +99,11 @@ func new_game():
     components = D.STARTING_COMPONENTS.duplicate(true)
     inventory_gear = []
     inventory_gear_states = {}
-    buildings = {"Fire Pit": true, "Sleeping Bag": true}
+    buildings = {"Fire Pit": true, "Sleeping Bag": true, "Storage Crate": true}
     for b in D.BUILD_ORDER:
         buildings[b] = false
-    # Sparse wilderness start: only the physical starter campsite exists.
-    buildings["Storage Crate"] = true
-    buildings["Workbench"] = true
+    # Sparse wilderness start: the fire, one bedroll and communal storage are the
+    # only permanent camp fixtures. Workbench and expansion structures are built.
     survivors = []
     next_survivor_id = 1
     next_expedition_id = 1
@@ -227,12 +226,34 @@ func formatted_time():
     return "%d:%02d %s" % [display_hour, minute, suffix]
 
 func shelter_capacity():
-    var capacity := 1
-    if buildings.get("Makeshift Shelter", false): capacity += 2
-    if buildings.get("Cabin", false): capacity += 4
-    if buildings.get("Bunkhouse", false): capacity += 6
-    if buildings.get("Dormitory", false): capacity += 5
-    return mini(MAX_POPULATION, capacity)
+    if buildings.get("Dormitory", false):
+        return MAX_POPULATION
+    if buildings.get("Barracks", false):
+        return 10
+    if buildings.get("Large Tarp", false):
+        return 4
+    return 1
+
+func building_under_construction(building: String) -> bool:
+    for survivor in survivors:
+        var task: Dictionary = survivor.get("task", {})
+        if str(survivor.get("status", "")) == "Building" and str(task.get("kind", "")) == "build" and str(task.get("building", "")) == building:
+            return true
+        if str(task.get("kind", "")) == "forced_rest":
+            var resume_value = task.get("resume_task", {})
+            var resume_task: Dictionary = resume_value if resume_value is Dictionary else {}
+            if str(resume_task.get("kind", "")) == "build" and str(resume_task.get("building", "")) == building:
+                return true
+    return false
+
+func building_requirements_met(building: String) -> bool:
+    if not D.BUILDINGS.has(building):
+        return false
+    var data: Dictionary = D.BUILDINGS[building]
+    for requirement in data.get("requires", []):
+        if not bool(buildings.get(requirement, false)):
+            return false
+    return true
 
 func population():
     var count = 0
@@ -483,7 +504,7 @@ func _process_survivors(delta):
             if leader_id!=-1:
                 var leader:Variant=get_survivor(leader_id)
                 caretaker=leader!=null and leader["leader_ability"]=="Caretaker"
-            var recovery:=CampLifeRules.idle_recovery_rates(bool(buildings.get("Cabin",false)),caretaker,bool(buildings.get("Communal Table",false)))
+            var recovery:=CampLifeRules.idle_recovery_rates(bool(buildings.get("Barracks",false)),caretaker,bool(buildings.get("Tavern",false)),bool(buildings.get("Dormitory",false)))
             s["fatigue"]=max(0.0,float(s["fatigue"])-recovery.x*delta)
             s["stress"]=max(0.0,float(s["stress"])-recovery.y*delta)
             s["needs"]=CampLifeRules.update_needs(s["needs"],float(s["fatigue"]),0.0,safety,hygiene_support,false)
@@ -509,7 +530,7 @@ func _process_survivors(delta):
 func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:bool)->void:
     var activity:Dictionary=s.get("camp_activity",{})
     if activity.is_empty():
-        activity=CampLifeRules.choose_available_activity(s.get("needs",{}),fire_level,int(resources.get("Wood",0)),pop,bool(buildings.get("Communal Table",false)),hygiene_support,rng)
+        activity=CampLifeRules.choose_available_activity(s.get("needs",{}),fire_level,int(resources.get("Wood",0)),pop,bool(buildings.get("Tavern",false)),hygiene_support,rng)
         s["camp_activity"]=activity
         if activity.is_empty(): return
     activity["remaining"]=maxf(0.0,float(activity.get("remaining",0.0))-delta); s["camp_activity"]=activity
@@ -523,7 +544,7 @@ func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:boo
     else:
         var result:=CampLifeRules.complete_activity(s.get("needs",{}),float(s.get("fatigue",0.0)),kind)
         s["needs"]=result.get("needs",s.get("needs",{})); s["fatigue"]=float(result.get("fatigue",s.get("fatigue",0.0)))
-        if kind in ["watch_fire","cards","guitar"]: s["stress"]=maxf(0.0,float(s.get("stress",0.0))-2.0)
+        if kind in ["watch_fire","tavern_social","cards","guitar"]: s["stress"]=maxf(0.0,float(s.get("stress",0.0))-(4.0 if kind=="tavern_social" else 2.0))
     s["camp_activity"]={}
 
 func _clear_camp_activity(s)->void:
@@ -753,7 +774,7 @@ func start_build(sid, building):
     var s: Variant = get_survivor(sid)
     if s == null or s["status"] != "Available":
         return false
-    if buildings.get(building, false) or not D.BUILDINGS.has(building):
+    if buildings.get(building, false) or building_under_construction(str(building)) or not D.BUILDINGS.has(building):
         return false
     var data = D.BUILDINGS[building]
     for req in data.get("requires", []):
@@ -2813,7 +2834,7 @@ func _select_camp_event():
     if _high_stress_survivor() != null: candidates.append("refuse")
     candidates.append("outside")
     if int(resources.get("Cloth", 0)) > 0: candidates.append("request")
-    if buildings.get("Communal Table", false) and population() >= 3 and int(resources.get("Cooked Food", 0)) >= population() + 2: candidates.append("meal")
+    if buildings.get("Tavern", false) and population() >= 3 and int(resources.get("Cooked Food", 0)) >= population() + 2: candidates.append("meal")
     if (food_shortage_days > 0 or water_shortage_days > 0) and (leader_id != -1 or coordinator_id != -1): candidates.append("shortage_meeting")
     if candidates.is_empty(): return {}
     var key = candidates[rng.randi_range(0, candidates.size() - 1)]
@@ -3175,7 +3196,7 @@ func save_game():
     if not initialized and survivors.is_empty():
         return
     var data = {
-        "version": "0.9.0-beta-candidate",
+        "version": "0.9.0-beta-candidate-camp-expansion",
         "save_schema": SAVE_SCHEMA_VERSION,
         "day": day, "day_elapsed": day_elapsed,
         "resources": resources, "components": components, "inventory_gear": inventory_gear, "inventory_gear_states": inventory_gear_states,

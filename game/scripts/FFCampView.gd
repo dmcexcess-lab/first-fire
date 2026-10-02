@@ -14,19 +14,18 @@ const IDLE_CELLS := [
     Vector2i(4, 9), Vector2i(8, 9), Vector2i(12, 8), Vector2i(15, 8),
 ]
 const BUILDING_CELLS := {
+    "Large Tarp": Vector2i(5, 6),
     "Rain Catcher": Vector2i(2, 2),
-    "Makeshift Shelter": Vector2i(3, 6),
     "Storage Crate": Vector2i(9, 6),
     "Workbench": Vector2i(10, 2),
+    "Noise Line": Vector2i(8, 1),
+    "Tavern": Vector2i(7, 4),
     "Sewing Table": Vector2i(13, 2),
     "Garden Plot": Vector2i(2, 4),
-    "Noise Line": Vector2i(8, 1),
-    "Cabin": Vector2i(12, 5),
     "Water Tank": Vector2i(1, 2),
-    "Communal Table": Vector2i(7, 6),
+    "Barracks": Vector2i(3, 7),
     "Infirmary": Vector2i(14, 6),
     "Watch Post": Vector2i(14, 2),
-    "Bunkhouse": Vector2i(3, 7),
     "Armory": Vector2i(14, 4),
     "Dormitory": Vector2i(10, 7),
 }
@@ -34,6 +33,7 @@ const STATION_OFFSETS := {
     "Fire Pit": Vector2i(0, 1),
     "Workbench": Vector2i(-1, 0),
     "Sewing Table": Vector2i(1, 0),
+    "Infirmary": Vector2i(-1, 0),
 }
 
 var actor_positions := {}
@@ -103,6 +103,13 @@ static func building_cell(building_name: String) -> Vector2i:
     var value: Vector2i = BUILDING_CELLS.get(building_name, FIRE_CELL)
     return value
 
+func sleep_anchor_cell() -> Vector2i:
+    if bool(Game.buildings.get("Dormitory", false)):
+        return building_cell("Dormitory")
+    if bool(Game.buildings.get("Barracks", false)):
+        return building_cell("Barracks")
+    return SLEEP_CELL
+
 func _survivor_in_camp(survivor: Dictionary) -> bool:
     if str(survivor.get("condition", "")) == "Dead":
         return false
@@ -128,14 +135,15 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
     if status == "Tending":
         return building_cell("Garden Plot") + Vector2i(1, 0)
     if status == "Recovering":
-        return Vector2i(12, 6) if bool(Game.buildings.get("Cabin", false)) else SLEEP_CELL
+        return building_cell("Infirmary") + Vector2i(-1, 0) if bool(Game.buildings.get("Infirmary", false)) else sleep_anchor_cell()
     var camp_activity: Dictionary = survivor.get("camp_activity", {})
     match str(camp_activity.get("kind", "")):
         "maintain_fire", "watch_fire": return FIRE_CELL + Vector2i(0, 1)
-        "rest": return Vector2i(12, 6) if bool(Game.buildings.get("Cabin", false)) else SLEEP_CELL
+        "tavern_social": return FIRE_CELL + Vector2i(1, 0)
+        "rest": return sleep_anchor_cell()
         "wash": return building_cell("Water Tank") + Vector2i(1, 0) if bool(Game.buildings.get("Water Tank", false)) else building_cell("Rain Catcher") + Vector2i(1, 0)
     if float(survivor.get("fatigue", 0.0)) >= 78.0:
-        return Vector2i(12, 6) if bool(Game.buildings.get("Cabin", false)) else SLEEP_CELL
+        return sleep_anchor_cell()
     if float(survivor.get("stress", 0.0)) >= 68.0:
         return FIRE_CELL + Vector2i(0, 1)
     var sid: int = int(survivor.get("id", 0))
@@ -288,30 +296,33 @@ func _draw_camp_details(origin: Vector2, tile: float) -> void:
     Tiles.draw_prop(self, _cell_rect(Vector2i(16, 3), origin, tile).grow(-tile * 0.20), "pallet")
     if bool(Game.buildings.get("Storage Crate", false)):
         Tiles.draw_prop(self, _cell_rect(Vector2i(10, 6), origin, tile).grow(-tile * 0.22), "crate")
-    if bool(Game.buildings.get("Communal Table", false)):
-        var table_center := _cell_center(building_cell("Communal Table"), origin, tile)
-        for offset in [Vector2(-0.46, 0.0), Vector2(0.46, 0.0), Vector2(0.0, 0.46)]:
-            draw_circle(table_center + offset * tile, tile * 0.10, Color("5b4834"))
-
 func _draw_structure_shadows(origin: Vector2, tile: float) -> void:
     for building_name in BUILDING_CELLS.keys():
         if not bool(Game.buildings.get(building_name, false)):
             continue
         var cell: Vector2i = BUILDING_CELLS[building_name]
         var center := _cell_center(cell, origin, tile)
-        if building_name == "Cabin":
-            draw_rect(Rect2(_cell_rect(Vector2i(11, 4), origin, tile).position + Vector2(tile * 0.14, tile * 0.18), Vector2(tile * 3.0, tile * 3.0)), Color(0.01, 0.02, 0.015, 0.30))
+        if building_name in ["Large Tarp", "Barracks", "Dormitory", "Tavern"]:
+            draw_circle(center + Vector2(tile * 0.16, tile * 0.20), tile * 0.72, Color(0.01, 0.02, 0.015, 0.30))
         else:
             draw_circle(center + Vector2(tile * 0.08, tile * 0.14), tile * 0.43, Color(0.01, 0.02, 0.015, 0.28))
 
 func _draw_structures(origin: Vector2, tile: float) -> void:
+    if bool(Game.buildings.get("Tavern", false)):
+        _draw_tavern(origin, tile)
     _draw_fire(origin, tile)
-    _draw_bedroll(origin, tile)
+
+    if bool(Game.buildings.get("Dormitory", false)):
+        _draw_dormitory(origin, tile)
+    elif bool(Game.buildings.get("Barracks", false)):
+        _draw_barracks(origin, tile)
+    elif bool(Game.buildings.get("Large Tarp", false)):
+        _draw_large_tarp(origin, tile)
+    else:
+        _draw_bedroll(origin, tile)
 
     if bool(Game.buildings.get("Rain Catcher", false)):
         _draw_rain_catcher(origin, tile)
-    if bool(Game.buildings.get("Makeshift Shelter", false)):
-        _draw_tent(origin, tile)
     if bool(Game.buildings.get("Storage Crate", false)):
         _draw_storage(origin, tile)
     if bool(Game.buildings.get("Workbench", false)):
@@ -322,22 +333,14 @@ func _draw_structures(origin: Vector2, tile: float) -> void:
         _draw_garden(origin, tile)
     if bool(Game.buildings.get("Noise Line", false)):
         _draw_noise_line(origin, tile)
-    if bool(Game.buildings.get("Cabin", false)):
-        _draw_cabin(origin, tile)
     if bool(Game.buildings.get("Water Tank", false)):
         _draw_water_tank(origin, tile)
-    if bool(Game.buildings.get("Communal Table", false)):
-        _draw_communal_table(origin, tile)
     if bool(Game.buildings.get("Infirmary", false)):
         _draw_infirmary(origin, tile)
     if bool(Game.buildings.get("Watch Post", false)):
         _draw_watch_post(origin, tile)
-    if bool(Game.buildings.get("Bunkhouse", false)):
-        _draw_bunkhouse(origin, tile)
     if bool(Game.buildings.get("Armory", false)):
         _draw_armory(origin, tile)
-    if bool(Game.buildings.get("Dormitory", false)):
-        _draw_dormitory(origin, tile)
 
 func _draw_bedroll(origin: Vector2, tile: float) -> void:
     var r := _cell_rect(SLEEP_CELL, origin, tile).grow(-tile * 0.11)
@@ -351,8 +354,8 @@ func _draw_rain_catcher(origin: Vector2, tile: float) -> void:
     draw_line(r.position + Vector2(r.size.x * 0.18, r.size.y * 0.18), r.position + Vector2(r.size.x * 0.18, r.size.y * 0.62), Color("6a6253"), maxf(1.0, tile * 0.04))
     draw_line(r.position + Vector2(r.size.x * 0.82, r.size.y * 0.12), r.position + Vector2(r.size.x * 0.82, r.size.y * 0.62), Color("6a6253"), maxf(1.0, tile * 0.04))
 
-func _draw_tent(origin: Vector2, tile: float) -> void:
-    var r := _cell_rect(building_cell("Makeshift Shelter"), origin, tile).grow(-tile * 0.03)
+func _draw_large_tarp(origin: Vector2, tile: float) -> void:
+    var r := Rect2(_cell_rect(Vector2i(4, 5), origin, tile).position, Vector2(tile * 3.0, tile * 2.0)).grow(-tile * 0.06)
     draw_colored_polygon(PackedVector2Array([
         r.position + Vector2(r.size.x * 0.04, r.size.y * 0.92),
         r.position + Vector2(r.size.x * 0.50, r.size.y * 0.08),
@@ -408,32 +411,12 @@ func _draw_noise_line(origin: Vector2, tile: float) -> void:
         if x % 2 == 0:
             draw_circle(p + Vector2(tile * 0.18, tile * 0.05), tile * 0.055, Color("9c8d6f"))
 
-func _draw_cabin(origin: Vector2, tile: float) -> void:
-    for y in range(4, 7):
-        for x in range(11, 14):
-            Tiles.draw_ground(self, _cell_rect(Vector2i(x, y), origin, tile), "wood")
-    for x in range(11, 14):
-        Tiles.draw_wall(self, _cell_rect(Vector2i(x, 4), origin, tile), "house")
-    Tiles.draw_wall(self, _cell_rect(Vector2i(11, 5), origin, tile), "house")
-    Tiles.draw_wall(self, _cell_rect(Vector2i(13, 5), origin, tile), "house")
-    Tiles.draw_wall(self, _cell_rect(Vector2i(11, 6), origin, tile), "house")
-    Tiles.draw_wall(self, _cell_rect(Vector2i(13, 6), origin, tile), "house")
-    Tiles.draw_door(self, _cell_rect(Vector2i(12, 6), origin, tile), true)
-    Tiles.draw_window(self, _cell_rect(Vector2i(12, 4), origin, tile))
-    var roof_y := _cell_rect(Vector2i(11, 4), origin, tile).position.y + tile * 0.10
-    draw_line(Vector2(_cell_rect(Vector2i(11, 4), origin, tile).position.x, roof_y), Vector2(_cell_rect(Vector2i(14, 4), origin, tile).position.x, roof_y), Color("6b4937"), maxf(2.0, tile * 0.08))
-
 func _draw_water_tank(origin: Vector2, tile: float) -> void:
     var r := _cell_rect(building_cell("Water Tank"), origin, tile).grow(-tile * 0.05)
     Tiles.draw_barrel(self, Rect2(r.position + Vector2(r.size.x * 0.18, 0), r.size * 0.68))
     draw_line(r.position + Vector2(r.size.x * 0.25, r.size.y * 0.66), r.position + Vector2(r.size.x * 0.16, r.size.y), Color("726c5c"), maxf(1.0, tile * 0.05))
     draw_line(r.position + Vector2(r.size.x * 0.70, r.size.y * 0.66), r.position + Vector2(r.size.x * 0.80, r.size.y), Color("726c5c"), maxf(1.0, tile * 0.05))
     draw_circle(r.position + Vector2(r.size.x * 0.53, r.size.y * 0.34), tile * 0.27, Color(0.42, 0.70, 0.86, 0.42), false, maxf(1.0, tile * 0.035))
-
-func _draw_communal_table(origin: Vector2, tile: float) -> void:
-    var r := _cell_rect(building_cell("Communal Table"), origin, tile).grow(-tile * 0.05)
-    Tiles.draw_prop(self, r, "table")
-    draw_line(r.position + Vector2(r.size.x * 0.18, r.size.y * 0.30), r.position + Vector2(r.size.x * 0.82, r.size.y * 0.30), Color("9c7149"), maxf(1.0, tile * 0.045))
 
 func _draw_infirmary(origin: Vector2, tile: float) -> void:
     var r := _cell_rect(building_cell("Infirmary"), origin, tile).grow(-tile * 0.04)
@@ -453,16 +436,17 @@ func _draw_watch_post(origin: Vector2, tile: float) -> void:
     draw_line(c + Vector2(tile * 0.26, 0), c + Vector2(tile * 0.38, tile * 0.48), Color("897e65"), maxf(1.0, tile * 0.06))
     draw_line(c + Vector2(0, -tile * 0.30), c + Vector2(0, -tile * 0.48), Color("9f9478"), maxf(1.0, tile * 0.04))
 
-func _draw_bunkhouse(origin: Vector2, tile: float) -> void:
-    var r := _cell_rect(building_cell("Bunkhouse"), origin, tile).grow(-tile * 0.03)
+func _draw_barracks(origin: Vector2, tile: float) -> void:
+    var r := Rect2(_cell_rect(Vector2i(2, 7), origin, tile).position, Vector2(tile * 3.0, tile * 2.0)).grow(-tile * 0.04)
     draw_rect(r, Color("56594f"))
     draw_colored_polygon(PackedVector2Array([
-        r.position + Vector2(-tile * 0.05, r.size.y * 0.28),
-        r.position + Vector2(r.size.x * 0.50, -tile * 0.08),
-        r.position + Vector2(r.size.x + tile * 0.05, r.size.y * 0.28),
+        r.position + Vector2(-tile * 0.05, r.size.y * 0.24),
+        r.position + Vector2(r.size.x * 0.50, -tile * 0.10),
+        r.position + Vector2(r.size.x + tile * 0.05, r.size.y * 0.24),
     ]), Color("70644f"))
-    draw_rect(Rect2(r.position + Vector2(r.size.x * 0.18, r.size.y * 0.52), Vector2(r.size.x * 0.20, r.size.y * 0.32)), Color("2c342f"))
-    draw_rect(Rect2(r.position + Vector2(r.size.x * 0.58, r.size.y * 0.52), Vector2(r.size.x * 0.20, r.size.y * 0.32)), Color("2c342f"))
+    for x in [0.18, 0.42, 0.66]:
+        draw_rect(Rect2(r.position + Vector2(r.size.x * x, r.size.y * 0.48), Vector2(tile * 0.34, tile * 0.42)), Color("2c342f"))
+    draw_rect(r, Color("a59674"), false, maxf(1.0, tile * 0.04))
 
 func _draw_armory(origin: Vector2, tile: float) -> void:
     var r := _cell_rect(building_cell("Armory"), origin, tile).grow(-tile * 0.04)
@@ -473,7 +457,7 @@ func _draw_armory(origin: Vector2, tile: float) -> void:
     draw_line(r.position + Vector2(r.size.x * 0.74, r.size.y * 0.20), r.position + Vector2(r.size.x * 0.88, r.size.y * 0.76), Color("a5aaa2"), maxf(1.0, tile * 0.035))
 
 func _draw_dormitory(origin: Vector2, tile: float) -> void:
-    var r := _cell_rect(building_cell("Dormitory"), origin, tile).grow(-tile * 0.02)
+    var r := Rect2(_cell_rect(Vector2i(9, 7), origin, tile).position, Vector2(tile * 3.0, tile * 2.0)).grow(-tile * 0.03)
     draw_rect(r, Color("4d5a55"))
     draw_colored_polygon(PackedVector2Array([
         r.position + Vector2(-tile * 0.04, r.size.y * 0.26),
@@ -482,6 +466,17 @@ func _draw_dormitory(origin: Vector2, tile: float) -> void:
     ]), Color("667064"))
     Tiles.draw_window(self, Rect2(r.position + Vector2(r.size.x * 0.12, r.size.y * 0.36), r.size * 0.30))
     Tiles.draw_window(self, Rect2(r.position + Vector2(r.size.x * 0.58, r.size.y * 0.36), r.size * 0.26))
+
+func _draw_tavern(origin: Vector2, tile: float) -> void:
+    var r := Rect2(_cell_rect(Vector2i(6, 3), origin, tile).position, Vector2(tile * 3.0, tile * 3.0)).grow(-tile * 0.05)
+    draw_rect(Rect2(r.position + Vector2(0, tile * 0.18), Vector2(r.size.x, tile * 0.14)), Color("75603f"))
+    draw_line(r.position + Vector2(tile * 0.12, tile * 0.32), r.position + Vector2(tile * 0.12, r.size.y), Color("6d5135"), maxf(2.0, tile * 0.08))
+    draw_line(r.position + Vector2(r.size.x - tile * 0.12, tile * 0.32), r.position + Vector2(r.size.x - tile * 0.12, r.size.y), Color("6d5135"), maxf(2.0, tile * 0.08))
+    var counter := Rect2(r.position + Vector2(tile * 1.70, tile * 1.05), Vector2(tile * 0.85, tile * 0.34))
+    Tiles.draw_prop(self, counter, "counter")
+    for offset in [Vector2(-0.75, 0.75), Vector2(0.72, 0.78)]:
+        draw_circle(_cell_center(FIRE_CELL, origin, tile) + offset * tile, tile * 0.12, Color("5b4834"))
+    draw_rect(r, Color(0.86, 0.71, 0.43, 0.28), false, maxf(1.0, tile * 0.035))
 
 func _draw_fire(origin: Vector2, tile: float) -> void:
     var center := _cell_center(FIRE_CELL, origin, tile)
@@ -569,10 +564,9 @@ func _draw_night(origin: Vector2, tile: float) -> void:
     draw_circle(fire_center, tile * (1.1 + 1.75 * fire_strength) * flicker, Color(1.0, 0.30, 0.08, 0.050 * fire_strength))
     draw_circle(fire_center, tile * (0.75 + 1.20 * fire_strength) * flicker, Color(1.0, 0.46, 0.10, 0.090 * fire_strength))
     draw_circle(fire_center, tile * (0.45 + 0.65 * fire_strength), Color(1.0, 0.70, 0.22, 0.17 * fire_strength))
-    if bool(Game.buildings.get("Cabin", false)):
-        var window_rect := _cell_rect(Vector2i(12, 4), origin, tile).grow(-tile * 0.24)
-        draw_rect(window_rect, Color(1.0, 0.69, 0.30, 0.34))
-        draw_circle(window_rect.get_center(), tile * 1.80, Color(1.0, 0.66, 0.28, 0.07))
+    if bool(Game.buildings.get("Tavern", false)):
+        var tavern_center := _cell_center(FIRE_CELL, origin, tile)
+        draw_circle(tavern_center, tile * 2.10, Color(1.0, 0.66, 0.28, 0.08))
     if bool(Game.buildings.get("Infirmary", false)):
         var infirmary_center := _cell_center(building_cell("Infirmary"), origin, tile)
         draw_circle(infirmary_center, tile * 1.25, Color(0.58, 0.82, 0.90, 0.07))

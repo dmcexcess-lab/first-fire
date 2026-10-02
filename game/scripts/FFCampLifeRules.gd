@@ -309,8 +309,9 @@ static func safety_target(buildings:Dictionary,population_count:int,shelter_capa
     var v:=48.0
     if bool(buildings.get("Noise Line",false)): v+=11.0
     if bool(buildings.get("Watch Post",false)): v+=16.0
-    if bool(buildings.get("Cabin",false)): v+=5.0
-    if bool(buildings.get("Bunkhouse",false)): v+=4.0
+    if bool(buildings.get("Large Tarp",false)): v+=3.0
+    if bool(buildings.get("Barracks",false)): v+=8.0
+    if bool(buildings.get("Dormitory",false)): v+=5.0
     if fire_level>=55.0: v+=8.0
     elif fire_level<=18.0: v-=10.0
     if population_count>shelter_capacity_value: v-=float(population_count-shelter_capacity_value)*8.0
@@ -359,7 +360,7 @@ static func moodlets(needs:Dictionary)->Array:
     if r.is_empty(): r.append("Okay")
     return r
 
-static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,has_table:bool,hygiene_support:bool,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0)->Dictionary:
+static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,has_tavern:bool,hygiene_support:bool,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0)->Dictionary:
     # Ordinary needs are autonomous. Productive camp labor is never auto-assigned.
     # Schedule-critical needs take priority over flavor idles.
     var n:=normalize_needs(needs)
@@ -372,7 +373,9 @@ static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int
         return {"kind":"rest","label":"Sleeping","remaining":SLEEP_DURATION,"duration":SLEEP_DURATION}
     if float(n["hygiene"])<44.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":12.5,"duration":12.5}
     if float(n["safety"])<44.0: return {"kind":"keep_watch","label":"Watching the Treeline","remaining":15.0,"duration":15.0}
-    if float(n["fun"])<58.0: return {"kind":"watch_fire","label":"Watching Fire","remaining":17.5,"duration":17.5}
+    if float(n["fun"])<58.0:
+        if has_tavern: return {"kind":"tavern_social","label":"At the Tavern","remaining":17.5,"duration":17.5}
+        return {"kind":"watch_fire","label":"Watching Fire","remaining":17.5,"duration":17.5}
     if rng.randf()<0.18: return {"kind":"wander","label":"Walking Camp","remaining":12.5,"duration":12.5}
     return {}
 
@@ -384,6 +387,7 @@ static func complete_activity(needs:Dictionary,fatigue:float,kind:String)->Dicti
         "drink_water": n["thirst"]=clampf(float(n["thirst"])+DRINK_THIRST_GAIN,0.0,100.0)
         "wash": n["hygiene"]=clampf(float(n["hygiene"])+48.0,0.0,100.0)
         "watch_fire": n["fun"]=clampf(float(n["fun"])+22.0,0.0,100.0); n["safety"]=clampf(float(n["safety"])+6.0,0.0,100.0)
+        "tavern_social": n["fun"]=clampf(float(n["fun"])+34.0,0.0,100.0); n["safety"]=clampf(float(n["safety"])+9.0,0.0,100.0)
     return {"needs":n,"fatigue":f}
 
 static func default_pet_needs() -> Dictionary:
@@ -431,11 +435,17 @@ static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator)
     var hours := rng.randi_range(FORCED_REST_MIN_HOURS, FORCED_REST_MAX_HOURS)
     return maxf(0.1, (maxf(1.0, day_seconds) / 24.0) * float(hours))
 
-static func idle_recovery_rates(has_cabin: bool, caretaker_leader: bool, has_communal_table: bool = false) -> Vector2:
-    var fatigue_rate: float = 0.5 if has_cabin else (1.0 / 3.0)
-    var stress_rate: float = (1.0 / 6.0) if has_cabin else 0.1
-    if has_communal_table:
-        stress_rate *= 1.25
+static func idle_recovery_rates(has_barracks: bool, caretaker_leader: bool, has_tavern: bool = false, has_dormitory: bool = false) -> Vector2:
+    var fatigue_rate: float = 1.0 / 3.0
+    var stress_rate: float = 0.1
+    if has_barracks:
+        fatigue_rate = 0.50
+        stress_rate = 1.0 / 6.0
+    if has_dormitory:
+        fatigue_rate = 0.62
+        stress_rate = 0.20
+    if has_tavern:
+        stress_rate *= 1.30
     if caretaker_leader:
         fatigue_rate *= 1.2
         stress_rate *= 1.2

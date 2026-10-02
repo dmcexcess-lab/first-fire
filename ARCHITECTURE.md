@@ -24,7 +24,7 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 
 `GameThreeStat.gd` remains the three-stat compatibility/specialization layer over `Game.gd`. It owns survivor generation, progression, three-stat expedition checks, treatment specialization, abstract danger, loot hooks, politics specialization, and the `combat-agility-leadership-v1` compatibility marker.
 
-`GameSleepVirus.gd` is the **active Game autoload**. It extends `GameThreeStat.gd` with the direct five-minute settlement day, one-shot expedition return-time advancement, authoritative sleep/work availability, timed survivor training/chores, a separate zombie-virus survivor axis, quarantine/treatment, camp spread, and tactical infected-contact integration. Save schema remains 7.
+`GameSleepVirus.gd` is the **active Game autoload**. It extends `GameThreeStat.gd` with the direct five-minute settlement day, one-shot expedition return-time advancement, authoritative sleep/work availability, timed survivor training/chores, a separate zombie-virus survivor axis, quarantine/treatment, camp spread, and tactical infected-contact integration. Save schema is 8 after the deliberate camp-progression reset.
 
 `MainThreeStat.gd` remains the three-stat UI specialization over `Main.gd`. `MainSleepVirus.gd` is the **active main-scene script** and routes the living camp, inspector, and tactical runtime to their sleep/virus-aware wrappers.
 
@@ -40,7 +40,7 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 Shared declarative catalogs. Item names, recipes, zones, buildings, backgrounds, gear data, and the Bandage / rare First Aid Kit / Zombie Corpse → Zombie Cure medical supply ladder live here. Legacy `protect`, old background skill-bonus fields, or other stale catalog metadata are not authoritative when contradicted by active rules; remove them when a focused cleanup safely owns that data.
 
 ### `Game.gd`
-Persistent state/orchestration foundation: camp ticks, survivor work assignment, camp-maintenance and pet state, expedition sequencing, event/tactical transitions, **gear condition plus 4/6/8 carry-cap data**, and schema-7 state transport shape.
+Persistent state/orchestration foundation: camp ticks, survivor work assignment, duplicate-safe construction assignment, tiered shelter capacity, camp-maintenance and pet state, expedition sequencing, event/tactical transitions, **gear condition plus 4/6/8 carry-cap data**, and schema-8 state transport shape.
 
 ### `GameThreeStat.gd`
 Three-stat specialization and compatibility boundary. It keeps the base orchestration usable while ensuring the live survivor model contains only Combat, Agility, and Leadership.
@@ -55,7 +55,7 @@ Top-level UI/input foundation: legacy navigation shells, overlays, work board pr
 Three-stat UI specialization, including the three-stat worker picker and routing foundations.
 
 ### `MainSleepVirus.gd`
-Active main-scene wrapper and current camp-as-menu controller. It hides the legacy CAMP / CRAFT / BUILD / SURVIVORS tab bar in active play and keeps `current_tab` as an internal compatibility detail only. The living camp remains touch-active at all times outside modal overlays. Physical camp objects open narrow contextual sheets: First Fire → survival crafting, starter Workbench → tool/gear crafting, built structures → contextual details/actions, gate → survivor + destination + LEAVE CAMP, survivor → inspector plus deliberate work assignments, communal storage → communal inventory. Future construction anchors are not rendered as empty placeholders. Those sheets return to the camp rather than becoming parallel top-level menus.
+Active main-scene wrapper and current camp-as-menu controller. It hides the legacy CAMP / CRAFT / BUILD / SURVIVORS tab bar in active play and keeps `current_tab` as an internal compatibility detail only. The living camp remains touch-active at all times outside modal overlays. Physical camp objects open narrow contextual sheets: First Fire/Tavern → hearth crafting, built Workbench/Sewing Table/Infirmary → station crafting, built structures → contextual details/actions, **work board → daily work plus permanent camp-expansion planner**, gate → survivor + destination + LEAVE CAMP, survivor → inspector plus deliberate work assignments, communal storage → communal inventory. Future construction anchors remain invisible until work begins. Those sheets return to the camp rather than becoming parallel top-level menus.
 
 ### `FFCampView.gd`
 Living 2D camp presentation foundation. Reads authoritative state and maps it to visual stations/cosmetic survivor motion only. It must not own work timing, resources, survivor rules, or pathfinding gameplay.
@@ -103,7 +103,7 @@ Persistent survivor appearances, infected visual families, rescued-pet rendering
 Pure expedition/logistics rules: five distance bands, fixed route hours, maximum two-person party size, per-survivor Cooked Food/Clean Water travel costs, the Very Far Expedition Vehicle gate, zone caps, and compatibility haul helpers. Standard Send Out duration is authored and no longer shortened by Agility. Encounter-family weighting belongs to `FFTacticalScenarios.gd`.
 
 ### `FFCampLifeRules.gd`
-Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, scheduled midday drinking/evening eating/overnight sleep, **idle fatigue recovery and 3–5h forced-exhaustion duration**, pet affection/retention/daily reward, authoritative camp-condition degradation/recovery/bands, daily water/meal/sleep-window accounting, recovery/treatment modifiers, defense-building effects, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
+Pure camp-life tuning for survivor needs/moodlets, autonomous idle choice, scheduled midday drinking/evening eating/overnight sleep, **idle fatigue recovery and 3–5h forced-exhaustion duration**, pet affection/retention/daily reward, authoritative camp-condition degradation/recovery/bands, daily water/meal/sleep-window accounting, **Large Tarp/Barracks/Dormitory shelter effects, Tavern downtime, water and defense-building effects**, recovery/treatment modifiers, and camp cadence. Idle choices include sleep plus visible mood responses such as checking rations/water, washing, watching the treeline, wandering, and watching the fire. `GameSleepVirus.gd` promotes sleep into the authoritative Sleeping status/task. Productive training, chores, maintenance, crafting, treatment, pet care, and expeditions are player-assigned.
 
 ### `FFCampChoreMinigame.gd`
 Shared touch-first presentation/controller for the four daily chore interactions. It renders one reusable six-target interaction surface with chore-specific instructions and labels, emits action intents only, and never awards resources or mutates camp state. The overlay is a lower translucent sheet over the **still-running living camp**; `MainSleepVirus.gd` does **not** pause settlement for it and forwards intents to authoritative `GameSleepVirus.gd` chore APIs while the assigned survivor continues its camp animation.
@@ -120,7 +120,7 @@ Relationships, chatter, political standing, and leadership support. **Leadership
 Temporary remaining outside-world text-event catalog. Outside-world content should continue moving toward tactical/physical play; camp social/political narrative remains valid.
 
 ### `FFSaveCodec.gd`
-Persistence transport only: JSON/file read-write, compatibility check, invalidation. Current save schema remains 7. The three-stat layer adds the stat-model compatibility marker; virus state is additive and normalized by the active runtime.
+Persistence transport only: JSON/file read-write, compatibility check, invalidation. Current save schema is 8. Schema 7 is intentionally invalidated because the camp building identities/starter state changed materially; the three-stat and virus markers remain part of the current model.
 
 ### `scripts/ci/FFArchitectureSmoke.gd`
 Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts are compiled by import/startup gates in their real project context; smoke asserts the active wrapper chain plus durable rules such as scheduled eating/drinking/sleep, the five-minute camp day, always-tactical Send Out routing, five expedition distance bands, party-scaled travel supplies, real tactical companion activation, survivor training, sparse camp interaction, infected-contact tracking, and virus treatment requirements.
@@ -129,7 +129,7 @@ Deterministic pure-rule/source-contract checks. UI/autoload-dependent scripts ar
 
 The living camp is the primary interaction surface, but it remains a UI layer rather than a second simulation. `FFCampViewSleepVirus.gd` may determine which visible entity/cell was tapped and emit an intent signal. It must not spend resources, assign workers, start expeditions, alter survivor state, or perform crafting/building directly. `MainSleepVirus.gd` routes intent to contextual UI that calls the existing authoritative Game APIs.
 
-The active UI no longer exposes the legacy four-tab bar. A new game visibly starts as wilderness plus four physical essentials: First Fire, a bedroll, communal storage, and a Workbench. First Fire exposes Cook Food, Boil Water, and Bandage; the Workbench exposes its own recipe catalog. Deliberate survivor work is assigned from the survivor inspector rather than a dedicated management kiosk. Future construction anchors remain invisible until that construction interaction is deliberately reintroduced.
+The active UI no longer exposes the legacy four-tab bar. A new game visibly starts as wilderness plus **three** physical essentials: First Fire, one bedroll, and communal storage. The work board owns permanent construction and keeps unbuilt anchors invisible until work begins. Shelter progresses **1 → 4 → 10 → 18** through Sleeping Bag → Large Tarp → Barracks → Dormitory; First Fire upgrades into Tavern. Workbench is a build, not a starter entitlement. First Fire exposes Cook Food, Boil Water, and Bandage; Tavern adds Community Stew; built Workbench/Sewing Table/Infirmary expose their station catalogs, with Armory acting as the prerequisite for advanced Workbench recipes.
 
 At-a-glance mood/need/virus indicators are derived presentation from existing survivor state. They do not create a second need or mood model.
 
@@ -155,7 +155,7 @@ The living 2D camp is the final presentation and primary home/menu surface. Pets
 
 ## Save boundary
 
-Current schema: **7**.
+Current schema: **8**.
 
 Current survivor-model marker: **`combat-agility-leadership-v1`**.
 

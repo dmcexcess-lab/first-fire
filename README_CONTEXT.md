@@ -95,21 +95,20 @@ Travel supplies are committed at launch, but **route time is not advanced before
 
 The persistent 2D tactical-style living camp is both the final camp presentation **and the primary menu/home screen**. `FFCampView.gd` remains the presentation foundation; active camp rendering and interaction route through `FFCampViewSleepVirus.gd` for authoritative sleep/treatment/quarantine placement plus camp touch targets.
 
-The starter camp is intentionally sparse wilderness rather than a pre-laid settlement: grass/brush/trees around a single First Fire, bedroll, communal storage box, and starter Workbench. Future building locations remain code/data only until construction presentation is deliberately reintroduced; there are no visible empty plot placeholders. These graphics read authoritative `Game` state and do not create separate camp simulation or pathfinding.
+The starter camp is intentionally sparse wilderness rather than a pre-laid settlement: grass/brush/trees around a single First Fire, one sleeping bag, and communal storage. **Workbench is now progression, not a free starter fixture.** Future building locations remain invisible until construction starts; the physical work board is the camp-expansion planner, and active construction is shown at the real destination. These graphics read authoritative `Game` state and do not create separate camp simulation or pathfinding.
 
 The active screen no longer presents the legacy CAMP / CRAFT / BUILD / SURVIVORS tab bar. The camp stays touch-active even while a contextual sheet is open. Current in-world routes are:
 
 - tap a **survivor** → full survivor stats/condition/equipment/inventory inspector;
 - tap the **communal chest / Storage Crate** → communal resources, components and gear inventory;
-- tap the **First Fire** → default Day-1 Fire Pit crafting;
-- tap a built **Workbench** or **Sewing Table** → recipes for that station only;
-- tap an **empty authored plot** → information/cost/prerequisites and BUILD for that one structure;
+- tap the **First Fire** → default Day-1 Fire Pit crafting; once Tavern is built the same hearth becomes the Tavern cooking/social hub and exposes its gated recipe;
+- tap a built **Workbench**, **Sewing Table**, or **Infirmary** → recipes for that station only;
 - tap a **built structure** → contextual structure information and any active interaction (for example Garden Plot tending);
-- tap the **camp work board** → chores, maintenance and pet-care assignment;
+- tap the **camp work board** → daily duties, maintenance, pet care, and the permanent camp-expansion planner;
 - tap the **gate** → survivor/send-out chooser.
 
-The First Fire, communal storage box, sleeping bag, and Workbench are guaranteed in a new game. The fire handles basic survival conversions while the Workbench provides the starter tool/gear crafting surface. Crafting remains physical camp interaction rather than a separate Craft screen.
-Crafting cards show explicit owned/required shortages (for example `Raw Food 0/1`) when a recipe cannot be paid, so a disabled action explains itself without requiring a stash detour.
+The First Fire, communal storage box, and one sleeping bag are the only guaranteed new-game camp fixtures. Camp growth is a visible progression: **Sleeping Bag → Large Tarp (4 shelter) → Barracks (10) → Dormitory (18)**, while **First Fire → Tavern** turns the hearth into the social/cooking center. Workbench, Sewing Table, Infirmary, Armory, water, food, and security infrastructure are built through the work board. Crafting remains physical camp interaction rather than a separate Craft screen.
+Crafting cards show explicit owned/required shortages (for example `Raw Food 0/1`) and structure prerequisites. First Fire always provides Cook Food, Boil Water, and Bandage; Tavern adds efficient Community Stew; Workbench supplies basic tools/weapons/components; **Crossbow, Sledgehammer, Hatchet, Bolt Cutters, and Toolbox require an Armory**; Sewing Table owns clothing/weatherproofing; Infirmary owns Zombie Cure processing.
 
 The top camp HUD is the authoritative clock/resource readout. The map title stays intentionally short (`FIRST FIRE CAMP • DAY N`), the idle `RUNNING` label is hidden, and the secondary status line only appears for meaningful states such as an away survivor, tactical encounter, active work, illness, or pause. Routine expedition returns are promoted from transient toast text into a persistent tap-to-dismiss camp return notice carrying the exact haul/empty-handed result.
 
@@ -157,7 +156,7 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 
 Settlement time has one direct authoritative clock with **no secondary speed multiplier**. `DAY_SECONDS := 300.0` means **12.5 real active seconds = 1 in-game hour** and **300 real active seconds / 5 minutes per in-game day**. Camp need decay, idle fatigue recovery, authored work-fatigue gains, sleep/exhaustion duration, fire decay, camp-condition decay, chatter/event cadence, and daily-life action durations are tuned against that clock. Standard expedition travel uses authored in-game hours directly: 3h = 37.5 settlement seconds, 5h = 62.5s, 8h = 100s, 12h = 150s, and 18h = 225s. Tactical turns are a separate frozen time scale. UI refresh and autosave remain real-time responsiveness concerns.
 
-New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder carries **exactly one starter loot/gear item: the Utility Knife**. The Workbench can craft the Crossbow and Lock Pick; a built Infirmary can craft Zombie Cure from 2 Zombie Corpses; all firearms plus Flashlight/Firecracker remain found-only. Survivors can carry **4 loot items without a pack**; found-only backpacks raise that individual capacity to **6 or 8**, and a two-survivor expedition pools both capacities on the tactical map. Capacity is pure item count: each recovered resource/component unit, including a Zombie Corpse, uses one slot; weight and item size do not change the 4/6/8 cap. Hatchet remains deliberately expensive and does not enter field loot until Commercial Fringe; Sledgehammer joins the same later melee tier. The former shared Ammo resource is retired; tactical reload/chamber state is the only ranged ammunition constraint.
+New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder carries **exactly one starter loot/gear item: the Utility Knife**. A built Workbench can craft basic gear including the Lock Pick; advanced Workbench recipes such as Crossbow/Hatchet/Sledgehammer are Armory-gated. A built Infirmary can craft Zombie Cure from 2 Zombie Corpses; all firearms plus Flashlight/Firecracker remain found-only. Survivors can carry **4 loot items without a pack**; found-only backpacks raise that individual capacity to **6 or 8**, and a two-survivor expedition pools both capacities on the tactical map. Capacity is pure item count: each recovered resource/component unit, including a Zombie Corpse, uses one slot; weight and item size do not change the 4/6/8 cap. Hatchet remains deliberately expensive and does not enter field loot until Commercial Fringe; Sledgehammer joins the same later melee tier. The former shared Ammo resource is retired; tactical reload/chamber state is the only ranged ammunition constraint.
 
 Fire Pit conversions:
 - **1 Raw Food → 2 Cooked Food**
@@ -167,9 +166,9 @@ Routine scavenging stays constrained by zone caps/depletion, pack capacity, and 
 
 ## Saves
 
-Current save schema remains **7**.
+Current save schema is **8**.
 
-Current survivor-model marker is **`combat-agility-leadership-v1`**. The zombie-virus state is additive survivor data normalized through `FFVirusRules.gd`; active saves receive a `zombie-virus-v1` flag without a schema reset. A schema-7 save containing the previous six-skill survivor shape is still deliberately invalidated and restarted rather than migrated.
+Schema 8 is the deliberate camp-progression reset: the starter Workbench was removed, old additive housing/building identities were replaced by the tiered Large Tarp/Barracks/Dormitory and Tavern progression, and schema-7 saves are invalidated cleanly rather than ambiguously translating old Cabin/Bunkhouse/Communal Table state. Current survivor-model marker remains **`combat-agility-leadership-v1`** and zombie-virus state remains **`zombie-virus-v1`**.
 
 The filename remains `user://first_fire_alpha01.json` intentionally.
 
