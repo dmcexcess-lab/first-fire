@@ -384,7 +384,7 @@ func _prepare_gate_context(preferred_id: int = -1) -> void:
     gate_zone_index = 0
 
 func _draw_gate_context() -> void:
-    _draw_context_header("CAMP GATE", "Build a 1–2 survivor expedition. Supplies are committed when you leave, tactical starts immediately, and the route hours pass instantly when you return.")
+    _draw_context_header("CAMP GATE", "Build a 1–2 survivor expedition. Supplies are committed when you leave, tactical starts immediately, then the party stays Away until its in-game return ETA.")
     if gate_survivor_ids.is_empty():
         content_box.add_child(_make_label("No survivor is currently free to leave camp.", 13))
         return
@@ -684,7 +684,7 @@ func _refresh_status():
         var names: String = str(Game._party_names(exp["survivor_ids"]))
         var zone := str(exp.get("zone", ""))
         if exp.get("state", "") == "traveling":
-            active.append("AWAY • %s • %s • %.0fs" % [names, zone, float(exp["remaining"])])
+            active.append("AWAY • %s • %s • RETURN %s" % [names, zone, Game.expedition_return_eta(exp)])
         elif exp.get("state", "") == "pending":
             active.append("AWAY • %s • %s • DECISION" % [names, zone])
         elif exp.get("state", "") == "combat":
