@@ -565,11 +565,11 @@ static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator)
 static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, tavern_quality: int = 0) -> Vector2:
     var tier := clampi(shelter_quality, 0, 3)
     var tavern_tier_value := clampi(tavern_quality, 0, 3)
-    # Idle recovery is intentionally gradual across a five-minute day. The old
-    # rates erased most work/expedition fatigue within seconds, making 100-fatigue
-    # forced rest practically unreachable.
+    # Genuine camp downtime slowly unwinds both work fatigue and stress. These
+    # are background recovery rates across a five-minute day, not substitutes
+    # for sleep or explicit social/rest activities.
     var fatigue_rates := [0.020, 0.026, 0.035, 0.045]
-    var stress_rates := [0.08, 0.11, 0.16, 0.21]
+    var stress_rates := [0.012, 0.016, 0.022, 0.030]
     var tavern_multipliers := [1.0, 1.18, 1.36, 1.55]
     var fatigue_rate: float = float(fatigue_rates[tier])
     var stress_rate: float = float(stress_rates[tier]) * float(tavern_multipliers[tavern_tier_value])

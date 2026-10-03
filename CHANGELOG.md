@@ -1,3 +1,12 @@
+## Beta Candidate — Slow Camp Downtime Recovery — 2026-10-02
+
+- Confirmed **idle camp downtime** as a real recovery state: an Available survivor who is not assigned productive work continuously sheds both Fatigue and Stress while camp simulation is running.
+- Kept **Fatigue recovery deliberately slow** at the existing five-minute-day scale: the starter camp removes about 6 Fatigue over a full idle day, with better shelter/caretaker support improving that gradually.
+- Retuned **Stress recovery sharply downward** from the previous overly aggressive values. Starter-camp downtime now removes about 3.6 Stress per full idle day before need/camp-condition modifiers; stronger shelter/tavern/caretaker support improves this without making Stress evaporate.
+- Sleep and explicit leisure/social activities remain the stronger recovery tools. Productive assignments do not receive the normal Available-state downtime recovery.
+- Added architecture-smoke regressions proving base Fatigue/Stress recovery is positive but modest and that the active runtime applies it continuously to Available survivors.
+- Save schema remains **8**; this is tuning only.
+
 ## Beta Candidate — Work & Expedition Fatigue Tuning — 2026-10-02
 
 - Made **camp maintenance fatigue explicit**: every work-board chore now applies a meaningful hit when assigned, scaling with its authored duration (about 6–13 Fatigue across the current chore set).
