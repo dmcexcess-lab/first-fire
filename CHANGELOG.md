@@ -11,6 +11,7 @@
 - Camp event selection now works at population 1 and weights zombie pressure more heavily as the camp grows. Existing social/political events remain in the same queue; the system does not add a second event model.
 - Corrected expedition timing after design clarification: **there is no post-tactical camp-time fast-forward**. Tactical pauses the settlement clock; once the result is acknowledged, the expedition stays Away for the full authored route timer while normal camp time resumes.
 - Physical tactical loot, rescued recruits, and rescued pets stay with that Away expedition and become available at camp only when the return timer reaches zero.
+- Tightened physical-return consequences: if **every human returner dies while the expedition is Away**, carried loot/gear and a rescued pet are lost instead of teleporting into camp. A living rescued recruit counts as a returner and can still bring the carried payload home.
 - Camp pressure events and **fresh** maintenance incidents now require at least one living survivor physically present at First Fire. An all-away camp cannot generate a new choice nobody can answer; already-active maintenance can still expire if its clock runs out.
 - Save schema remains **8**; the new event contexts fit the existing event/save structure and destroyed buildings use the existing boolean build state.
 

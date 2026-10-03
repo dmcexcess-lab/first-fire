@@ -1537,28 +1537,53 @@ func _finish_expedition(eid):
     var exp: Variant = _find_expedition(eid)
     if exp == null:
         return
-    var carried_return := _commit_expedition_return_payload(exp) if bool(exp.get("tactical_resolved", false)) else ""
     if exp.get("special_site", "") != "" and bool(exp.get("tactical_resolved", false)):
         var resolved_site := str(exp.get("special_site", ""))
         if special_sites.has(resolved_site):
             special_sites[resolved_site]["cleared"] = true
-            _add_history("Day %d — %s was cleared tactically; only physically recovered loot came home." % [day, resolved_site])
+            _add_history("Day %d — %s was cleared tactically." % [day, resolved_site])
 
     var zone = exp["zone"]
     var log_bits = []
     if not exp.get("tactical_resolved", false):
         _resolve_routine_danger(exp, log_bits)
-    var living_party = []
+
+    var living_party: Array = []
+    var living_returner_ids: Array = []
     for sid in exp["survivor_ids"]:
         var s: Variant = get_survivor(sid)
         if s != null and s["condition"] != "Dead":
             living_party.append(s)
-    if living_party.is_empty():
+            living_returner_ids.append(int(s["id"]))
+    for sid_value in exp.get("return_recruit_ids", []):
+        var returning_recruit: Variant = get_survivor(int(sid_value))
+        if returning_recruit != null and returning_recruit["condition"] != "Dead":
+            if not living_returner_ids.has(int(returning_recruit["id"])):
+                living_returner_ids.append(int(returning_recruit["id"]))
+
+    # Carried tactical loot/pets only reach First Fire with a living human
+    # returner. If the whole return party dies while Away, the payload is lost.
+    if living_returner_ids.is_empty():
+        var lost_payload := _format_tactical_container_loot(exp.get("recovered_loot", {}))
+        var lost_gear := str(exp.get("recovered_gear", ""))
+        var lost_bits: Array = []
+        if lost_payload != "":
+            lost_bits.append(lost_payload)
+        if lost_gear != "":
+            lost_bits.append(lost_gear)
+        var lost_pet_value = exp.get("return_pet", {})
+        var lost_pet: Dictionary = lost_pet_value if lost_pet_value is Dictionary else {}
+        if not lost_pet.is_empty():
+            lost_bits.append("%s rescue" % str(lost_pet.get("name", "pet")))
+        var lost_text := ", ".join(lost_bits) if not lost_bits.is_empty() else "no carried loot"
+        _add_history("Day %d — The return party from %s was lost before reaching First Fire; %s was lost with them." % [day, zone, lost_text])
         expeditions.erase(exp)
         _check_game_over()
         save_game()
         state_changed.emit()
         return
+
+    var carried_return := _commit_expedition_return_payload(exp) if bool(exp.get("tactical_resolved", false)) else ""
 
     # Expedition return never invents a haul. Resources/components/gear must
     # already have been physically recovered from tactical containers, corpses,
@@ -1596,7 +1621,7 @@ func _finish_expedition(eid):
             loot_text.append("+%d %s" % [loot[key], key])
     if gear_found != "":
         loot_text.append("Found %s" % gear_found)
-    var names = _party_names(exp["survivor_ids"])
+    var names = _party_names(living_returner_ids)
     if bool(exp.get("tactical_resolved", false)):
         var haul_suffix := " (%s)" % carried_return if carried_return != "" else ""
         _add_history("Day %d — %s returned from the tactical outing to %s%s." % [day, names, zone, haul_suffix])
