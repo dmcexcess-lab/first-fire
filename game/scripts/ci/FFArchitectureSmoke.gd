@@ -373,7 +373,7 @@ func _init() -> void:
     var barracks_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 2)
     var dorm_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 3)
     if not _check(float(tarp_sleep["needs"]["sleep"]) > float(bedroll_sleep["needs"]["sleep"]) and float(barracks_sleep["needs"]["sleep"]) > float(tarp_sleep["needs"]["sleep"]) and float(dorm_sleep["needs"]["sleep"]) > float(barracks_sleep["needs"]["sleep"]), "eight-hour sleep raises the Rested moodlet faster as shelter improves"): return
-    if not _check(float(tarp_sleep["stress"]) < float(bedroll_sleep["stress"]) and float(barracks_sleep["stress"]) < float(tarp_sleep["stress"]) and float(dorm_sleep["stress"]) < float(barracks_sleep["stress"]), "better sleeping quarters provide progressively stronger mood recovery"): return
+    if not _check(is_equal_approx(float(bedroll_sleep["stress"]), 50.0) and is_equal_approx(float(dorm_sleep["stress"]), 50.0), "normal sleep leaves the separate Stress axis unchanged"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":20,"hygiene":90},0.0,5,1,0,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "keep_watch", "low safety drives treeline watch outside need windows"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,0,false,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
     var tavern_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":20,"safety":90,"hygiene":90},0.0,5,3,2,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,0)
