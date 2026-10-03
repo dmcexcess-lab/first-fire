@@ -246,6 +246,9 @@ func _init() -> void:
     var q4_day_three := VirusRules.progress_day(q4_day_two.get("state", {}))
     var q4_day_four := VirusRules.progress_day(q4_day_three.get("state", {}))
     if not _check(str(q4_day_one.get("event", "")) == "infected" and str(q4_day_two.get("event", "")) == "" and str(q4_day_three.get("event", "")) == "feverish" and str(q4_day_four.get("event", "")) == "terminal", "four-day quarantine timeline buys the full extra day"): return
+    var fever_then_quarantine := VirusRules.quarantine(slow_day_one.get("state", {}), 3)
+    var fever_quarantine_day := VirusRules.progress_day(fever_then_quarantine)
+    if not _check(VirusRules.stage(fever_quarantine_day.get("state", {})) == VirusRules.STAGE_FEVERISH, "quarantine extends the deadline without reversing fever severity"): return
 
     if not _check(VirusRules.stage(VirusRules.cure(quarantined_four)) == VirusRules.STAGE_CLEAR and is_equal_approx(VirusRules.AMPUTATION_RECOVERY_SECONDS, 100.0), "zombie cure clears immediately and amputation forces eight in-game hours of recovery"): return
     if not _check(active_game_source.contains("components[\"First Aid Kit\"]") and active_game_source.contains("survivor[\"amputation_used\"] = true") and active_game_source.contains("survivor[\"skills\"][\"Combat\"] = maxi(0") and active_game_source.contains("survivor[\"skills\"][\"Agility\"] = maxi(0") and active_game_source.contains("\"kind\": \"amputation_recovery\""), "amputation consumes a medkit applies permanent combat agility penalties and forces recovery"): return
