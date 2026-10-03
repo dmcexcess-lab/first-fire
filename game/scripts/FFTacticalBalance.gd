@@ -15,12 +15,11 @@ const EXPLORE_SITE_COUNT_RANGES := {
     "Industrial Edge": Vector2i(5, 7),
 }
 
-const ZOMBIE_BASE_COUNTS := {
-    "Camp Perimeter": 2,
-    "Nearby Streets": 3,
-    "Residential Blocks": 4,
-    "Commercial Fringe": 5,
-    "Industrial Edge": 6,
+const NON_AMBUSH_ZOMBIE_WEIGHTS := {
+    0: 10,
+    1: 40,
+    2: 40,
+    3: 10,
 }
 
 const RESCUE_SURVIVOR_HP := 14
@@ -87,28 +86,28 @@ static func locked_door_chance(zone: String) -> float:
         "Industrial Edge": 0.28,
     }.get(zone, 0.10))
 
-static func zombie_count_range(zone: String, kind: String, rescue_is_pet: bool = false, quiet: bool = false) -> Vector2i:
+static func zombie_count_range(_zone: String, kind: String, _rescue_is_pet: bool = false, _quiet: bool = false) -> Vector2i:
     if kind == "ambush":
         return Vector2i(5, 5)
-    if kind == "rescue":
-        return Vector2i(3, 3) if rescue_is_pet else Vector2i(5, 5)
-    if zone == "Camp Perimeter":
-        # Very Short is the only route where the party can get lucky enough
-        # to encounter zero or one infected.
-        return Vector2i(0, 3)
-    var count := int(ZOMBIE_BASE_COUNTS.get(zone, 4))
-    if quiet:
-        count -= 1
-    count = maxi(2, count)
-    return Vector2i(count, count)
+    return Vector2i(0, 3)
 
 static func zombie_count(zone: String, kind: String, rescue_is_pet: bool = false, quiet: bool = false, rng: RandomNumberGenerator = null) -> int:
     var count_range := zombie_count_range(zone, kind, rescue_is_pet, quiet)
     if count_range.x >= count_range.y:
         return count_range.x
     if rng == null:
-        return count_range.y
-    return rng.randi_range(count_range.x, count_range.y)
+        return 2
+
+    var total_weight := 0
+    for weight in NON_AMBUSH_ZOMBIE_WEIGHTS.values():
+        total_weight += int(weight)
+    var roll := rng.randi_range(1, total_weight)
+    var cumulative := 0
+    for infected_count in [0, 1, 2, 3]:
+        cumulative += int(NON_AMBUSH_ZOMBIE_WEIGHTS[infected_count])
+        if roll <= cumulative:
+            return infected_count
+    return 2
 
 static func explore_reward_rolls(searches: int, unused_skill: int = 0) -> int:
     if searches <= 0:
