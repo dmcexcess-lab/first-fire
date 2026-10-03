@@ -1,3 +1,13 @@
+## Beta Candidate — Negative Moodlet Idle Stress — 2026-10-02
+
+- Extended the idle moodlet comfort rule into a symmetric **+1 / 0 / -1** score per need. Positive moodlets remain +1; an active negative Hunger/Thirst/Sleep/Fun/Safety/Hygiene moodlet contributes -1.
+- While a survivor is genuinely idle, the net moodlet score now produces a small signed Stress drift at **0.003 Stress/second per net point**. Positive net scores lower Stress; negative net scores raise it; mixed positive/negative states offset one another.
+- This remains deliberately minor: one bad moodlet adds only about **0.9 Stress across a full five-minute camp day** if the survivor stays genuinely idle the whole time, while explicit tactical/camp events and the 100-Stress tantrum loop remain the major pressure sources.
+- Fire watching, Tavern decompression, meals, wandering, and other autonomous activities still suppress the standing-around moodlet drift while they are active, preventing double-dipping.
+- Warm/friendly conversation relief remains intact.
+- Added architecture-smoke coverage for 3/6 negative moodlets, monotonic idle Stress gain, positive/negative cancellation, and active-runtime signed drift ownership.
+- Save schema remains **8**.
+
 ## Beta Candidate — Positive Moodlet Comfort Recovery — 2026-10-02
 
 - Added a small **idle Stress recovery bonus from positive need moodlets** without reconnecting bad moodlets to Stress gain. Well Fed, Hydrated, Rested, Entertained, Safe, and Clean each count as **+1 comfort point**.

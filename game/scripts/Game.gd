@@ -508,8 +508,8 @@ func _process_survivors(delta):
             s["fatigue"]=max(0.0,float(s["fatigue"])-recovery.x*delta)
             s["needs"]=CampLifeRules.update_needs(s["needs"],float(s["fatigue"]),0.0,safety,hygiene_support,false)
             if was_idle:
-                var idle_stress_rate := CampLifeRules.idle_stress_recovery_rate(s["needs"])
-                s["stress"]=maxf(0.0,float(s.get("stress",0.0))-idle_stress_rate*float(delta))
+                var idle_stress_delta_rate := CampLifeRules.idle_stress_delta_rate(s["needs"])
+                s["stress"]=clampf(float(s.get("stress",0.0))+idle_stress_delta_rate*float(delta),0.0,100.0)
             _process_camp_activity(s,float(delta),pop,hygiene_support)
             if s["condition"]=="Hurt" or s["condition"]=="Wounded":
                 s["injury_remaining"]=max(0.0,float(s["injury_remaining"])-delta*CampLifeRules.injury_recovery_multiplier(bool(buildings.get("Infirmary",false))))

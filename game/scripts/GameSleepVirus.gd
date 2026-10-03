@@ -593,8 +593,8 @@ func _process_survivors(delta):
             away,
             status in ["Sleeping", "Exhausted"]
         )
-        # Bad need moodlets do not create Stress automatically. Positive need
-        # moodlets can provide a small idle comfort bonus below.
+        # Need moodlets only affect Stress while genuinely idle: each positive
+        # moodlet contributes +1 comfort and each negative moodlet contributes -1.
         var caretaker := false
         if leader_id != -1:
             var leader: Variant = get_survivor(leader_id)
@@ -610,8 +610,8 @@ func _process_survivors(delta):
             survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta))
             survivor["needs"] = CampLifeRules.update_needs(survivor["needs"], float(survivor["fatigue"]), 0.0, safety, hygiene_support, false)
             if was_idle:
-                var idle_stress_rate := CampLifeRules.idle_stress_recovery_rate(survivor["needs"])
-                survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - idle_stress_rate * float(delta))
+                var idle_stress_delta_rate := CampLifeRules.idle_stress_delta_rate(survivor["needs"])
+                survivor["stress"] = clampf(float(survivor.get("stress", 0.0)) + idle_stress_delta_rate * float(delta), 0.0, 100.0)
             _process_camp_activity(survivor, float(delta), pop, hygiene_support)
         elif status in ["Sick", "Quarantined"]:
             survivor["camp_activity"] = {}

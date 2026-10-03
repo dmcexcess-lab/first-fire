@@ -39,8 +39,9 @@ const SLEEP_RECOVERY_BY_TIER := [44.0, 58.0, 74.0, 90.0]
 const SLEEP_NEED_TARGET_BY_TIER := [72.0, 82.0, 92.0, 100.0]
 const SLEEP_STRESS_RELIEF_BY_TIER := [0.0, 0.0, 0.0, 0.0]
 const FIRE_WATCH_STRESS_RELIEF := 2.0
-const POSITIVE_MOODLET_IDLE_STRESS_PER_SECOND := 0.003
+const MOODLET_IDLE_STRESS_PER_SECOND := 0.003
 const POSITIVE_MOODLETS := ["Well Fed", "Hydrated", "Rested", "Entertained", "Safe", "Clean"]
+const NEGATIVE_MOODLETS := ["Starving", "Hungry", "Parched", "Thirsty", "Exhausted", "Sleepy", "Bored", "Afraid", "Dirty"]
 const STRESS_DECOMPRESSION_THRESHOLD := 35.0
 const STRESS_TANTRUM_THRESHOLD := 100.0
 const TANTRUM_DURATION := 25.0
@@ -482,8 +483,24 @@ static func positive_moodlet_count(needs: Dictionary) -> int:
             count += 1
     return count
 
+static func negative_moodlet_count(needs: Dictionary) -> int:
+    var count := 0
+    for moodlet in moodlets(needs):
+        if str(moodlet) in NEGATIVE_MOODLETS:
+            count += 1
+    return count
+
+static func moodlet_comfort_score(needs: Dictionary) -> int:
+    return positive_moodlet_count(needs) - negative_moodlet_count(needs)
+
+static func idle_stress_delta_rate(needs: Dictionary) -> float:
+    # Positive score lowers Stress; negative score raises it. Each need contributes
+    # at most one +1/0/-1 moodlet so the idle effect stays small and bounded.
+    return -float(moodlet_comfort_score(needs)) * MOODLET_IDLE_STRESS_PER_SECOND
+
 static func idle_stress_recovery_rate(needs: Dictionary) -> float:
-    return float(positive_moodlet_count(needs)) * POSITIVE_MOODLET_IDLE_STRESS_PER_SECOND
+    # Compatibility/readability helper for callers that only need positive relief.
+    return maxf(0.0, -idle_stress_delta_rate(needs))
 
 static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,tavern_quality:int,hygiene_support:bool,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0,beer:int=0,stress:float=0.0)->Dictionary:
     # Ordinary needs are autonomous. Productive camp labor is never auto-assigned.

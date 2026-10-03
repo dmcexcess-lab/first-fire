@@ -389,13 +389,19 @@ func _init() -> void:
     var base_recovery := CampLifeRules.idle_recovery_rates(0, false, 0)
     if not _check(base_recovery.x > 0.0 and base_recovery.x <= 0.05, "idle fatigue recovery is gradual enough for work fatigue to persist"): return
     if not _check(is_equal_approx(base_recovery.y, 0.0), "generic idle recovery has no unconditional Stress component"): return
-    if not _check(is_equal_approx(CampLifeRules.need_stress_rate({"hunger":0,"thirst":0,"sleep":0,"fun":0,"safety":0,"hygiene":0},0.0), 0.0), "bad need moodlets do not continuously synthesize Stress"): return
+    if not _check(is_equal_approx(CampLifeRules.need_stress_rate({"hunger":0,"thirst":0,"sleep":0,"fun":0,"safety":0,"hygiene":0},0.0), 0.0), "need values do not alter Stress outside the idle moodlet path"): return
     var neutral_needs := {"hunger":60,"thirst":60,"sleep":60,"fun":60,"safety":60,"hygiene":60}
     var three_positive_needs := {"hunger":90,"thirst":90,"sleep":90,"fun":60,"safety":60,"hygiene":60}
     var six_positive_needs := {"hunger":90,"thirst":90,"sleep":90,"fun":90,"safety":90,"hygiene":90}
+    var three_negative_needs := {"hunger":35,"thirst":35,"sleep":45,"fun":60,"safety":60,"hygiene":60}
+    var six_negative_needs := {"hunger":20,"thirst":20,"sleep":20,"fun":20,"safety":20,"hygiene":20}
+    var balanced_needs := {"hunger":90,"thirst":90,"sleep":90,"fun":20,"safety":20,"hygiene":20}
     if not _check(CampLifeRules.positive_moodlet_count(neutral_needs) == 0 and CampLifeRules.positive_moodlet_count(three_positive_needs) == 3 and CampLifeRules.positive_moodlet_count(six_positive_needs) == 6, "each positive need moodlet contributes one idle comfort point"): return
-    if not _check(is_equal_approx(CampLifeRules.idle_stress_recovery_rate(neutral_needs), 0.0) and CampLifeRules.idle_stress_recovery_rate(six_positive_needs) > CampLifeRules.idle_stress_recovery_rate(three_positive_needs) and CampLifeRules.idle_stress_recovery_rate(three_positive_needs) > 0.0, "stacked positive moodlets progressively accelerate idle Stress recovery"): return
-    if not _check(active_game_source.contains("var was_idle: bool =") and active_game_source.contains("if was_idle:") and active_game_source.contains("CampLifeRules.idle_stress_recovery_rate(survivor[\"needs\"])"), "active camp only applies positive-moodlet Stress recovery while genuinely idle"): return
+    if not _check(CampLifeRules.negative_moodlet_count(three_negative_needs) == 3 and CampLifeRules.negative_moodlet_count(six_negative_needs) == 6, "each negative need moodlet contributes one idle discomfort point"): return
+    if not _check(CampLifeRules.idle_stress_delta_rate(six_positive_needs) < CampLifeRules.idle_stress_delta_rate(three_positive_needs) and CampLifeRules.idle_stress_delta_rate(three_positive_needs) < 0.0, "stacked positive moodlets progressively accelerate idle Stress recovery"): return
+    if not _check(CampLifeRules.idle_stress_delta_rate(six_negative_needs) > CampLifeRules.idle_stress_delta_rate(three_negative_needs) and CampLifeRules.idle_stress_delta_rate(three_negative_needs) > 0.0, "stacked negative moodlets cause a minor progressively stronger idle Stress gain"): return
+    if not _check(CampLifeRules.moodlet_comfort_score(balanced_needs) == 0 and is_equal_approx(CampLifeRules.idle_stress_delta_rate(balanced_needs), 0.0), "positive and negative idle moodlet points offset one another"): return
+    if not _check(active_game_source.contains("var was_idle: bool =") and active_game_source.contains("if was_idle:") and active_game_source.contains("CampLifeRules.idle_stress_delta_rate(survivor[\"needs\"])"), "active camp only applies signed moodlet Stress drift while genuinely idle"): return
     if not _check(base_game_source.contains("float(chatter.get(\"speaker_stress_delta\", 0.0))") and not base_game_source.contains("maxf(0.0, float(chatter.get(\"speaker_stress_delta\", 0.0)))"), "warm and friendly camp chatter may lower Stress by its authored small delta"): return
     var tarp_recovery := CampLifeRules.idle_recovery_rates(1, false, 0)
     var barracks_recovery := CampLifeRules.idle_recovery_rates(2, false, 1)
