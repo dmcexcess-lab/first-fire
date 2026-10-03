@@ -34,7 +34,7 @@ func _render_survivor() -> void:
 
     var can_amputate := VirusRules.can_amputate(virus, bool(survivor.get("amputation_used", false)))
     if can_amputate:
-        body.add_child(_make_label("EARLY CHOICE: amputate now with 1 First Aid Kit, permanently lose 1 Combat and 1 Agility, then endure 8 in-game hours of forced recovery — or keep the limb and hunt for a Zombie Cure.", 11))
+        body.add_child(_make_label("EARLY CHOICE: amputate now with 1 First Aid Kit, lose 1 Combat and 1 Agility, then endure 8 in-game hours of forced recovery — or keep the limb and hunt for a Zombie Cure.", 11))
         var amputate := Button.new()
         amputate.text = "AMPUTATE NOW"
         amputate.custom_minimum_size = Vector2(0, 46)
