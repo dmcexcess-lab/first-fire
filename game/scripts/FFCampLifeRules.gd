@@ -39,6 +39,8 @@ const SLEEP_RECOVERY_BY_TIER := [44.0, 58.0, 74.0, 90.0]
 const SLEEP_NEED_TARGET_BY_TIER := [72.0, 82.0, 92.0, 100.0]
 const SLEEP_STRESS_RELIEF_BY_TIER := [0.0, 0.0, 0.0, 0.0]
 const FIRE_WATCH_STRESS_RELIEF := 2.0
+const POSITIVE_MOODLET_IDLE_STRESS_PER_SECOND := 0.003
+const POSITIVE_MOODLETS := ["Well Fed", "Hydrated", "Rested", "Entertained", "Safe", "Clean"]
 const STRESS_DECOMPRESSION_THRESHOLD := 35.0
 const STRESS_TANTRUM_THRESHOLD := 100.0
 const TANTRUM_DURATION := 25.0
@@ -473,6 +475,16 @@ static func moodlets(needs:Dictionary)->Array:
     if r.is_empty(): r.append("Okay")
     return r
 
+static func positive_moodlet_count(needs: Dictionary) -> int:
+    var count := 0
+    for moodlet in moodlets(needs):
+        if str(moodlet) in POSITIVE_MOODLETS:
+            count += 1
+    return count
+
+static func idle_stress_recovery_rate(needs: Dictionary) -> float:
+    return float(positive_moodlet_count(needs)) * POSITIVE_MOODLET_IDLE_STRESS_PER_SECOND
+
 static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,tavern_quality:int,hygiene_support:bool,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0,beer:int=0,stress:float=0.0)->Dictionary:
     # Ordinary needs are autonomous. Productive camp labor is never auto-assigned.
     # Schedule-critical needs take priority over flavor idles.
@@ -578,8 +590,9 @@ static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator)
 
 static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, _tavern_quality: int = 0) -> Vector2:
     var tier := clampi(shelter_quality, 0, 3)
-    # Ordinary downtime slowly recovers work fatigue only. Stress has its own
-    # explicit event/decompression loop.
+    # Ordinary downtime slowly recovers work fatigue. Stress recovery from
+    # positive moodlets is calculated separately so there is no unconditional
+    # background Stress drain.
     var fatigue_rates := [0.020, 0.026, 0.035, 0.045]
     var fatigue_rate: float = float(fatigue_rates[tier])
     if caretaker_leader:

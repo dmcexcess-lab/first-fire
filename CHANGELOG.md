@@ -1,3 +1,13 @@
+## Beta Candidate — Positive Moodlet Comfort Recovery — 2026-10-02
+
+- Added a small **idle Stress recovery bonus from positive need moodlets** without reconnecting bad moodlets to Stress gain. Well Fed, Hydrated, Rested, Entertained, Safe, and Clean each count as **+1 comfort point**.
+- A genuinely idle Available survivor gets **0.003 Stress/second per positive moodlet**: zero positives gives no passive Stress drain; more +1 moodlets stack linearly up to six. This remains much weaker than Watching Fire or Tavern decompression.
+- Restored the already-authored tiny Stress reductions from **warm/friendly autonomous camp conversations**. Hostile chatter can still raise Stress.
+- Idle comfort recovery only applies while camp_activity is empty, so active fire watching, Tavern sessions, meals, water breaks, wandering, and other autonomous actions do not double-dip the standing-around bonus.
+- Kept the separation rule intact: negative need moodlets do not continuously synthesize Stress, normal sleep does not directly cure Stress, and explicit field/camp pressures still add it.
+- Added architecture-smoke coverage for 0/3/6 positive-moodlet scoring, monotonic idle Stress recovery, idle-only runtime gating, and signed social Stress deltas.
+- Save schema remains **8**.
+
 ## Beta Candidate — Separate Stress & Tantrum Loop — 2026-10-02
 
 - Split **Stress** cleanly away from need moodlets. Hunger/Thirst/Sleep/Fun/Safety/Hygiene still produce their own moodlets, but low pips no longer continuously manufacture Stress and good pips no longer passively erase it.

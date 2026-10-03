@@ -483,8 +483,8 @@ func _process_camp_chatter(delta):
     var delta_ba := int(chatter.get("reverse_delta", 0))
     if delta_ab != 0: _change_relationship(speaker, listener, delta_ab)
     if delta_ba != 0: _change_relationship(listener, speaker, delta_ba)
-    speaker["stress"] = clampf(float(speaker.get("stress", 0.0)) + maxf(0.0, float(chatter.get("speaker_stress_delta", 0.0))), 0.0, 100.0)
-    listener["stress"] = clampf(float(listener.get("stress", 0.0)) + maxf(0.0, float(chatter.get("listener_stress_delta", 0.0))), 0.0, 100.0)
+    speaker["stress"] = clampf(float(speaker.get("stress", 0.0)) + float(chatter.get("speaker_stress_delta", 0.0)), 0.0, 100.0)
+    listener["stress"] = clampf(float(listener.get("stress", 0.0)) + float(chatter.get("listener_stress_delta", 0.0)), 0.0, 100.0)
     camp_chatter_requested.emit(chatter)
 
 func _process_survivors(delta):
@@ -499,6 +499,7 @@ func _process_survivors(delta):
         var safety:=CampLifeRules.safety_target(buildings,pop,capacity,fire_level,away,camp_maintenance)
         s["needs"]=CampLifeRules.update_needs(s.get("needs",{}),float(s.get("fatigue",0.0)),float(delta),safety,hygiene_support,away)
         if s["status"]=="Available":
+            var was_idle := s.get("camp_activity", {}).is_empty()
             var caretaker:=false
             if leader_id!=-1:
                 var leader:Variant=get_survivor(leader_id)
@@ -506,6 +507,9 @@ func _process_survivors(delta):
             var recovery:=CampLifeRules.idle_recovery_rates(CampLifeRules.shelter_tier(buildings),caretaker,CampLifeRules.tavern_tier(buildings))
             s["fatigue"]=max(0.0,float(s["fatigue"])-recovery.x*delta)
             s["needs"]=CampLifeRules.update_needs(s["needs"],float(s["fatigue"]),0.0,safety,hygiene_support,false)
+            if was_idle:
+                var idle_stress_rate := CampLifeRules.idle_stress_recovery_rate(s["needs"])
+                s["stress"]=maxf(0.0,float(s.get("stress",0.0))-idle_stress_rate*float(delta))
             _process_camp_activity(s,float(delta),pop,hygiene_support)
             if s["condition"]=="Hurt" or s["condition"]=="Wounded":
                 s["injury_remaining"]=max(0.0,float(s["injury_remaining"])-delta*CampLifeRules.injury_recovery_multiplier(bool(buildings.get("Infirmary",false))))

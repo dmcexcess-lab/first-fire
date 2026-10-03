@@ -593,7 +593,8 @@ func _process_survivors(delta):
             away,
             status in ["Sleeping", "Exhausted"]
         )
-        # Stress is event-driven and separate from need moodlets.
+        # Bad need moodlets do not create Stress automatically. Positive need
+        # moodlets can provide a small idle comfort bonus below.
         var caretaker := false
         if leader_id != -1:
             var leader: Variant = get_survivor(leader_id)
@@ -605,8 +606,12 @@ func _process_survivors(delta):
         )
 
         if status == "Available":
+            var was_idle := survivor.get("camp_activity", {}).is_empty()
             survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta))
             survivor["needs"] = CampLifeRules.update_needs(survivor["needs"], float(survivor["fatigue"]), 0.0, safety, hygiene_support, false)
+            if was_idle:
+                var idle_stress_rate := CampLifeRules.idle_stress_recovery_rate(survivor["needs"])
+                survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - idle_stress_rate * float(delta))
             _process_camp_activity(survivor, float(delta), pop, hygiene_support)
         elif status in ["Sick", "Quarantined"]:
             survivor["camp_activity"] = {}
