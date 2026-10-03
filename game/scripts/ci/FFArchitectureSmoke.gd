@@ -449,10 +449,10 @@ func _init() -> void:
     if not _check(TacticalSound.display_label("gunshot") != "", "sound catalog"): return
 
     var path := "user://ff_architecture_smoke.json"
-    var payload := {"save_schema": 8, "stat_model": THREE_STAT_MODEL, "virus_model": "zombie-virus-v1", "ok": true}
+    var payload := {"save_schema": 8, "stat_model": THREE_STAT_MODEL, "virus_model": "zombie-virus-v2", "ok": true}
     if not _check(SaveCodec.write_json(path, payload), "save write"): return
     var loaded = SaveCodec.read_json(path)
-    if not _check(loaded != null and str(loaded.get("stat_model", "")) == THREE_STAT_MODEL and str(loaded.get("virus_model", "")) == "zombie-virus-v1", "save read"): return
+    if not _check(loaded != null and str(loaded.get("stat_model", "")) == THREE_STAT_MODEL and str(loaded.get("virus_model", "")) == "zombie-virus-v2", "save read"): return
     SaveCodec.invalidate(path)
 
     print("FIRST_FIRE_ARCHITECTURE_SMOKE_OK")
