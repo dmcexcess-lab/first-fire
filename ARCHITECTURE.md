@@ -165,7 +165,7 @@ Current schema: **8**.
 
 Current survivor-model marker: **`combat-agility-leadership-v1`**.
 
-Current additive virus marker: **`zombie-virus-v1`**.
+Current additive virus marker: **`zombie-virus-v2`**.
 
 A schema-7 save carrying the previous six-skill survivor shape is deliberately invalidated and restarted instead of migrated. Virus fields are additive/normalized and do not require a schema reset. Camp-menu interaction/layout is presentation-only and does not change save shape. The filename `user://first_fire_alpha01.json` remains intentionally unchanged.
 
