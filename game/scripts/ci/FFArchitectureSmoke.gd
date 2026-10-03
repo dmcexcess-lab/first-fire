@@ -285,7 +285,9 @@ func _init() -> void:
 
     if not _check(int(D.STARTING_RESOURCES.get("Cooked Food", 0)) >= 3 and int(D.STARTING_RESOURCES.get("Clean Water", 0)) >= 3, "new game basic supply runway"): return
     var base_needs := CampLifeRules.default_needs()
-    if not _check(base_needs.has("hunger") and base_needs.has("safety") and base_needs.has("hygiene"), "camp needs"): return
+    if not _check(base_needs.size() == 5 and base_needs.has("hunger") and base_needs.has("thirst") and base_needs.has("sleep") and base_needs.has("fun") and base_needs.has("safety") and not base_needs.has("hygiene"), "camp has exactly five survivor needs"): return
+    var normalized_legacy_needs := CampLifeRules.normalize_needs({"hunger":70,"thirst":70,"sleep":70,"fun":70,"safety":70,"hygiene":1})
+    if not _check(normalized_legacy_needs.size() == 5 and not normalized_legacy_needs.has("hygiene"), "legacy saved Hygiene is discarded during need normalization"): return
     if not _check(is_equal_approx(CampLifeRules.SLEEP_DURATION, 100.0) and is_equal_approx(CampLifeRules.FIRE_DECAY_PER_SECOND, 0.096) and CampLifeRules.FORCED_REST_MIN_HOURS == 3 and CampLifeRules.FORCED_REST_MAX_HOURS == 5, "normal sleep is eight in-game hours and forced exhaustion remains three to five hours"): return
     var exhaustion_rng := RandomNumberGenerator.new()
     exhaustion_rng.seed = 20261002
@@ -359,27 +361,27 @@ func _init() -> void:
     if not _check(CampLifeRules.pet_should_leave({"affection":10}) and not CampLifeRules.pet_should_leave({"affection":60}), "neglected pets leave"): return
     if not _check(pet_find in ["Wood","Scrap Metal","Hardware","Cloth","Plastic","Raw Food"], "daily pet material reward"): return
     var schedule_rng := RandomNumberGenerator.new(); schedule_rng.seed = 13
-    var sleep_decoupled := CampLifeRules.update_needs({"sleep":95,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90}, 80.0, 0.0, 80.0, false, false)
+    var sleep_decoupled := CampLifeRules.update_needs({"sleep":95,"hunger":90,"thirst":90,"fun":90,"safety":90}, 80.0, 0.0, 80.0, false)
     if not _check(is_equal_approx(float(sleep_decoupled["sleep"]), 95.0), "sleep need stays independent from work fatigue"): return
-    var bedtime_needs := CampLifeRules.update_needs({"sleep":95,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90}, 0.0, 175.0, 80.0, false, false)
+    var bedtime_needs := CampLifeRules.update_needs({"sleep":95,"hunger":90,"thirst":90,"fun":90,"safety":90}, 0.0, 175.0, 80.0, false)
     if not _check(float(bedtime_needs["sleep"]) <= CampLifeRules.SLEEP_START_NEED, "awake sleep need falls enough to trigger the nightly sleep window"): return
-    var sleeping_needs := CampLifeRules.update_needs({"sleep":55,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90}, 40.0, 30.0, 80.0, false, false, true)
+    var sleeping_needs := CampLifeRules.update_needs({"sleep":55,"hunger":90,"thirst":90,"fun":90,"safety":90}, 40.0, 30.0, 80.0, false, true)
     if not _check(is_equal_approx(float(sleeping_needs["sleep"]), 55.0), "sleep need does not keep decaying while survivor is in bed"): return
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":50,"fun":90},0.0,5,1,0,false,schedule_rng,23.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "rest", "nighttime sleep need selects real sleep"): return
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,0,false,schedule_rng,12.5,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "drink_water", "midday water window selects drinking"): return
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,0,false,schedule_rng,19.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "eat_meal", "evening meal window selects eating"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":50,"fun":90},0.0,5,1,0,schedule_rng,23.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "rest", "nighttime sleep need selects real sleep"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90},0.0,5,1,0,schedule_rng,12.5,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "drink_water", "midday water window selects drinking"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90},0.0,5,1,0,schedule_rng,19.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "eat_meal", "evening meal window selects eating"): return
     var bedroll_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 0)
     var tarp_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 1)
     var barracks_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 2)
     var dorm_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 3)
     if not _check(float(tarp_sleep["needs"]["sleep"]) > float(bedroll_sleep["needs"]["sleep"]) and float(barracks_sleep["needs"]["sleep"]) > float(tarp_sleep["needs"]["sleep"]) and float(dorm_sleep["needs"]["sleep"]) > float(barracks_sleep["needs"]["sleep"]), "eight-hour sleep raises the Rested moodlet faster as shelter improves"): return
     if not _check(is_equal_approx(float(bedroll_sleep["stress"]), 50.0) and is_equal_approx(float(dorm_sleep["stress"]), 50.0), "normal sleep leaves the separate Stress axis unchanged"): return
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":20,"hygiene":90},0.0,5,1,0,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "keep_watch", "low safety drives treeline watch outside need windows"): return
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,0,false,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
-    var stress_fire_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},70.0,5,1,0,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,0,60.0)
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":20},0.0,5,1,0,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "keep_watch", "low safety drives treeline watch outside need windows"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,0,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
+    var stress_fire_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90},70.0,5,1,0,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,0,60.0)
     if not _check(str(stress_fire_activity.get("kind","")) == "watch_fire" and CampLifeRules.fire_watch_stress_relief() > 0.0, "high Stress drives visible starter-camp fire watching even when Fun is healthy"): return
-    var tavern_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":20,"safety":90,"hygiene":90},0.0,5,3,2,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,0)
-    var beer_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":20,"safety":90,"hygiene":90},0.0,5,3,3,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,1)
+    var tavern_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":20,"safety":90},0.0,5,3,2,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,0)
+    var beer_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":20,"safety":90},0.0,5,3,3,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,1)
     if not _check(str(tavern_activity.get("kind","")) == "tavern_social" and str(beer_activity.get("kind","")) == "tavern_drink", "progressive tavern social activity culminates in optional beer sessions"): return
     if not _check(base_game_source.contains("var pets := []") and base_game_source.contains("func start_camp_chore") and base_game_source.contains("func perform_camp_task_tap") and base_game_source.contains("rescue_is_pet"), "active camp work and pet rescue state"): return
     if not _check(CampSocial.candidate_standing({"id":1,"condition":"Healthy","skills":{"Leadership":5},"reputation":0,"relationships":{}}, []) == 30, "leadership drives politics"): return
@@ -389,19 +391,20 @@ func _init() -> void:
     var base_recovery := CampLifeRules.idle_recovery_rates(0, false, 0)
     if not _check(base_recovery.x > 0.0 and base_recovery.x <= 0.05, "idle fatigue recovery is gradual enough for work fatigue to persist"): return
     if not _check(is_equal_approx(base_recovery.y, 0.0), "generic idle recovery has no unconditional Stress component"): return
-    if not _check(is_equal_approx(CampLifeRules.need_stress_rate({"hunger":0,"thirst":0,"sleep":0,"fun":0,"safety":0,"hygiene":0},0.0), 0.0), "need values do not alter Stress outside the idle moodlet path"): return
-    var neutral_needs := {"hunger":60,"thirst":60,"sleep":60,"fun":60,"safety":60,"hygiene":60}
-    var three_positive_needs := {"hunger":90,"thirst":90,"sleep":90,"fun":60,"safety":60,"hygiene":60}
-    var six_positive_needs := {"hunger":90,"thirst":90,"sleep":90,"fun":90,"safety":90,"hygiene":90}
-    var three_negative_needs := {"hunger":35,"thirst":35,"sleep":45,"fun":60,"safety":60,"hygiene":60}
-    var six_negative_needs := {"hunger":20,"thirst":20,"sleep":20,"fun":20,"safety":20,"hygiene":20}
-    var balanced_needs := {"hunger":90,"thirst":90,"sleep":90,"fun":20,"safety":20,"hygiene":20}
-    if not _check(CampLifeRules.positive_moodlet_count(neutral_needs) == 0 and CampLifeRules.positive_moodlet_count(three_positive_needs) == 3 and CampLifeRules.positive_moodlet_count(six_positive_needs) == 6, "each positive need moodlet contributes one idle comfort point"): return
-    if not _check(CampLifeRules.negative_moodlet_count(three_negative_needs) == 3 and CampLifeRules.negative_moodlet_count(six_negative_needs) == 6, "each negative need moodlet contributes one idle discomfort point"): return
-    if not _check(CampLifeRules.idle_stress_delta_rate(six_positive_needs) < CampLifeRules.idle_stress_delta_rate(three_positive_needs) and CampLifeRules.idle_stress_delta_rate(three_positive_needs) < 0.0, "stacked positive moodlets progressively accelerate idle Stress recovery"): return
-    if not _check(CampLifeRules.idle_stress_delta_rate(six_negative_needs) > CampLifeRules.idle_stress_delta_rate(three_negative_needs) and CampLifeRules.idle_stress_delta_rate(three_negative_needs) > 0.0, "stacked negative moodlets cause a minor progressively stronger idle Stress gain"): return
+    if not _check(is_equal_approx(CampLifeRules.need_stress_rate({"hunger":0,"thirst":0,"sleep":0,"fun":0,"safety":0},0.0), 0.0), "need values do not alter Stress outside the idle moodlet path"): return
+    var neutral_needs := {"hunger":60,"thirst":60,"sleep":60,"fun":60,"safety":60}
+    var three_positive_needs := {"hunger":90,"thirst":90,"sleep":90,"fun":60,"safety":60}
+    var five_positive_needs := {"hunger":90,"thirst":90,"sleep":90,"fun":90,"safety":90}
+    var three_negative_needs := {"hunger":35,"thirst":35,"sleep":45,"fun":60,"safety":60}
+    var five_negative_needs := {"hunger":20,"thirst":20,"sleep":20,"fun":20,"safety":20}
+    var balanced_needs := {"hunger":90,"thirst":90,"sleep":60,"fun":20,"safety":20}
+    if not _check(CampLifeRules.positive_moodlet_count(neutral_needs) == 0 and CampLifeRules.positive_moodlet_count(three_positive_needs) == 3 and CampLifeRules.positive_moodlet_count(five_positive_needs) == 5, "each positive need moodlet contributes one idle comfort point"): return
+    if not _check(CampLifeRules.negative_moodlet_count(three_negative_needs) == 3 and CampLifeRules.negative_moodlet_count(five_negative_needs) == 5, "each negative need moodlet contributes one idle discomfort point"): return
+    if not _check(CampLifeRules.idle_stress_delta_rate(five_positive_needs) < CampLifeRules.idle_stress_delta_rate(three_positive_needs) and CampLifeRules.idle_stress_delta_rate(three_positive_needs) < 0.0, "stacked positive moodlets progressively accelerate idle Stress recovery"): return
+    if not _check(CampLifeRules.idle_stress_delta_rate(five_negative_needs) > CampLifeRules.idle_stress_delta_rate(three_negative_needs) and CampLifeRules.idle_stress_delta_rate(three_negative_needs) > 0.0, "stacked negative moodlets cause a minor progressively stronger idle Stress gain"): return
     if not _check(CampLifeRules.moodlet_comfort_score(balanced_needs) == 0 and is_equal_approx(CampLifeRules.idle_stress_delta_rate(balanced_needs), 0.0), "positive and negative idle moodlet points offset one another"): return
     if not _check(active_game_source.contains("var was_idle: bool =") and active_game_source.contains("if was_idle:") and active_game_source.contains("CampLifeRules.idle_stress_delta_rate(survivor[\"needs\"])"), "active camp only applies signed moodlet Stress drift while genuinely idle"): return
+    if not _check(not base_camp_source.contains("needs.get(\"hygiene\"") and not base_camp_source.contains("\"wash\"") and not active_camp_source.contains("\"hygiene\": \"WASH\"") and not active_game_source.contains("hygiene_support"), "Hygiene and washing are absent from active camp runtime and presentation"): return
     if not _check(base_game_source.contains("float(chatter.get(\"speaker_stress_delta\", 0.0))") and not base_game_source.contains("maxf(0.0, float(chatter.get(\"speaker_stress_delta\", 0.0)))"), "warm and friendly camp chatter may lower Stress by its authored small delta"): return
     var tarp_recovery := CampLifeRules.idle_recovery_rates(1, false, 0)
     var barracks_recovery := CampLifeRules.idle_recovery_rates(2, false, 1)
