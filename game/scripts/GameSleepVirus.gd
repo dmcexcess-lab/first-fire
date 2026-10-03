@@ -850,7 +850,6 @@ func _complete_task(survivor):
         survivor["task"] = {}
         survivor["virus"] = VirusRules.default_state()
         survivor["status"] = "Available"
-        survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - 8.0)
         survivor["history"].append("Day %d — Completed zombie-virus treatment and tested clear." % day)
         toast_requested.emit("%s completed zombie-virus treatment and is clear." % survivor["name"])
         save_game()
