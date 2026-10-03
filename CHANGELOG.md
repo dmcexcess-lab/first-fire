@@ -1,3 +1,14 @@
+## Beta Candidate — Camp Attraction Survivor Stories — 2026-10-03
+
+- Established the two intended human population-growth paths: **physical tactical survivor rescues** and **survivor-arrival camp story popups**.
+- Added a pure **camp attraction score** driven by visible settlement success: camp maintenance (30 points), low survivor Stress (15), positive need moodlets (15), shortage-free stability (15), fire health (5), and completed infrastructure (up to 20).
+- Camp arrival stories now roll separately from crisis/social-event pressure. A weak or unstable camp below attraction 50 gets **no passive arrival roll**; above that threshold the chance rises with camp quality and caps at **10% per 112.5-second camp-event check**.
+- A thriving camp therefore attracts survivor stories materially faster than an early or struggling camp, without making population growth automatic or turning crisis-event spam into the recruitment engine.
+- Arrival stories are hard-gated by current shelter/MAX population capacity. Full camps do not queue waiting survivors.
+- Added a dedicated **Someone Followed the Stories** camp popup with invite / trade-news / turn-away choices. Accepting adds one normal generated survivor directly to First Fire.
+- Added architecture-smoke coverage for weak/stable/thriving attraction monotonicity, the 10% ceiling, shelter gating, and the separate arrival-story orchestration path.
+- Save schema remains **8**; attraction is derived from existing live camp state and adds no persistent field.
+
 ## Beta Candidate — Distance-Scaled Rescue Rarity — 2026-10-03
 
 - Made survivor/pet rescue opportunities **much rarer near camp** and progressively less rare on deeper routes.
