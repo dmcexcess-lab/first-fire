@@ -1,3 +1,14 @@
+## Beta Candidate — Separate Stress & Tantrum Loop — 2026-10-02
+
+- Split **Stress** cleanly away from need moodlets. Hunger/Thirst/Sleep/Fun/Safety/Hygiene still produce their own moodlets, but low pips no longer continuously manufacture Stress and good pips no longer passively erase it.
+- Removed generic passive Stress recovery from Available/Sick/Quarantined states and removed normal sleep as a direct Stress cure. Idle camp time still recovers Fatigue slowly.
+- Stress is now an **explicit event-pressure axis**: tactical infected presence adds Stress even when the party escapes without damage; tactical damage adds further Stress; existing missed-meal/missed-sleep consequences, health events, and authored camp events continue to add explicit Stress.
+- Added starter-camp **Watching Fire** decompression. A survivor at elevated Stress will choose the visible fire-watching idle even if their Fun need is already healthy, and each completed session removes a small fixed amount of Stress.
+- Kept Tavern progression as the stronger social decompression route. Tavern social/drinking relief now scales with the number of survivors simultaneously unwinding there, capped at a 2× group multiplier.
+- Added a real **Tantrum** consequence at 100 Stress. The survivor becomes temporarily unavailable, visibly enters a Tantrum state near the fire, vents 20 Stress over the breakdown, then resumes interrupted camp work when possible.
+- Added architecture-smoke coverage for Stress/moodlet separation, no passive Stress drain, fire-watching decompression, group-scaled Tavern relief, tactical infected Stress, and the Tantrum state.
+- Save schema remains **8**; Tantrum uses the existing task/status save shape.
+
 ## Beta Candidate — Slow Camp Downtime Recovery — 2026-10-02
 
 - Confirmed **idle camp downtime** as a real recovery state: an Available survivor who is not assigned productive work continuously sheds both Fatigue and Stress while camp simulation is running.
