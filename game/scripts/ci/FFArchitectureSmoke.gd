@@ -396,10 +396,13 @@ func _init() -> void:
     var kitchen_recovery := CampLifeRules.idle_recovery_rates(2, false, 2)
     var brewery_recovery := CampLifeRules.idle_recovery_rates(2, false, 3)
     var dorm_recovery := CampLifeRules.idle_recovery_rates(3, false, 3)
-    if not _check(tarp_recovery.y > base_recovery.y and barracks_recovery.x > tarp_recovery.x and kitchen_recovery.y > barracks_recovery.y and brewery_recovery.y > kitchen_recovery.y and dorm_recovery.x > brewery_recovery.x, "shelter and each tavern stage progressively improve recovery"): return
+    if not _check(barracks_recovery.x > tarp_recovery.x and dorm_recovery.x > brewery_recovery.x and is_equal_approx(tarp_recovery.y, 0.0) and is_equal_approx(brewery_recovery.y, 0.0), "shelter improves passive fatigue recovery without passively draining Stress"): return
     var tavern_social_one := CampLifeRules.complete_activity({"fun":20,"safety":60}, 0.0, "tavern_social", 1)
     var tavern_social_three := CampLifeRules.complete_activity({"fun":20,"safety":60}, 0.0, "tavern_social", 3)
-    if not _check(float(tavern_social_three["needs"]["fun"]) > float(tavern_social_one["needs"]["fun"]) and CampLifeRules.tavern_social_stress_relief(3, true) > CampLifeRules.tavern_social_stress_relief(1, false), "later tavern stages and beer provide stronger social mood recovery"): return
+    if not _check(float(tavern_social_three["needs"]["fun"]) > float(tavern_social_one["needs"]["fun"]) and CampLifeRules.tavern_social_stress_relief(3, true, 3) > CampLifeRules.tavern_social_stress_relief(1, false, 1), "later tavern stages, beer and group participation provide stronger explicit Stress relief"): return
+    if not _check(CampLifeRules.tactical_infected_stress(0) == 0.0 and CampLifeRules.tactical_infected_stress(5) > CampLifeRules.tactical_infected_stress(1), "tactical infected presence raises Stress independently of damage"): return
+    if not _check(active_game_source.contains("func _begin_tantrum_if_stressed") and active_game_source.contains("\"status\"] = \"Tantrum\"") and active_game_source.contains("CampLifeRules.TANTRUM_STRESS_RELEASE"), "maximum Stress creates a timed camp breakdown with explicit recovery"): return
+    if not _check(base_game_source.contains("infected_stress := CampLifeRules.tactical_infected_stress") and combat_source.contains("\"infected_encountered\": zombies.size()"), "tactical infected count feeds persistent survivor Stress"): return
     if not _check(active_game_source.contains("resources[\"Beer\"] = int(resources.get(\"Beer\", 0)) - 1") and active_main_source.contains("\"Tavern\", \"Tavern Kitchen\", \"Tavern Brewery\""), "active runtime consumes beer socially and work board exposes the full tavern chain"): return
     if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary"): return
     if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
