@@ -1,6 +1,6 @@
 ## Beta Candidate — Camp Story Recruit Streak Protection & Doc Cleanup — 2026-10-03
 
-- Added a **two full in-game day cooldown after accepting a survivor from a camp-story arrival**. During that window, the positive camp-attraction system cannot generate another passive survivor-arrival story.
+- Added a **two full in-game days of cooldown after accepting a survivor from a camp-story arrival**. During that window, the positive camp-attraction system cannot generate another passive survivor-arrival story.
 - **Physical tactical survivor rescues are unaffected** by the cooldown and can still join immediately when shelter space exists.
 - Cooldown state is stored in the existing persisted `flags` dictionary as `camp_story_recruit_cooldown_until_time`, so save schema remains **8** and older saves default to immediately eligible.
 - Updated architecture smoke to enforce the full two-day cooldown, the persisted flag, and the fact that field-rescue recruitment does not consult the passive-arrival cooldown.
