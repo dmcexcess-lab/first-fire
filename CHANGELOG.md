@@ -1,3 +1,12 @@
+## Beta Candidate — Camp Story Recruit Streak Protection & Doc Cleanup — 2026-10-03
+
+- Added a **two full in-game days of cooldown after accepting a survivor from a camp-story arrival**. During that window, the positive camp-attraction system cannot generate another passive survivor-arrival story.
+- **Physical tactical survivor rescues are unaffected** by the cooldown and can still join immediately when shelter space exists.
+- Cooldown state is stored in the existing persisted `flags` dictionary as `camp_story_recruit_cooldown_until_time`, so save schema remains **8** and older saves default to immediately eligible.
+- Updated architecture smoke to enforce the full two-day cooldown, the persisted flag, and the fact that field-rescue recruitment does not consult the passive-arrival cooldown.
+- Cleaned stale tactical documentation in `ARCHITECTURE.md` and `ROADMAP.md`: all non-ambush encounters now use **0/1/2/3 = 10%/40%/40%/10%**, ambush remains **5 infected**, rescue objective frequency—not infected count—rises with route depth, and searchable-container counts are **1–2 / 2–3 / 3–5 / 4–6 / 5–7**.
+- Updated durable recruitment docs to state the passive arrival cooldown explicitly.
+
 ## Beta Candidate — Camp Attraction Survivor Stories — 2026-10-03
 
 - Established the two intended human population-growth paths: **physical tactical survivor rescues** and **survivor-arrival camp story popups**.
@@ -228,7 +237,7 @@
 - Firearms are now **field-found only**; firearm Workbench recipes were removed. Crossbow remains the craftable ranged option.
 - Added the final firearm lineup:
   - **6-Shot Revolver** — 6 rounds, short optimal range, can fire to any visible target with accuracy falloff.
-  - **12-Shot Automatic** — 12 rounds, faster handling, short optimal range, steeper distance falloff.
+  - **12-shot Automatic** — 12 rounds, faster handling, short optimal range, steeper distance falloff.
   - **Double-Barrel Shotgun** — 2 shells, 3 projectiles per shot, tighter spread, **5-tile physical pellet range**.
   - **Pump Shotgun** — 6 shells, explicit **PUMP** action between shots, 5 projectiles per shot, wider spread, **4-tile physical pellet range**.
   - **Medium Rifle** — 20-round magazine, medium optimal range, fire-to-vision distance falloff.
