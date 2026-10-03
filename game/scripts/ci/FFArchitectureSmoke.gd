@@ -388,9 +388,9 @@ func _init() -> void:
     if not _check(int(D.BUILDINGS["Workbench"].get("cost", {}).get("Wood", 0)) == 2 and int(D.BUILDINGS["Workbench"].get("cost", {}).get("Scrap Metal", 0)) == 1 and not D.BUILDINGS["Workbench"].has("requires"), "first workbench is a light direct starter build"): return
     var base_recovery := CampLifeRules.idle_recovery_rates(0, false, 0)
     if not _check(base_recovery.x > 0.0 and base_recovery.x <= 0.05, "idle fatigue recovery is gradual enough for work fatigue to persist"): return
-    if not _check(base_recovery.y > 0.0 and base_recovery.y <= 0.02, "idle stress recovery is a slow background effect rather than an instant reset"): return
-    if not _check(base_recovery.x * 300.0 < 10.0 and base_recovery.y * 300.0 < 10.0, "a full idle camp day only removes a modest amount of base fatigue and stress"): return
-    if not _check(active_game_source.contains("if status == \"Available\":") and active_game_source.contains("survivor[\"fatigue\"] = maxf(0.0, float(survivor[\"fatigue\"]) - recovery.x * float(delta))") and active_game_source.contains("survivor[\"stress\"] = maxf(0.0, float(survivor[\"stress\"]) - recovery.y * float(delta))"), "available survivors recover fatigue and stress continuously while chilling in camp"): return
+    if not _check(is_equal_approx(base_recovery.y, 0.0), "idle time alone never drains the separate Stress axis"): return
+    if not _check(is_equal_approx(CampLifeRules.need_stress_rate({"hunger":0,"thirst":0,"sleep":0,"fun":0,"safety":0,"hygiene":0},0.0), 0.0), "need moodlets do not continuously synthesize Stress"): return
+    if not _check(active_game_source.contains("if status == \"Available\":") and active_game_source.contains("survivor[\"fatigue\"] = maxf(0.0, float(survivor[\"fatigue\"]) - recovery.x * float(delta))") and not active_game_source.contains("survivor[\"stress\"] = maxf(0.0, float(survivor[\"stress\"]) - recovery.y * float(delta))"), "available survivors recover fatigue passively but Stress only through explicit decompression"): return
     var tarp_recovery := CampLifeRules.idle_recovery_rates(1, false, 0)
     var barracks_recovery := CampLifeRules.idle_recovery_rates(2, false, 1)
     var kitchen_recovery := CampLifeRules.idle_recovery_rates(2, false, 2)
