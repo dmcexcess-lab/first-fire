@@ -990,7 +990,7 @@ func resolve_combat(result):
             if VirusRules.bite_exposure_occurs(lead_bites, rng):
                 if _expose_survivor(lead, "%d infected bite%s in the field" % [lead_bites, "" if lead_bites == 1 else "s"]):
                     lead["stress"] = minf(100.0, float(lead.get("stress", 0.0)) + 10.0)
-                    toast_requested.emit("%s was exposed to the zombie virus by a bite. Early decontamination can stop it." % lead["name"])
+                    toast_requested.emit("%s was exposed by a bite. Amputate immediately or quarantine while hunting a Zombie Cure." % lead["name"])
         if ids.size() > 1:
             var companion: Variant = get_survivor(int(ids[1]))
             var companion_bites := int(result.get("companion_bite_hits", 0))
