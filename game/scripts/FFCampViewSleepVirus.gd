@@ -332,7 +332,6 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
         "check_water": return CAMP_CHEST_CELL + Vector2i(0, 1)
         "keep_watch": return Vector2i(15, 5)
         "wander": return IDLE_CELLS[posmod(int(survivor.get("id", 0)) + int(floor(float(Game.day_elapsed) / 5.0)), IDLE_CELLS.size())]
-        "wash": return building_cell("Water Tank") + Vector2i(1, 0) if bool(Game.buildings.get("Water Tank", false)) else building_cell("Rain Catcher") + Vector2i(1, 0)
     if float(survivor.get("stress", 0.0)) >= 68.0:
         return FIRE_CELL + Vector2i(0, 1)
     var sid := int(survivor.get("id", 0))
@@ -391,7 +390,6 @@ func _draw_glance_indicator(survivor: Dictionary, center: Vector2, tile: float) 
         "sleep": "SLEEP",
         "fun": "FUN",
         "safety": "SAFE",
-        "hygiene": "WASH",
     }
     var lowest_key := ""
     var lowest_value := 101.0
