@@ -1,3 +1,12 @@
+## Beta Candidate — Remove Survivor Hygiene Need — 2026-10-02
+
+- Removed **Hygiene** from the survivor need model. Survivors now have exactly five needs: Hunger, Thirst, Sleep, Fun, and Safety.
+- Removed the Dirty / Clean moodlets, autonomous Washing Up activity, Hygiene decay/recovery, Hygiene priority badge, sixth camp need pip, and Hygiene line from the survivor inspector.
+- **Clean Camp remains a settlement-maintenance chore** and **Clean Water remains a resource**; neither system was removed.
+- Positive/negative idle Stress scoring now has a maximum of five need moodlets instead of six.
+- normalize_needs() now rebuilds only the authoritative five keys, so an existing schema-8 save carrying a legacy Hygiene value silently drops it during normal runtime normalization. Save schema remains **8**.
+- Added architecture-smoke coverage for exactly five needs, legacy Hygiene-key stripping, five-point moodlet limits, and absence of Hygiene/washing from active camp runtime/presentation.
+
 ## Beta Candidate — Negative Moodlet Idle Stress — 2026-10-02
 
 - Extended the idle moodlet comfort rule into a symmetric **+1 / 0 / -1** score per need. Positive moodlets remain +1; an active negative Hunger/Thirst/Sleep/Fun/Safety/Hygiene moodlet contributes -1.
