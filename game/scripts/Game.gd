@@ -2776,7 +2776,7 @@ func _handle_event_action(event, action):
         "camp_arrival_accept":
             var arrival_recruit: Variant = _add_recruit()
             if arrival_recruit != null:
-                flags["camp_story_recruit_cooldown_until_day"] = day + CampLifeRules.CAMP_STORY_RECRUIT_COOLDOWN_DAYS
+                flags["camp_story_recruit_cooldown_until_time"] = _settlement_absolute_seconds() + float(CampLifeRules.CAMP_STORY_RECRUIT_COOLDOWN_DAYS) * DAY_SECONDS
                 _queue_closed_result(
                     event,
                     "%s Joins First Fire" % arrival_recruit["name"],
@@ -3228,8 +3228,11 @@ func _developed_camp_building_count() -> int:
             count += 1
     return count
 
+func _settlement_absolute_seconds() -> float:
+    return float(maxi(0, day - 1)) * DAY_SECONDS + maxf(0.0, day_elapsed)
+
 func _camp_story_arrival_ready() -> bool:
-    return day >= int(flags.get("camp_story_recruit_cooldown_until_day", 0))
+    return _settlement_absolute_seconds() >= float(flags.get("camp_story_recruit_cooldown_until_time", 0.0))
 
 func _camp_attraction_snapshot() -> Dictionary:
     var present := _camp_present_survivors()
