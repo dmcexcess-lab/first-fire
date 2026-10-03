@@ -160,7 +160,7 @@ func _init() -> void:
     if not _check(scene_source.contains("res://scripts/MainSleepVirus.gd"), "sleep-virus main active"): return
     if not _check(main_source.contains("FFCombatThreeStat.gd") and main_source.contains("FFInspectorThreeStat.gd"), "three-stat UI base routing"): return
     if not _check(active_main_source.contains("FFCombatVirus.gd") and active_main_source.contains("FFInspectorVirus.gd") and active_main_source.contains("FFCampViewSleepVirus.gd"), "sleep-virus UI routing"): return
-    if not _check(active_game_source.contains("func _resolve_daily_rations()") and active_game_source.contains("meal_attempted") and active_game_source.contains("water_attempted"), "active camp life owns visible meal and water consumption instead of hidden midnight rations"): return
+    if not _check(active_game_source.count("func _resolve_daily_rations()") == 1 and active_game_source.contains("finalize_daily_activity") and active_game_source.contains("ate_normally") and active_game_source.contains("drank_normally"), "active camp life has one visible-consumption ration owner instead of hidden midnight rations"): return
     if not _check(base_camp_source.contains("\"eat_meal\": return \"EATING\"") and base_camp_source.contains("\"drink_water\": return \"DRINKING\""), "living camp visibly labels autonomous eating and drinking"): return
     if not _check(inspector_source.contains("ThreeStatRules.STAT_NAMES") and not inspector_source.contains("Scavenging\", \"Survival"), "inspector exposes three stats"): return
     if not _check(active_inspector_source.contains("ZOMBIE VIRUS") and active_inspector_source.contains("QUARANTINE") and active_inspector_source.contains("start_virus_treatment"), "virus choices exposed in inspector"): return

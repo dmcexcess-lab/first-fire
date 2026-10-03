@@ -2,7 +2,7 @@
 
 - Fixed the survivor **Sleep need** so it is no longer overwritten as `100 - Fatigue` every simulation step. Sleep is now a real circadian need that falls while awake, pauses its decay while the survivor is in bed, and drives the overnight Sleeping task independently of work fatigue.
 - Kept **Fatigue** as the productive-work/expedition pressure axis, but slowed ordinary idle recovery to five-minute-day scale so work fatigue persists long enough to matter and the 100-fatigue forced-rest system is realistically reachable.
-- Removed the active runtime's legacy **hidden midnight food/water ration consumption**. Cooked Food and Clean Water are now consumed by the visible autonomous evening meal and midday drink activities; failed checks apply real Hunger/Thirst and Stress pressure.
+- Preserved the active runtime's existing **visible meal/water ownership**: Cooked Food and Clean Water are consumed by autonomous evening meals and midday drinks, with one authoritative daily shortage-resolution path and no duplicate midnight ration charge.
 - Added visible **EATING** / **DRINKING** camp activity labels so autonomous consumption is observable instead of silently mutating inventory.
 - Changed the six need pips under survivors from coarse three-state opacity jumps to **continuous brightness**, so Hunger/Thirst/Sleep/Fun/Safety/Hygiene visibly darken as they decline and brighten as they recover.
 - Added architecture-smoke regressions for sleep/fatigue separation, nightly sleep triggering, no sleep decay while in bed, gradual idle fatigue recovery, visible meal/drink labels, and active visible-consumption ownership.
