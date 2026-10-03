@@ -141,7 +141,6 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
         "maintain_fire", "watch_fire": return FIRE_CELL + Vector2i(0, 1)
         "tavern_social", "tavern_drink": return FIRE_CELL + Vector2i(1, 0)
         "rest": return sleep_anchor_cell()
-        "wash": return building_cell("Water Tank") + Vector2i(1, 0) if bool(Game.buildings.get("Water Tank", false)) else building_cell("Rain Catcher") + Vector2i(1, 0)
     if float(survivor.get("fatigue", 0.0)) >= 78.0:
         return sleep_anchor_cell()
     if float(survivor.get("stress", 0.0)) >= 68.0:
@@ -699,10 +698,6 @@ func _draw_activity_graphic(survivor: Dictionary, center: Vector2, tile: float) 
         var z_size: int = maxi(8, int(tile * 0.34))
         draw_string(font, center + Vector2(tile * 0.16, -tile * 0.25), "Z", HORIZONTAL_ALIGNMENT_LEFT, -1.0, z_size, Color(0.72, 0.82, 0.92, 0.90))
         draw_string(font, center + Vector2(tile * 0.30, -tile * 0.42), "z", HORIZONTAL_ALIGNMENT_LEFT, -1.0, maxi(7, z_size - 2), Color(0.72, 0.82, 0.92, 0.72))
-    elif kind == "wash":
-        draw_circle(center + Vector2(-tile * 0.25, -tile * 0.16), tile * 0.06, Color(0.42, 0.76, 0.90, 0.82))
-        draw_circle(center + Vector2(tile * 0.24, -tile * 0.10), tile * 0.05, Color(0.42, 0.76, 0.90, 0.72))
-        draw_arc(center + Vector2(0, tile * 0.28), tile * 0.24, 0.0, PI, 12, Color("8fb7bd"), maxf(1.0, tile * 0.05))
 
 func _draw_need_pips(survivor: Dictionary, center: Vector2, tile: float) -> void:
     var needs: Dictionary = survivor.get("needs", {})
@@ -714,11 +709,10 @@ func _draw_need_pips(survivor: Dictionary, center: Vector2, tile: float) -> void
         float(needs.get("sleep", 100.0)),
         float(needs.get("fun", 100.0)),
         float(needs.get("safety", 100.0)),
-        float(needs.get("hygiene", 100.0)),
     ]
-    var colors := [Color("d69b52"), Color("66a8d7"), Color("879bd0"), Color("c28ad0"), Color("7eaf78"), Color("7fc0bd")]
+    var colors := [Color("d69b52"), Color("66a8d7"), Color("879bd0"), Color("c28ad0"), Color("7eaf78")]
     var radius: float = maxf(1.5, tile * 0.055)
-    var start_x: float = center.x - tile * 0.36
+    var start_x: float = center.x - tile * 0.29
     for i in range(values.size()):
         var value: float = values[i]
         var ratio := clampf(value / 100.0, 0.0, 1.0)
@@ -783,5 +777,4 @@ func _activity_short(survivor: Dictionary) -> String:
         "eat_meal": return "EATING"
         "drink_water": return "DRINKING"
         "rest": return "REST"
-        "wash": return "WASH"
     return ""

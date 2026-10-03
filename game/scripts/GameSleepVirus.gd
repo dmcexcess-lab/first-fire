@@ -563,7 +563,6 @@ func _migrate_passive_sleep(survivor) -> void:
 func _process_survivors(delta):
     var pop: int = int(population())
     var capacity: int = int(shelter_capacity())
-    var hygiene_support := bool(buildings.get("Rain Catcher", false)) or bool(buildings.get("Water Tank", false))
     for survivor in survivors:
         if survivor["condition"] == "Dead":
             continue
@@ -589,7 +588,6 @@ func _process_survivors(delta):
             float(survivor.get("fatigue", 0.0)),
             float(delta),
             safety,
-            hygiene_support,
             away,
             status in ["Sleeping", "Exhausted"]
         )
@@ -608,11 +606,11 @@ func _process_survivors(delta):
         if status == "Available":
             var was_idle: bool = bool(survivor.get("camp_activity", {}).is_empty())
             survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta))
-            survivor["needs"] = CampLifeRules.update_needs(survivor["needs"], float(survivor["fatigue"]), 0.0, safety, hygiene_support, false)
+            survivor["needs"] = CampLifeRules.update_needs(survivor["needs"], float(survivor["fatigue"]), 0.0, safety, false)
             if was_idle:
                 var idle_stress_delta_rate := CampLifeRules.idle_stress_delta_rate(survivor["needs"])
                 survivor["stress"] = clampf(float(survivor.get("stress", 0.0)) + idle_stress_delta_rate * float(delta), 0.0, 100.0)
-            _process_camp_activity(survivor, float(delta), pop, hygiene_support)
+            _process_camp_activity(survivor, float(delta), pop)
         elif status in ["Sick", "Quarantined"]:
             survivor["camp_activity"] = {}
             survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta) * 0.6)
@@ -637,7 +635,7 @@ func _process_survivors(delta):
                     survivor["condition"] = "Healthy"
                     survivor["history"].append("Day %d — Recovered from minor injuries." % day)
 
-func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygiene_support: bool) -> void:
+func _process_camp_activity(survivor: Dictionary, delta: float, pop: int) -> void:
     var activity: Dictionary = survivor.get("camp_activity", {})
     if activity.is_empty():
         activity = CampLifeRules.choose_available_activity(
@@ -646,7 +644,6 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
             int(resources.get("Wood", 0)),
             pop,
             CampLifeRules.tavern_tier(buildings),
-            hygiene_support,
             rng,
             CampLifeRules.settlement_hour(day_elapsed, DAY_SECONDS),
             survivor.get("daily_activity", {}),

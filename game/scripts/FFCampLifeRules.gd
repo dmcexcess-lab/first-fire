@@ -40,8 +40,8 @@ const SLEEP_NEED_TARGET_BY_TIER := [72.0, 82.0, 92.0, 100.0]
 const SLEEP_STRESS_RELIEF_BY_TIER := [0.0, 0.0, 0.0, 0.0]
 const FIRE_WATCH_STRESS_RELIEF := 2.0
 const MOODLET_IDLE_STRESS_PER_SECOND := 0.003
-const POSITIVE_MOODLETS := ["Well Fed", "Hydrated", "Rested", "Entertained", "Safe", "Clean"]
-const NEGATIVE_MOODLETS := ["Starving", "Hungry", "Parched", "Thirsty", "Exhausted", "Sleepy", "Bored", "Afraid", "Dirty"]
+const POSITIVE_MOODLETS := ["Well Fed", "Hydrated", "Rested", "Entertained", "Safe"]
+const NEGATIVE_MOODLETS := ["Starving", "Hungry", "Parched", "Thirsty", "Exhausted", "Sleepy", "Bored", "Afraid"]
 const STRESS_DECOMPRESSION_THRESHOLD := 35.0
 const STRESS_TANTRUM_THRESHOLD := 100.0
 const TANTRUM_DURATION := 25.0
@@ -72,10 +72,10 @@ const MAX_PETS := 3
 const PET_LEAVE_AFFECTION := 14.0
 const PET_NEED_KEYS := ["affection"]
 const PET_NAMES := ["Mochi", "Scout", "Beans", "Pepper", "Lucky", "Ash", "Noodle", "Patch", "Sunny", "Rook"]
-const NEED_KEYS := ["hunger", "thirst", "sleep", "fun", "safety", "hygiene"]
+const NEED_KEYS := ["hunger", "thirst", "sleep", "fun", "safety"]
 
 static func default_needs() -> Dictionary:
-    return {"hunger":82.0,"thirst":84.0,"sleep":95.0,"fun":72.0,"safety":70.0,"hygiene":76.0}
+    return {"hunger":82.0,"thirst":84.0,"sleep":95.0,"fun":72.0,"safety":70.0}
 
 static func shelter_tier(buildings: Dictionary) -> int:
     if bool(buildings.get("Dormitory", false)): return 3
@@ -406,11 +406,12 @@ static func duty_fairness_pressure(completed_days, eligible_days, current_day: i
 
 static func normalize_needs(value) -> Dictionary:
     var d:=default_needs()
-    var n:Dictionary=value.duplicate(true) if value is Dictionary else {}
-    for k in NEED_KEYS: n[k]=clampf(float(n.get(k,d[k])),0.0,100.0)
+    var incoming:Dictionary=value if value is Dictionary else {}
+    var n:Dictionary={}
+    for k in NEED_KEYS: n[k]=clampf(float(incoming.get(k,d[k])),0.0,100.0)
     return n
 
-static func update_needs(needs:Dictionary,fatigue:float,delta:float,safety_target_value:float,hygiene_support:bool,away:bool,resting:bool=false)->Dictionary:
+static func update_needs(needs:Dictionary,fatigue:float,delta:float,safety_target_value:float,away:bool,resting:bool=false)->Dictionary:
     var n:=normalize_needs(needs)
     n["hunger"]=clampf(float(n["hunger"])-delta*(0.048 if away else 0.036),0.0,100.0)
     n["thirst"]=clampf(float(n["thirst"])-delta*(0.064 if away else 0.048),0.0,100.0)
@@ -419,7 +420,6 @@ static func update_needs(needs:Dictionary,fatigue:float,delta:float,safety_targe
     if not resting:
         n["sleep"]=clampf(float(n["sleep"])-delta*(AWAY_SLEEP_DECAY_PER_SECOND if away else AWAKE_SLEEP_DECAY_PER_SECOND),0.0,100.0)
     n["fun"]=clampf(float(n["fun"])-delta*(0.044 if away else 0.030),0.0,100.0)
-    n["hygiene"]=clampf(float(n["hygiene"])-delta*(0.048 if away else (0.018 if hygiene_support else 0.028)),0.0,100.0)
     n["safety"]=move_toward(float(n["safety"]),clampf(safety_target_value,0.0,100.0),delta*(0.30 if away else 0.20))
     return n
 
@@ -470,9 +470,6 @@ static func moodlets(needs:Dictionary)->Array:
     v=float(n["safety"])
     if v<=34:r.append("Afraid")
     elif v>=74:r.append("Safe")
-    v=float(n["hygiene"])
-    if v<=32:r.append("Dirty")
-    elif v>=80:r.append("Clean")
     if r.is_empty(): r.append("Okay")
     return r
 
@@ -502,7 +499,7 @@ static func idle_stress_recovery_rate(needs: Dictionary) -> float:
     # Compatibility/readability helper for callers that only need positive relief.
     return maxf(0.0, -idle_stress_delta_rate(needs))
 
-static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,tavern_quality:int,hygiene_support:bool,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0,beer:int=0,stress:float=0.0)->Dictionary:
+static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,tavern_quality:int,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0,beer:int=0,stress:float=0.0)->Dictionary:
     # Ordinary needs are autonomous. Productive camp labor is never auto-assigned.
     # Schedule-critical needs take priority over flavor idles.
     var n:=normalize_needs(needs)
@@ -519,7 +516,6 @@ static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int
         if tavern_quality > 0:
             return {"kind":"tavern_social","label":"Unwinding at the Tavern","remaining":17.5,"duration":17.5}
         return {"kind":"watch_fire","label":"Watching Fire","remaining":17.5,"duration":17.5}
-    if float(n["hygiene"])<44.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":12.5,"duration":12.5}
     if float(n["safety"])<44.0: return {"kind":"keep_watch","label":"Watching the Treeline","remaining":15.0,"duration":15.0}
     if float(n["fun"])<58.0:
         if tavern_quality >= 3 and beer > 0:
@@ -537,7 +533,6 @@ static func complete_activity(needs:Dictionary,fatigue:float,kind:String,tavern_
         "rest": f=maxf(0.0,fatigue-sleep_recovery_amount(0)); n["sleep"]=maxf(float(n["sleep"]),float(SLEEP_NEED_TARGET_BY_TIER[0]))
         "eat_meal": n["hunger"]=clampf(float(n["hunger"])+MEAL_HUNGER_GAIN,0.0,100.0)
         "drink_water": n["thirst"]=clampf(float(n["thirst"])+DRINK_THIRST_GAIN,0.0,100.0)
-        "wash": n["hygiene"]=clampf(float(n["hygiene"])+48.0,0.0,100.0)
         "watch_fire": n["fun"]=clampf(float(n["fun"])+22.0,0.0,100.0); n["safety"]=clampf(float(n["safety"])+6.0,0.0,100.0)
         "tavern_social":
             var social_fun := [22.0, 32.0, 40.0, 48.0]

@@ -490,14 +490,13 @@ func _process_camp_chatter(delta):
 func _process_survivors(delta):
     var pop: int = int(population())
     var capacity: int = int(shelter_capacity())
-    var hygiene_support:=bool(buildings.get("Rain Catcher",false)) or bool(buildings.get("Water Tank",false))
     for s in survivors:
         if s["condition"]=="Dead": continue
         if not s.has("needs"): s["needs"]=CampLifeRules.default_needs()
         if not s.has("camp_activity"): s["camp_activity"]={}
         var away:=["Expedition","Pending Expedition Event","Tactical Encounter"].has(str(s.get("status","Available")))
         var safety:=CampLifeRules.safety_target(buildings,pop,capacity,fire_level,away,camp_maintenance)
-        s["needs"]=CampLifeRules.update_needs(s.get("needs",{}),float(s.get("fatigue",0.0)),float(delta),safety,hygiene_support,away)
+        s["needs"]=CampLifeRules.update_needs(s.get("needs",{}),float(s.get("fatigue",0.0)),float(delta),safety,away)
         if s["status"]=="Available":
             var was_idle: bool = bool(s.get("camp_activity", {}).is_empty())
             var caretaker:=false
@@ -506,11 +505,11 @@ func _process_survivors(delta):
                 caretaker=leader!=null and leader["leader_ability"]=="Caretaker"
             var recovery:=CampLifeRules.idle_recovery_rates(CampLifeRules.shelter_tier(buildings),caretaker,CampLifeRules.tavern_tier(buildings))
             s["fatigue"]=max(0.0,float(s["fatigue"])-recovery.x*delta)
-            s["needs"]=CampLifeRules.update_needs(s["needs"],float(s["fatigue"]),0.0,safety,hygiene_support,false)
+            s["needs"]=CampLifeRules.update_needs(s["needs"],float(s["fatigue"]),0.0,safety,false)
             if was_idle:
                 var idle_stress_delta_rate := CampLifeRules.idle_stress_delta_rate(s["needs"])
                 s["stress"]=clampf(float(s.get("stress",0.0))+idle_stress_delta_rate*float(delta),0.0,100.0)
-            _process_camp_activity(s,float(delta),pop,hygiene_support)
+            _process_camp_activity(s,float(delta),pop)
             if s["condition"]=="Hurt" or s["condition"]=="Wounded":
                 s["injury_remaining"]=max(0.0,float(s["injury_remaining"])-delta*CampLifeRules.injury_recovery_multiplier(bool(buildings.get("Infirmary",false))))
                 if s["injury_remaining"]<=0.0:
@@ -529,7 +528,7 @@ func _process_survivors(delta):
             s["task"]["remaining"]=max(0.0,float(s["task"]["remaining"])-delta)
             if float(s["task"]["remaining"])<=0.0: _complete_task(s)
 
-func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:bool)->void:
+func _process_camp_activity(s:Dictionary,delta:float,pop:int)->void:
     var activity:Dictionary=s.get("camp_activity",{})
     if activity.is_empty():
         activity=CampLifeRules.choose_available_activity(
@@ -538,7 +537,6 @@ func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:boo
             int(resources.get("Wood",0)),
             pop,
             CampLifeRules.tavern_tier(buildings),
-            hygiene_support,
             rng,
             CampLifeRules.settlement_hour(day_elapsed,DAY_SECONDS),
             s.get("daily_activity",{}),
@@ -725,9 +723,6 @@ func _complete_task(s):
         if chore=="stoke_fire": fire_level=clampf(fire_level+CampLifeRules.FIRE_MAINTAIN_GAIN,0.0,100.0)
         elif chore=="clean_camp":
             camp_maintenance=CampLifeRules.recover_camp_condition(camp_maintenance,chore)
-            for survivor in survivors:
-                if survivor["condition"]!="Dead" and survivor["status"] not in ["Expedition","Tactical Encounter"]:
-                    var needs:=CampLifeRules.normalize_needs(survivor.get("needs",{})); needs["hygiene"]=clampf(float(needs["hygiene"])+18.0,0.0,100.0); survivor["needs"]=needs
         elif chore=="repair_perimeter": camp_maintenance=CampLifeRules.recover_camp_condition(camp_maintenance,chore)
         _add_history("Day %d — %s completed camp duty: %s." % [day,s["name"],task.get("label","Chore")])
         toast_requested.emit("%s complete." % task.get("label","Chore"))
