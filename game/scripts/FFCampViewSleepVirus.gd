@@ -302,6 +302,8 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
         return building_cell("Garden Plot") + Vector2i(1, 0)
     if status in ["Sleeping", "Exhausted"]:
         return _sleep_cell_for_survivor(survivor)
+    if status == "Tantrum":
+        return FIRE_CELL + Vector2i(-1, 1)
     if status == "Recovering":
         return building_cell("Infirmary") + Vector2i(-1, 0) if bool(Game.buildings.get("Infirmary", false)) else _sleep_cell_for_survivor(survivor)
     if status in ["Quarantined", "Sick"]:
@@ -451,6 +453,11 @@ func _draw_activity_graphic(survivor: Dictionary, center: Vector2, tile: float) 
                 draw_rect(Rect2(center + Vector2(-tile * 0.30, tile * 0.18 - lift), Vector2(tile * 0.26, tile * 0.19)), Color("7d5b3a"), true)
                 draw_rect(Rect2(center + Vector2(tile * 0.03, tile * 0.20), Vector2(tile * 0.28, tile * 0.18)), Color("8d6742"), true)
         return
+    if status == "Tantrum":
+        var phase: float = sin(float(Time.get_ticks_msec()) / 70.0 + float(int(survivor.get("id", 0))))
+        draw_line(center + Vector2(-tile * 0.28, -tile * 0.38), center + Vector2(-tile * 0.08, -tile * (0.48 + phase * 0.06)), Color(0.96, 0.42, 0.25, 0.92), maxf(2.0, tile * 0.05))
+        draw_line(center + Vector2(tile * 0.10, -tile * 0.44), center + Vector2(tile * 0.30, -tile * (0.34 - phase * 0.05)), Color(0.96, 0.42, 0.25, 0.92), maxf(2.0, tile * 0.05))
+        return
     if status in ["Sleeping", "Exhausted"]:
         var bed := Rect2(center + Vector2(-tile * 0.42, -tile * 0.20), Vector2(tile * 0.84, tile * 0.40))
         draw_rect(bed, Color(0.19, 0.24, 0.24, 0.92))
@@ -474,6 +481,7 @@ func _activity_short(survivor: Dictionary) -> String:
     match status:
         "Sleeping": return "SLEEP"
         "Exhausted": return "POUTING"
+        "Tantrum": return "TANTRUM"
         "Quarantined": return "QUARANTINE"
         "Sick": return "FEVER"
         "Recovering":
