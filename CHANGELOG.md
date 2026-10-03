@@ -1,3 +1,12 @@
+## Beta Candidate — In-Game Expedition Return ETA — 2026-10-03
+
+- Replaced player-facing Away-expedition real-second countdowns with an **in-game return ETA** using the settlement day and clock, e.g. `RETURN D4 6:30 PM`.
+- The underlying authored route durations and Away simulation are unchanged; this is a presentation change only.
+- Updated survivor activity text, survivor expedition cards, the camp secondary status line, and gate copy to use the same authoritative ETA helper.
+- Crafting, construction, treatment/recovery, and maintenance timers remain unchanged.
+- Added architecture-smoke coverage so Away expedition UI cannot silently drift back to raw-second countdowns.
+- Save schema remains **8**.
+
 ## Beta Candidate — Virus Amputation & Quarantine Clock — 2026-10-02
 
 - Removed all **survivor-to-survivor camp virus transmission**. Zombie-virus exposure now comes only from successful tactical Bite rolls.
