@@ -1397,10 +1397,11 @@ func resolve_combat(result):
     var ids: Array = encounter.get("survivor_ids", [])
     var lead: Variant = get_survivor(ids[0]) if not ids.is_empty() else null
 
+    var infected_stress := CampLifeRules.tactical_infected_stress(int(result.get("infected_encountered", 0)))
     if lead != null:
         _commit_tactical_health(lead, result.get("lead_hp", 0), result.get("lead_max_hp", 18), "was killed in a tactical field encounter")
         _commit_tactical_secondary_state(lead, str(result.get("lead_secondary_item", lead.get("equipment", {}).get("Secondary", ""))), result.get("lead_secondary_state", lead.get("equipment_state", {}).get("Secondary", {})))
-        lead["stress"] = min(100.0, float(lead["stress"]) + min(18.0, float(result.get("damage", 0)) * 1.5))
+        lead["stress"] = min(100.0, float(lead["stress"]) + infected_stress + min(18.0, float(result.get("damage", 0)) * 1.5))
         var combat_xp := mini(20, int(result.get("kills", 0)) * 2 + int(result.get("melee", 0)) + int(result.get("shots", 0)))
         if combat_xp > 0:
             add_skill_xp(lead, "Combat", combat_xp)
@@ -1409,7 +1410,7 @@ func resolve_combat(result):
         if companion != null:
             var fallback_companion_hp: int = 0 if companion.get("condition", "Dead") == "Dead" else int(_combat_condition_hp(companion))
             _commit_tactical_health(companion, result.get("companion_hp", fallback_companion_hp), result.get("companion_max_hp", maxi(1, fallback_companion_hp)), "was killed while accompanying an expedition")
-            companion["stress"] = min(100.0, float(companion.get("stress", 0.0)) + 4.0)
+            companion["stress"] = min(100.0, float(companion.get("stress", 0.0)) + infected_stress + 2.0)
     current_combat = {}
     sim_paused = false
     combat_changed.emit()
