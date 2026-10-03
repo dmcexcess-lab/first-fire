@@ -2409,7 +2409,6 @@ func _handle_event_action(event, action):
                 if lead["traits"].has("Generous") or lead["traits"].has("Protective"):
                     lead["stress"] = min(100.0, float(lead["stress"]) + 5.0)
                 elif lead["traits"].has("Selfish") or lead["traits"].has("Pragmatist"):
-                    lead["stress"] = max(0.0, float(lead["stress"]) - 1.0)
             _queue_field_result(event, "You Keep Moving", "The stranger does not argue. They just nod once as the party leaves. The road keeps its own accounting.", "The party left an injured stranger behind.")
         "return_stranger_join":
             var recruit3: Variant = _add_recruit("", ids)
@@ -2451,7 +2450,6 @@ func _handle_event_action(event, action):
             resources["Cooked Food"] -= 1
             flags["fed_dog"] = true
             flags["dog_return_after"] = 1
-            if lead != null: lead["stress"] = max(0.0, float(lead["stress"]) - 5.0)
             _queue_field_result(event, "It Eats From Your Hand", "The dog keeps its distance until you step away from the food. When it finishes, it follows for half a block before vanishing between houses.", "The party fed a stray dog instead of taking its food.")
         "dog_return_follow":
             resources["Cooked Food"] += 3
@@ -2805,7 +2803,6 @@ func _handle_event_action(event, action):
         "camp_extra_food_give":
             if int(resources["Cooked Food"]) > 0:
                 resources["Cooked Food"] -= 1
-                if lead != null: lead["stress"] = max(0.0, float(lead["stress"]) - 10.0)
         "camp_extra_food_refuse":
             if lead != null: lead["stress"] = min(100.0, float(lead["stress"]) + 5.0)
         "camp_missing_search":
@@ -2825,7 +2822,6 @@ func _handle_event_action(event, action):
         "camp_refuse_rest":
             if lead != null:
                 lead["fatigue"] = max(0.0, float(lead["fatigue"]) - 15.0)
-                lead["stress"] = max(0.0, float(lead["stress"]) - 5.0)
         "camp_refuse_force":
             if lead != null:
                 lead["stress"] = min(100.0, float(lead["stress"]) + 10.0)
@@ -2841,7 +2837,6 @@ func _handle_event_action(event, action):
         "camp_request_give":
             if int(resources["Cloth"]) > 0:
                 resources["Cloth"] -= 1
-                if lead != null: lead["stress"] = max(0.0, float(lead["stress"]) - 8.0)
         "camp_request_refuse":
             if lead != null: lead["stress"] += 4
         "camp_meal_share":
@@ -2849,7 +2844,6 @@ func _handle_event_action(event, action):
                 resources["Cooked Food"] -= 2
                 for survivor_value in _camp_present_survivors():
                     var survivor: Dictionary = survivor_value
-                    survivor["stress"] = max(0.0, float(survivor["stress"]) - 6.0)
                 var meal_pair := CampSocial.pick_pair(survivors, rng)
                 if meal_pair.size() == 2:
                     _change_relationship(meal_pair[0], meal_pair[1], 4)
@@ -2863,7 +2857,6 @@ func _handle_event_action(event, action):
         "camp_shortage_open_floor":
             for survivor_value in _camp_present_survivors():
                 var survivor: Dictionary = survivor_value
-                survivor["stress"] = max(0.0, float(survivor["stress"]) - 2.0)
                 survivor["leader_support"] = int(survivor.get("leader_support", 0)) + rng.randi_range(-2, 1)
         "politics_support_a", "politics_support_b", "politics_neutral":
             _resolve_coordinator_vote(event, action)
@@ -3165,7 +3158,6 @@ func _resolve_solo_night(event: Dictionary, feed_fire: bool) -> void:
     if feed_fire and int(resources.get("Wood", 0)) > 0:
         resources["Wood"] = int(resources.get("Wood", 0)) - 1
         fire_level = minf(100.0, fire_level + 24.0)
-        target["stress"] = maxf(0.0, float(target.get("stress", 0.0)) - 8.0)
         var needs := CampLifeRules.normalize_needs(target.get("needs", {}))
         needs["safety"] = minf(100.0, float(needs.get("safety", 50.0)) + 12.0)
         needs["fun"] = minf(100.0, float(needs.get("fun", 50.0)) + 3.0)
@@ -3376,10 +3368,8 @@ func _resolve_sleep_event(event, mode):
     if living.is_empty(): return
     var newcomer = living.back()
     if mode == "newcomer":
-        newcomer["stress"] = max(0.0, float(newcomer["stress"]) - 5.0)
         if living.size() > 1: living[0]["stress"] = min(100.0, float(living[0]["stress"]) + 5.0)
     elif mode == "existing":
-        newcomer["stress"] = max(0.0, float(newcomer["stress"]) - 3.0)
         if living.size() > 1: living[0]["stress"] += 8
     else:
         newcomer["stress"] += 10
@@ -3391,7 +3381,6 @@ func _resolve_run_complaint(event, mode):
         s["stress"] = min(100.0, float(s["stress"]) + 6.0)
         s["leader_support"] = int(s.get("leader_support", 0)) - 2
     else:
-        s["stress"] = max(0.0, float(s["stress"]) - 5.0)
         flags["promised_rotation"] = true
 
 func _resolve_fight(event, mode):
