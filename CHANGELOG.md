@@ -8,7 +8,7 @@
 - **Zombie Cure** remains the alternative to amputation: using one from camp inventory immediately clears any active virus stage. It no longer needs a timed treatment task or Infirmary to administer; the built Infirmary still crafts one Cure from 2 recovered Zombie Corpses.
 - The survivor inspector now presents the intended decision directly: amputate immediately, quarantine to buy time, or use a Zombie Cure if one is available.
 - Added architecture-smoke coverage for 1/2-day unquarantined timelines, 3/4-day quarantine timelines, one-use amputation eligibility, medkit/stat/recovery consequences, immediate Cure clearing, and absence of camp spread/legacy virus-treatment functions.
-- Existing schema-8 saves remain valid. A missing `amputation_used` field defaults false; any old in-progress virus-treatment task is grandfathered clear during load instead of being left in a deleted treatment state.
+- Existing schema-8 saves remain valid. The additive virus marker is now **`zombie-virus-v2`**; a missing `amputation_used` field defaults false, old virus states gain a normalized deadline, and any old in-progress virus-treatment task is grandfathered clear instead of being left in a deleted treatment state.
 
 ## Beta Candidate — Remove Survivor Hygiene Need — 2026-10-02
 
