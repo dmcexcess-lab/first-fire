@@ -2773,6 +2773,22 @@ func _handle_event_action(event, action):
         "site_retreat":
             _finish_special_site_without_clear(event)
 
+        "camp_arrival_accept":
+            var arrival_recruit: Variant = _add_recruit()
+            if arrival_recruit != null:
+                _queue_closed_result(
+                    event,
+                    "%s Joins First Fire" % arrival_recruit["name"],
+                    "%s steps inside the firelight and takes the offered bed. Word of First Fire has brought one more person home." % arrival_recruit["name"],
+                    "%s joined First Fire after following stories about the camp." % arrival_recruit["name"]
+                )
+            else:
+                _queue_closed_result(event, "No Room", "The stories brought someone to the gate, but there is nowhere safe to put them. They leave before dark.")
+        "camp_arrival_info":
+            _queue_closed_result(event, "Stories Travel", "They do not stay, but they confirm the important part: people outside have heard that First Fire is holding together.")
+        "camp_arrival_decline":
+            _queue_closed_result(event, "Back to the Road", "You keep the gate closed. The stranger nods, turns away, and carries the story of First Fire with them.")
+
         "camp_attack_hold":
             _resolve_camp_zombie_attack(event, "hold")
         "camp_attack_fall_back":
@@ -3204,11 +3220,63 @@ func _resolve_crowd_night(event: Dictionary, approach: String) -> void:
             _adjust_camp_mood(-7.0, 15.0, 3.0)
             _queue_closed_result(event, "A Real Evening", "Two meals disappear quickly, but the camp feels like a community instead of a collection of beds.", "The camp spent food on a communal morale night.")
 
+func _developed_camp_building_count() -> int:
+    var count := 0
+    for building_value in D.BUILD_ORDER:
+        if bool(buildings.get(str(building_value), false)):
+            count += 1
+    return count
+
+func _camp_attraction_snapshot() -> Dictionary:
+    var present := _camp_present_survivors()
+    if present.is_empty():
+        return {"score":0.0, "chance":0.0}
+    var stress_total := 0.0
+    var positive_total := 0
+    for survivor_value in present:
+        var survivor: Dictionary = survivor_value
+        stress_total += float(survivor.get("stress", 0.0))
+        positive_total += CampLifeRules.positive_moodlet_count(survivor.get("needs", {}))
+    var average_stress := stress_total / float(present.size())
+    var positive_ratio := float(positive_total) / float(present.size() * CampLifeRules.NEED_KEYS.size())
+    var shortage_days := maxi(0, food_shortage_days) + maxi(0, water_shortage_days)
+    var score := CampLifeRules.camp_attraction_score(
+        camp_maintenance,
+        average_stress,
+        positive_ratio,
+        shortage_days,
+        fire_level,
+        _developed_camp_building_count()
+    )
+    return {"score":score, "chance":CampLifeRules.camp_arrival_chance(score)}
+
+func _build_camp_arrival_event(attraction_score: float) -> Dictionary:
+    var story := "A lone survivor approaches slowly with empty hands raised. They say people on the road have started talking about a camp that keeps its fire lit."
+    if attraction_score >= 85.0:
+        story = "A lone survivor follows the smoke to First Fire. They have heard unusually specific stories: regular meals, people laughing after dark, a camp that repairs what breaks, and beds that stay dry."
+    elif attraction_score >= 70.0:
+        story = "A lone survivor reaches the edge of First Fire and waits to be noticed. They say word is spreading about a camp where people look after the place and each other."
+    return _event_base("camp_arrival", "Someone Followed the Stories", story, [
+        _choice("Offer them a place at First Fire", "camp_arrival_accept", not _has_room_for_recruit(), "NO SHELTER SPACE"),
+        _choice("Trade news, but not a bed", "camp_arrival_info"),
+        _choice("Turn them away", "camp_arrival_decline"),
+    ], {"attraction_score":attraction_score})
+
 func _consider_camp_event():
     if camp_event_cooldown > 0.0 or population() < 1 or game_over or not current_event.is_empty() or not event_queue.is_empty():
         return
     if _camp_present_survivors().is_empty():
         return
+
+    # Recruitment stories are a positive camp-success loop, separate from the
+    # crisis/social event pressure below. Better camps attract arrivals faster.
+    if _has_room_for_recruit():
+        var attraction := _camp_attraction_snapshot()
+        if rng.randf() < float(attraction.get("chance", 0.0)):
+            _queue_event(_build_camp_arrival_event(float(attraction.get("score", 0.0))))
+            camp_event_cooldown = 60.0
+            return
+
     var avg_stress := 0.0
     var living := 0
     var tense := false
