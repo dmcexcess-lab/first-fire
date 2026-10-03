@@ -1,3 +1,12 @@
+## Beta Candidate — Camp Story Recruit Streak Protection & Doc Cleanup — 2026-10-03
+
+- Added a **2 in-game day cooldown after accepting a survivor from a camp-story arrival**. During that window, the positive camp-attraction system cannot generate another passive survivor-arrival story.
+- **Physical tactical survivor rescues are unaffected** by the cooldown and can still join immediately when shelter space exists.
+- Cooldown state is stored in the existing persisted `flags` dictionary as `camp_story_recruit_cooldown_until_day`, so save schema remains **8** and older saves default to immediately eligible.
+- Updated architecture smoke to enforce the 2-day cooldown, the persisted flag, and the fact that field-rescue recruitment does not consult the passive-arrival cooldown.
+- Cleaned stale tactical documentation in `ARCHITECTURE.md` and `ROADMAP.md`: all non-ambush encounters now use **0/1/2/3 = 10%/40%/40%/10%**, ambush remains **5 infected**, rescue objective frequency—not infected count—rises with route depth, and searchable-container counts are **1–2 / 2–3 / 3–5 / 4–6 / 5–7**.
+- Updated durable recruitment docs to state the passive arrival cooldown explicitly.
+
 ## Beta Candidate — Camp Attraction Survivor Stories — 2026-10-03
 
 - Established the two intended human population-growth paths: **physical tactical survivor rescues** and **survivor-arrival camp story popups**.
