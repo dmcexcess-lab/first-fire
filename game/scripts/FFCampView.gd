@@ -721,11 +721,14 @@ func _draw_need_pips(survivor: Dictionary, center: Vector2, tile: float) -> void
     var start_x: float = center.x - tile * 0.36
     for i in range(values.size()):
         var value: float = values[i]
-        var alpha: float = 0.30 if value >= 60.0 else (0.70 if value >= 35.0 else 1.0)
+        var ratio := clampf(value / 100.0, 0.0, 1.0)
         var p := Vector2(start_x + float(i) * tile * 0.145, center.y + tile * 0.49)
         var c: Color = colors[i]
-        c.a = alpha
+        # Full needs read bright; depleted needs visibly darken every redraw
+        # instead of only changing at two coarse thresholds.
+        c.a = 0.20 + ratio * 0.80
         draw_circle(p, radius, c)
+        draw_arc(p, radius + 0.5, 0.0, TAU, 12, Color(c.r, c.g, c.b, 0.24 + ratio * 0.36), 1.0)
         if value < 35.0:
             draw_arc(p, radius + 1.0, 0.0, TAU, 12, Color(0.95, 0.90, 0.76, 0.90), 1.0)
 
@@ -777,6 +780,8 @@ func _activity_short(survivor: Dictionary) -> String:
         "watch_fire": return "WATCH FIRE"
         "tavern_social": return "TAVERN"
         "tavern_drink": return "SHARING BEER"
+        "eat_meal": return "EATING"
+        "drink_water": return "DRINKING"
         "rest": return "REST"
         "wash": return "WASH"
     return ""

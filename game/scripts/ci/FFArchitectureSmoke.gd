@@ -160,6 +160,8 @@ func _init() -> void:
     if not _check(scene_source.contains("res://scripts/MainSleepVirus.gd"), "sleep-virus main active"): return
     if not _check(main_source.contains("FFCombatThreeStat.gd") and main_source.contains("FFInspectorThreeStat.gd"), "three-stat UI base routing"): return
     if not _check(active_main_source.contains("FFCombatVirus.gd") and active_main_source.contains("FFInspectorVirus.gd") and active_main_source.contains("FFCampViewSleepVirus.gd"), "sleep-virus UI routing"): return
+    if not _check(active_game_source.contains("func _resolve_daily_rations()") and active_game_source.contains("meal_attempted") and active_game_source.contains("water_attempted"), "active camp life owns visible meal and water consumption instead of hidden midnight rations"): return
+    if not _check(base_camp_source.contains("\"eat_meal\": return \"EATING\"") and base_camp_source.contains("\"drink_water\": return \"DRINKING\""), "living camp visibly labels autonomous eating and drinking"): return
     if not _check(inspector_source.contains("ThreeStatRules.STAT_NAMES") and not inspector_source.contains("Scavenging\", \"Survival"), "inspector exposes three stats"): return
     if not _check(active_inspector_source.contains("ZOMBIE VIRUS") and active_inspector_source.contains("QUARANTINE") and active_inspector_source.contains("start_virus_treatment"), "virus choices exposed in inspector"): return
     if not _check(combat_source.contains("No armor layer") and combat_source.contains("target_actor.hp -= dmg"), "no armor damage mitigation"): return
@@ -344,7 +346,13 @@ func _init() -> void:
     if not _check(CampLifeRules.pet_should_leave({"affection":10}) and not CampLifeRules.pet_should_leave({"affection":60}), "neglected pets leave"): return
     if not _check(pet_find in ["Wood","Scrap Metal","Hardware","Cloth","Plastic","Raw Food"], "daily pet material reward"): return
     var schedule_rng := RandomNumberGenerator.new(); schedule_rng.seed = 13
-    if not _check(str(CampLifeRules.choose_available_activity({"sleep":50,"fun":90},0.0,5,1,0,false,schedule_rng,23.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "rest", "nighttime fatigue selects real sleep"): return
+    var sleep_decoupled := CampLifeRules.update_needs({"sleep":95,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90}, 80.0, 0.0, 80.0, false, false)
+    if not _check(is_equal_approx(float(sleep_decoupled["sleep"]), 95.0), "sleep need stays independent from work fatigue"): return
+    var bedtime_needs := CampLifeRules.update_needs({"sleep":95,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90}, 0.0, 175.0, 80.0, false, false)
+    if not _check(float(bedtime_needs["sleep"]) <= CampLifeRules.SLEEP_START_NEED, "awake sleep need falls enough to trigger the nightly sleep window"): return
+    var sleeping_needs := CampLifeRules.update_needs({"sleep":55,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90}, 40.0, 30.0, 80.0, false, false, true)
+    if not _check(is_equal_approx(float(sleeping_needs["sleep"]), 55.0), "sleep need does not keep decaying while survivor is in bed"): return
+    if not _check(str(CampLifeRules.choose_available_activity({"sleep":50,"fun":90},0.0,5,1,0,false,schedule_rng,23.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "rest", "nighttime sleep need selects real sleep"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,0,false,schedule_rng,12.5,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "drink_water", "midday water window selects drinking"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},0.0,5,1,0,false,schedule_rng,19.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "eat_meal", "evening meal window selects eating"): return
     var bedroll_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 0)
@@ -364,6 +372,7 @@ func _init() -> void:
     if not _check(Array(D.BUILDINGS["Tavern"].get("requires", [])).has("Large Tarp") and Array(D.BUILDINGS["Tavern Kitchen"].get("requires", [])).has("Tavern") and Array(D.BUILDINGS["Tavern Kitchen"].get("requires", [])).has("Garden Plot") and Array(D.BUILDINGS["Tavern Brewery"].get("requires", [])).has("Tavern Kitchen") and Array(D.BUILDINGS["Tavern Brewery"].get("requires", [])).has("Barracks") and Array(D.BUILDINGS["Barracks"].get("requires", [])).has("Sewing Table") and Array(D.BUILDINGS["Infirmary"].get("requires", [])).has("Water Tank") and Array(D.BUILDINGS["Armory"].get("requires", [])).has("Watch Post") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Tavern Kitchen") and Array(D.BUILDINGS["Dormitory"].get("requires", [])).has("Water Tank"), "late buildings and tavern stages depend on established camp tech"): return
     if not _check(int(D.BUILDINGS["Workbench"].get("cost", {}).get("Wood", 0)) == 2 and int(D.BUILDINGS["Workbench"].get("cost", {}).get("Scrap Metal", 0)) == 1 and not D.BUILDINGS["Workbench"].has("requires"), "first workbench is a light direct starter build"): return
     var base_recovery := CampLifeRules.idle_recovery_rates(0, false, 0)
+    if not _check(base_recovery.x > 0.0 and base_recovery.x <= 0.05, "idle fatigue recovery is gradual enough for work fatigue to persist"): return
     var tarp_recovery := CampLifeRules.idle_recovery_rates(1, false, 0)
     var barracks_recovery := CampLifeRules.idle_recovery_rates(2, false, 1)
     var kitchen_recovery := CampLifeRules.idle_recovery_rates(2, false, 2)

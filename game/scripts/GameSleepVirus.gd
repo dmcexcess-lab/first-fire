@@ -583,7 +583,15 @@ func _process_survivors(delta):
             float(delta)
         )
         var safety := CampLifeRules.safety_target(buildings, pop, capacity, fire_level, away, camp_maintenance)
-        survivor["needs"] = CampLifeRules.update_needs(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), float(delta), safety, hygiene_support, away)
+        survivor["needs"] = CampLifeRules.update_needs(
+            survivor.get("needs", {}),
+            float(survivor.get("fatigue", 0.0)),
+            float(delta),
+            safety,
+            hygiene_support,
+            away,
+            status in ["Sleeping", "Exhausted"]
+        )
         survivor["stress"] = clampf(float(survivor.get("stress", 0.0)) + CampLifeRules.need_stress_rate(survivor["needs"], camp_maintenance) * float(delta), 0.0, 100.0)
 
         var caretaker := false
@@ -669,6 +677,9 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
             var meal_result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), kind)
             survivor["needs"] = meal_result.get("needs", survivor.get("needs", {}))
             survivor["daily_activity"]["ate_normally"] = true
+        else:
+            survivor["needs"] = CampLifeRules.apply_daily_shortage_consequences(survivor.get("needs", {}), true, false)
+            survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + 4.0)
     elif kind == "drink_water":
         survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
         survivor["daily_activity"]["water_attempted"] = true
@@ -677,6 +688,9 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
             var drink_result := CampLifeRules.complete_activity(survivor.get("needs", {}), float(survivor.get("fatigue", 0.0)), kind)
             survivor["needs"] = drink_result.get("needs", survivor.get("needs", {}))
             survivor["daily_activity"]["drank_normally"] = true
+        else:
+            survivor["needs"] = CampLifeRules.apply_daily_shortage_consequences(survivor.get("needs", {}), false, true)
+            survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + 5.0)
     else:
         var tavern_quality := CampLifeRules.tavern_tier(buildings)
         if kind == "tavern_drink":
@@ -933,6 +947,31 @@ func _resolve_daily_rations() -> void:
     else:
         food_shortage_days = 0
     if water_missing > 0:
+        water_shortage_days += 1
+        _apply_shortage("water", water_shortage_days)
+    else:
+        water_shortage_days = 0
+
+func _resolve_daily_rations() -> void:
+    # Active camp life consumes food/water through the visible autonomous meal
+    # and drink activities. Do not also remove one hidden ration per survivor at
+    # midnight. Shortage streaks are derived from actual failed checks instead.
+    var food_failed := false
+    var water_failed := false
+    for survivor in survivors:
+        if str(survivor.get("condition", "Dead")) == "Dead":
+            continue
+        var activity := CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
+        if bool(activity.get("meal_attempted", false)) and not bool(activity.get("ate_normally", false)):
+            food_failed = true
+        if bool(activity.get("water_attempted", false)) and not bool(activity.get("drank_normally", false)):
+            water_failed = true
+    if food_failed:
+        food_shortage_days += 1
+        _apply_shortage("food", food_shortage_days)
+    else:
+        food_shortage_days = 0
+    if water_failed:
         water_shortage_days += 1
         _apply_shortage("water", water_shortage_days)
     else:

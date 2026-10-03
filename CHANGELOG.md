@@ -1,3 +1,13 @@
+## Beta Candidate — Needs, Sleep & Fatigue Repair — 2026-10-02
+
+- Fixed the survivor **Sleep need** so it is no longer overwritten as `100 - Fatigue` every simulation step. Sleep is now a real circadian need that falls while awake, pauses its decay while the survivor is in bed, and drives the overnight Sleeping task independently of work fatigue.
+- Kept **Fatigue** as the productive-work/expedition pressure axis, but slowed ordinary idle recovery to five-minute-day scale so work fatigue persists long enough to matter and the 100-fatigue forced-rest system is realistically reachable.
+- Removed the active runtime's legacy **hidden midnight food/water ration consumption**. Cooked Food and Clean Water are now consumed by the visible autonomous evening meal and midday drink activities; failed checks apply real Hunger/Thirst and Stress pressure.
+- Added visible **EATING** / **DRINKING** camp activity labels so autonomous consumption is observable instead of silently mutating inventory.
+- Changed the six need pips under survivors from coarse three-state opacity jumps to **continuous brightness**, so Hunger/Thirst/Sleep/Fun/Safety/Hygiene visibly darken as they decline and brighten as they recover.
+- Added architecture-smoke regressions for sleep/fatigue separation, nightly sleep triggering, no sleep decay while in bed, gradual idle fatigue recovery, visible meal/drink labels, and active visible-consumption ownership.
+- Save schema remains **8**; this repairs behavior/tuning without changing persisted state shape.
+
 ## Beta Candidate — Camp Pressure Events & Physical Loot Invariant — 2026-10-02
 
 - Made the expedition haul rule literal: **nothing is added after a run unless it was physically recovered on the tactical board**. Expedition completion no longer calls abstract resource/gear rollers, old traveling text-event rewards are not queued, and a resolved tactical special site no longer opens a second text screen that can mint supplies. Containers, harvested Zombie Corpses, and explicit on-map gear pickups remain valid physical loot.

@@ -31,9 +31,12 @@ const DAILY_WINDOW_MISS_RATIO := 0.60
 const DAILY_AUTONOMOUS_SECONDS := 10.0
 const FORCED_REST_MIN_HOURS := 3
 const FORCED_REST_MAX_HOURS := 5
-const SLEEP_START_FATIGUE := 35.0
+const SLEEP_START_NEED := 70.0
 const SLEEP_DURATION := 100.0
+const AWAKE_SLEEP_DECAY_PER_SECOND := 0.20
+const AWAY_SLEEP_DECAY_PER_SECOND := 0.24
 const SLEEP_RECOVERY_BY_TIER := [44.0, 58.0, 74.0, 90.0]
+const SLEEP_NEED_TARGET_BY_TIER := [72.0, 82.0, 92.0, 100.0]
 const SLEEP_STRESS_RELIEF_BY_TIER := [1.0, 3.0, 6.0, 10.0]
 const MEAL_ACTIVITY_SECONDS := 12.5
 const DRINK_ACTIVITY_SECONDS := 7.5
@@ -93,12 +96,13 @@ static func sleep_stress_relief(tier: int) -> float:
 
 static func complete_sleep(needs: Dictionary, fatigue: float, stress: float, tier: int) -> Dictionary:
     var n := normalize_needs(needs)
-    var f := maxf(0.0, fatigue - sleep_recovery_amount(tier))
-    n["sleep"] = clampf(100.0 - f, 0.0, 100.0)
+    var tier_index := clampi(tier, 0, SLEEP_NEED_TARGET_BY_TIER.size() - 1)
+    var f := maxf(0.0, fatigue - sleep_recovery_amount(tier_index))
+    n["sleep"] = maxf(float(n["sleep"]), float(SLEEP_NEED_TARGET_BY_TIER[tier_index]))
     return {
         "needs": n,
         "fatigue": f,
-        "stress": maxf(0.0, stress - sleep_stress_relief(tier)),
+        "stress": maxf(0.0, stress - sleep_stress_relief(tier_index)),
     }
 
 static func degrade_camp_condition(value: float, delta: float) -> float:
@@ -386,11 +390,14 @@ static func normalize_needs(value) -> Dictionary:
     for k in NEED_KEYS: n[k]=clampf(float(n.get(k,d[k])),0.0,100.0)
     return n
 
-static func update_needs(needs:Dictionary,fatigue:float,delta:float,safety_target_value:float,hygiene_support:bool,away:bool)->Dictionary:
+static func update_needs(needs:Dictionary,fatigue:float,delta:float,safety_target_value:float,hygiene_support:bool,away:bool,resting:bool=false)->Dictionary:
     var n:=normalize_needs(needs)
     n["hunger"]=clampf(float(n["hunger"])-delta*(0.048 if away else 0.036),0.0,100.0)
     n["thirst"]=clampf(float(n["thirst"])-delta*(0.064 if away else 0.048),0.0,100.0)
-    n["sleep"]=clampf(100.0-fatigue,0.0,100.0)
+    # Sleep is a circadian need, not a mirror of work fatigue. Fatigue remains
+    # the productive-work/exhaustion pressure axis and is recovered separately.
+    if not resting:
+        n["sleep"]=clampf(float(n["sleep"])-delta*(AWAY_SLEEP_DECAY_PER_SECOND if away else AWAKE_SLEEP_DECAY_PER_SECOND),0.0,100.0)
     n["fun"]=clampf(float(n["fun"])-delta*(0.044 if away else 0.030),0.0,100.0)
     n["hygiene"]=clampf(float(n["hygiene"])-delta*(0.048 if away else (0.018 if hygiene_support else 0.028)),0.0,100.0)
     n["safety"]=move_toward(float(n["safety"]),clampf(safety_target_value,0.0,100.0),delta*(0.30 if away else 0.20))
@@ -467,7 +474,7 @@ static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int
         return {"kind":"drink_water","label":"Drinking Water" if water>0 else "Checking Water","remaining":DRINK_ACTIVITY_SECONDS,"duration":DRINK_ACTIVITY_SECONDS}
     if hour>=0.0 and _hour_in_window(hour,DAILY_MEAL_WINDOW_START,DAILY_MEAL_WINDOW_END) and not bool(activity["meal_attempted"]):
         return {"kind":"eat_meal","label":"Eating Meal" if food>0 else "Checking Rations","remaining":MEAL_ACTIVITY_SECONDS,"duration":MEAL_ACTIVITY_SECONDS}
-    if hour>=0.0 and _hour_in_window(hour,DAILY_SLEEP_WINDOW_START,DAILY_SLEEP_WINDOW_END) and (100.0-float(n["sleep"]))>=SLEEP_START_FATIGUE:
+    if hour>=0.0 and _hour_in_window(hour,DAILY_SLEEP_WINDOW_START,DAILY_SLEEP_WINDOW_END) and float(n["sleep"])<=SLEEP_START_NEED:
         return {"kind":"rest","label":"Sleeping","remaining":SLEEP_DURATION,"duration":SLEEP_DURATION}
     if float(n["hygiene"])<44.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":12.5,"duration":12.5}
     if float(n["safety"])<44.0: return {"kind":"keep_watch","label":"Watching the Treeline","remaining":15.0,"duration":15.0}
@@ -484,7 +491,7 @@ static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int
 static func complete_activity(needs:Dictionary,fatigue:float,kind:String,tavern_quality:int=0)->Dictionary:
     var n:=normalize_needs(needs); var f:=fatigue
     match kind:
-        "rest": f=maxf(0.0,fatigue-sleep_recovery_amount(0)); n["sleep"]=clampf(100.0-f,0.0,100.0)
+        "rest": f=maxf(0.0,fatigue-sleep_recovery_amount(0)); n["sleep"]=maxf(float(n["sleep"]),float(SLEEP_NEED_TARGET_BY_TIER[0]))
         "eat_meal": n["hunger"]=clampf(float(n["hunger"])+MEAL_HUNGER_GAIN,0.0,100.0)
         "drink_water": n["thirst"]=clampf(float(n["thirst"])+DRINK_THIRST_GAIN,0.0,100.0)
         "wash": n["hygiene"]=clampf(float(n["hygiene"])+48.0,0.0,100.0)
@@ -548,7 +555,10 @@ static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator)
 static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, tavern_quality: int = 0) -> Vector2:
     var tier := clampi(shelter_quality, 0, 3)
     var tavern_tier_value := clampi(tavern_quality, 0, 3)
-    var fatigue_rates := [0.30, 0.36, 0.50, 0.62]
+    # Idle recovery is intentionally gradual across a five-minute day. The old
+    # rates erased most work/expedition fatigue within seconds, making 100-fatigue
+    # forced rest practically unreachable.
+    var fatigue_rates := [0.020, 0.026, 0.035, 0.045]
     var stress_rates := [0.08, 0.11, 0.16, 0.21]
     var tavern_multipliers := [1.0, 1.18, 1.36, 1.55]
     var fatigue_rate: float = float(fatigue_rates[tier])
