@@ -210,13 +210,14 @@ func set_paused(value):
     save_game()
     state_changed.emit()
 
-func formatted_time():
-    var minutes_into_day = int((day_elapsed / DAY_SECONDS) * 1440.0)
-    var total_minutes = (8 * 60 + minutes_into_day) % 1440
-    var hour = total_minutes / 60
-    var minute = total_minutes % 60
-    var suffix = "AM"
-    var display_hour = hour
+func _formatted_time_for_elapsed(elapsed_seconds: float) -> String:
+    var wrapped := fposmod(elapsed_seconds, DAY_SECONDS)
+    var minutes_into_day := int((wrapped / DAY_SECONDS) * 1440.0)
+    var total_minutes := (8 * 60 + minutes_into_day) % 1440
+    var hour := int(total_minutes / 60)
+    var minute := int(total_minutes % 60)
+    var suffix := "AM"
+    var display_hour := hour
     if hour >= 12:
         suffix = "PM"
     if display_hour == 0:
@@ -224,6 +225,17 @@ func formatted_time():
     elif display_hour > 12:
         display_hour -= 12
     return "%d:%02d %s" % [display_hour, minute, suffix]
+
+func formatted_time():
+    return _formatted_time_for_elapsed(day_elapsed)
+
+func expedition_return_eta(expedition) -> String:
+    if expedition == null:
+        return ""
+    var remaining := maxf(0.0, float(expedition.get("remaining", 0.0)))
+    var eta_elapsed := maxf(0.0, day_elapsed) + remaining
+    var day_offset := floori(eta_elapsed / DAY_SECONDS)
+    return "D%d %s" % [day + day_offset, _formatted_time_for_elapsed(eta_elapsed)]
 
 func shelter_capacity():
     if buildings.get("Dormitory", false):

@@ -656,7 +656,7 @@ func _refresh_status():
     var active = []
     for exp in Game.expeditions:
         if exp.get("state", "") == "traveling":
-            active.append("%s: %.0fs" % [Game._party_names(exp["survivor_ids"]), float(exp["remaining"])])
+            active.append("%s: RETURN %s" % [Game._party_names(exp["survivor_ids"]), Game.expedition_return_eta(exp)])
         elif exp.get("state", "") == "pending":
             active.append("%s: DECISION" % Game._party_names(exp["survivor_ids"]))
         elif exp.get("state", "") == "combat":
@@ -970,7 +970,7 @@ func _activity_text(s):
         var exp = Game._find_expedition(eid)
         if exp != null:
             if exp["state"] == "pending": return "%s — decision pending" % exp["zone"]
-            return "%s — %.0fs remaining" % [exp["zone"], float(exp["remaining"])]
+            return "%s — return %s" % [exp["zone"], Game.expedition_return_eta(exp)]
     if ["Crafting", "Building", "Recovering", "Tending"].has(s["status"]) and not s["task"].is_empty():
         return "%s — %.0fs remaining" % [s["status"], float(s["task"].get("remaining", 0.0))]
     return s["status"]
