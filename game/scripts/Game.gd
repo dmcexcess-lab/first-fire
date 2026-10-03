@@ -2408,7 +2408,6 @@ func _handle_event_action(event, action):
             if lead != null:
                 if lead["traits"].has("Generous") or lead["traits"].has("Protective"):
                     lead["stress"] = min(100.0, float(lead["stress"]) + 5.0)
-                elif lead["traits"].has("Selfish") or lead["traits"].has("Pragmatist"):
             _queue_field_result(event, "You Keep Moving", "The stranger does not argue. They just nod once as the party leaves. The road keeps its own accounting.", "The party left an injured stranger behind.")
         "return_stranger_join":
             var recruit3: Variant = _add_recruit("", ids)
