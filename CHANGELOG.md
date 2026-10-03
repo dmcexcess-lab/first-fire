@@ -1,3 +1,12 @@
+## Beta Candidate — Work & Expedition Fatigue Tuning — 2026-10-02
+
+- Made **camp maintenance fatigue explicit**: every work-board chore now applies a meaningful hit when assigned, scaling with its authored duration (about 6–13 Fatigue across the current chore set).
+- Made **crafting fatigue explicit**: even quick hearth recipes cost at least 3 Fatigue, while longer recipes scale upward with work time (for example a 20-second craft costs 10 Fatigue).
+- Reworked **expedition return fatigue** to scale directly from the authored route distance instead of an old generic zone value: Camp Perimeter / Nearby Streets / Residential Blocks / Commercial Fringe / Industrial Edge now add about **22 / 30 / 42 / 58 / 82 Fatigue** per survivor on return.
+- The expedition hit is intentionally large; a long run can push a survivor into the existing 100-Fatigue forced-rest state, while a normal night's sleep remains the primary recovery path.
+- Added architecture-smoke regressions for nonzero chore/craft fatigue, duration scaling, monotonic route-distance fatigue, and the three runtime integration points.
+- Save schema remains **8**; this is simulation tuning only.
+
 ## Beta Candidate — Needs, Sleep & Fatigue Repair — 2026-10-02
 
 - Fixed the survivor **Sleep need** so it is no longer overwritten as `100 - Fatigue` every simulation step. Sleep is now a real circadian need that falls while awake, pauses its decay while the survivor is in bed, and drives the overnight Sleeping task independently of work fatigue.

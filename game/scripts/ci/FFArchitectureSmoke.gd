@@ -340,6 +340,19 @@ func _init() -> void:
     if not _check(float(clear_effect.get("condition_gain", 0.0)) > 0.0 and float(stack_effect.get("condition_gain", 0.0)) > 0.0 and not stack_effect.has("wood_gain"), "clear and stack improve condition without duplicating supplies"): return
     if not _check(CampLifeRules.daily_chore_target_index("poke_fire", 41, 0) >= 0 and CampLifeRules.daily_chore_target_index("poke_fire", 41, 0) < CampLifeRules.CHORE_TARGET_COUNT and CampLifeRules.daily_chore_target_index("poke_fire", 41, 0) != CampLifeRules.daily_chore_target_index("poke_fire", 41, 1), "minigame target varies deterministically by progress"): return
     if not _check(CampLifeRules.duty_fairness_pressure([6,7], [4,5,6,7], 7) == 2 and CampLifeRules.duty_fairness_pressure([], [], 7) == 0, "duty fairness only counts eligible days"): return
+    var poke_fatigue := CampLifeRules.camp_chore_fatigue(CampLifeRules.daily_chore_duration("poke_fire"))
+    var clear_fatigue := CampLifeRules.camp_chore_fatigue(CampLifeRules.daily_chore_duration("clear_area"))
+    if not _check(poke_fatigue >= 6.0 and clear_fatigue > poke_fatigue, "camp chores apply a meaningful duration-scaled fatigue hit"): return
+    var quick_craft_fatigue := CampLifeRules.crafting_fatigue(3.0)
+    var long_craft_fatigue := CampLifeRules.crafting_fatigue(20.0)
+    if not _check(quick_craft_fatigue >= 3.0 and long_craft_fatigue > quick_craft_fatigue, "crafting always costs fatigue and longer recipes cost more"): return
+    var perimeter_fatigue := ExpeditionRules.route_fatigue_hit("Camp Perimeter")
+    var street_fatigue := ExpeditionRules.route_fatigue_hit("Nearby Streets")
+    var residential_fatigue := ExpeditionRules.route_fatigue_hit("Residential Blocks")
+    var commercial_fatigue := ExpeditionRules.route_fatigue_hit("Commercial Fringe")
+    var industrial_fatigue := ExpeditionRules.route_fatigue_hit("Industrial Edge")
+    if not _check(perimeter_fatigue >= 20.0 and perimeter_fatigue < street_fatigue and street_fatigue < residential_fatigue and residential_fatigue < commercial_fatigue and commercial_fatigue < industrial_fatigue and industrial_fatigue >= 80.0, "expedition return fatigue is a large monotonic hit scaled to route distance"): return
+    if not _check(active_game_source.contains("CampLifeRules.camp_chore_fatigue(duration)") and base_game_source.contains("CampLifeRules.crafting_fatigue(float(recipe[\"time\"]))") and base_game_source.contains("ExpeditionRules.route_fatigue_hit(zone)"), "runtime routes chores crafting and expedition return through the explicit fatigue rules"): return
     var pet_rng:=RandomNumberGenerator.new(); pet_rng.seed=7
     var pet_find:=CampLifeRules.pet_forage_resource("Dog",pet_rng)
     if not _check(CampLifeRules.default_pet_needs().size()==1 and CampLifeRules.default_pet_needs().has("affection"), "affection-only pet needs"): return

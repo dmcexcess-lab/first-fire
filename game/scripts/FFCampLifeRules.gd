@@ -548,6 +548,16 @@ static func pet_forage_resource(species:String,rng:RandomNumberGenerator)->Strin
 static func fatigue_gain(base_amount: float) -> float:
     return maxf(0.0, base_amount) * FATIGUE_GAIN_MULTIPLIER
 
+static func camp_chore_fatigue(duration_seconds: float) -> float:
+    # Maintenance is physical work. Even the shortest duty should leave a
+    # noticeable mark, while longer chores scale with their authored duration.
+    return maxf(6.0, fatigue_gain(maxf(0.0, duration_seconds) / 4.0))
+
+static func crafting_fatigue(duration_seconds: float) -> float:
+    # Crafting is lighter than an expedition but never fatigue-free. Quick
+    # hearth jobs still cost 3; longer recipes scale with authored work time.
+    return maxf(3.0, fatigue_gain(maxf(0.0, duration_seconds) / 4.0))
+
 static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator) -> float:
     var hours := rng.randi_range(FORCED_REST_MIN_HOURS, FORCED_REST_MAX_HOURS)
     return maxf(0.1, (maxf(1.0, day_seconds) / 24.0) * float(hours))

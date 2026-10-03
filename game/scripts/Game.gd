@@ -786,7 +786,7 @@ func start_craft(sid, station, recipe_id):
     _clear_camp_activity(s)
     var duration = _work_duration(s, float(recipe["time"]))
     s["status"] = "Crafting"
-    s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(float(recipe["time"]) / 5.0))
+    s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.crafting_fatigue(float(recipe["time"])))
     s["task"] = {"kind": "craft", "station": station, "recipe": recipe.duplicate(true), "remaining": duration, "duration": float(recipe["time"])}
     save_game()
     state_changed.emit()
@@ -1598,7 +1598,7 @@ func _finish_expedition(eid):
     for s in living_party:
         s["status"] = "Available"
         s["task"] = {}
-        s["fatigue"] = min(100.0, float(s["fatigue"]) + CampLifeRules.fatigue_gain(float(D.ZONES[zone]["fatigue"])))
+        s["fatigue"] = min(100.0, float(s["fatigue"]) + ExpeditionRules.route_fatigue_hit(zone))
         s["expeditions_done"] = int(s.get("expeditions_done", 0)) + 1
         var sxp = {"Camp Perimeter": 3, "Nearby Streets": 5, "Residential Blocks": 7, "Commercial Fringe": 9, "Industrial Edge": 11}[zone]
         var survxp = {"Camp Perimeter": 1, "Nearby Streets": 2, "Residential Blocks": 3, "Commercial Fringe": 4, "Industrial Edge": 6}[zone]

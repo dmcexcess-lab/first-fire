@@ -45,6 +45,14 @@ static func route_hours(zone: String) -> float:
 static func route_duration_seconds(zone: String, day_seconds: float = 300.0) -> float:
     return route_hours(zone) * maxf(1.0, day_seconds) / 24.0
 
+static func route_fatigue_hit(zone: String) -> float:
+    # Expedition fatigue is intentionally a large return consequence and scales
+    # directly from the authored 3/5/8/12/18-hour distance bands.
+    var hours := route_hours(zone)
+    if hours <= 0.0:
+        return 0.0
+    return minf(85.0, 10.0 + hours * 4.0)
+
 static func vehicle_unlocked(flags: Dictionary) -> bool:
     return bool(flags.get(VEHICLE_UNLOCK_FLAG, false))
 

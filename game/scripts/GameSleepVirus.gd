@@ -315,7 +315,7 @@ func assign_daily_chore(chore_id: String, sid: int) -> bool:
     }
     survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
     survivor["daily_activity"]["assigned_work"] = true
-    survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue", 0.0)) + CampLifeRules.fatigue_gain(duration / 5.0))
+    survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue", 0.0)) + CampLifeRules.camp_chore_fatigue(duration))
     _begin_forced_rest_if_exhausted(survivor)
     save_game()
     state_changed.emit()
