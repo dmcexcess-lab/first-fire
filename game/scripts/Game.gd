@@ -483,8 +483,8 @@ func _process_camp_chatter(delta):
     var delta_ba := int(chatter.get("reverse_delta", 0))
     if delta_ab != 0: _change_relationship(speaker, listener, delta_ab)
     if delta_ba != 0: _change_relationship(listener, speaker, delta_ba)
-    speaker["stress"] = clampf(float(speaker.get("stress", 0.0)) + float(chatter.get("speaker_stress_delta", 0.0)), 0.0, 100.0)
-    listener["stress"] = clampf(float(listener.get("stress", 0.0)) + float(chatter.get("listener_stress_delta", 0.0)), 0.0, 100.0)
+    speaker["stress"] = clampf(float(speaker.get("stress", 0.0)) + maxf(0.0, float(chatter.get("speaker_stress_delta", 0.0))), 0.0, 100.0)
+    listener["stress"] = clampf(float(listener.get("stress", 0.0)) + maxf(0.0, float(chatter.get("listener_stress_delta", 0.0))), 0.0, 100.0)
     camp_chatter_requested.emit(chatter)
 
 func _process_survivors(delta):
@@ -498,7 +498,6 @@ func _process_survivors(delta):
         var away:=["Expedition","Pending Expedition Event","Tactical Encounter"].has(str(s.get("status","Available")))
         var safety:=CampLifeRules.safety_target(buildings,pop,capacity,fire_level,away,camp_maintenance)
         s["needs"]=CampLifeRules.update_needs(s.get("needs",{}),float(s.get("fatigue",0.0)),float(delta),safety,hygiene_support,away)
-        s["stress"]=clampf(float(s.get("stress",0.0))+CampLifeRules.need_stress_rate(s["needs"])*float(delta),0.0,100.0)
         if s["status"]=="Available":
             var caretaker:=false
             if leader_id!=-1:
@@ -506,7 +505,6 @@ func _process_survivors(delta):
                 caretaker=leader!=null and leader["leader_ability"]=="Caretaker"
             var recovery:=CampLifeRules.idle_recovery_rates(CampLifeRules.shelter_tier(buildings),caretaker,CampLifeRules.tavern_tier(buildings))
             s["fatigue"]=max(0.0,float(s["fatigue"])-recovery.x*delta)
-            s["stress"]=max(0.0,float(s["stress"])-recovery.y*delta)
             s["needs"]=CampLifeRules.update_needs(s["needs"],float(s["fatigue"]),0.0,safety,hygiene_support,false)
             _process_camp_activity(s,float(delta),pop,hygiene_support)
             if s["condition"]=="Hurt" or s["condition"]=="Wounded":
@@ -542,7 +540,8 @@ func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:boo
             s.get("daily_activity",{}),
             int(resources.get("Cooked Food",0)),
             int(resources.get("Clean Water",0)),
-            int(resources.get("Beer",0))
+            int(resources.get("Beer",0)),
+            float(s.get("stress",0.0))
         )
         s["camp_activity"]=activity
         if activity.is_empty(): return
@@ -553,7 +552,6 @@ func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:boo
         if int(resources.get("Wood",0))>0:
             resources["Wood"]=int(resources.get("Wood",0))-1
             fire_level=clampf(fire_level+CampLifeRules.FIRE_MAINTAIN_GAIN,0.0,100.0)
-            s["stress"]=maxf(0.0,float(s.get("stress",0.0))-1.0)
     else:
         var tavern_quality:=CampLifeRules.tavern_tier(buildings)
         if kind=="tavern_drink":
@@ -564,9 +562,9 @@ func _process_camp_activity(s:Dictionary,delta:float,pop:int,hygiene_support:boo
         var result:=CampLifeRules.complete_activity(s.get("needs",{}),float(s.get("fatigue",0.0)),kind,tavern_quality)
         s["needs"]=result.get("needs",s.get("needs",{})); s["fatigue"]=float(result.get("fatigue",s.get("fatigue",0.0)))
         if kind in ["tavern_social","tavern_drink"]:
-            s["stress"]=maxf(0.0,float(s.get("stress",0.0))-CampLifeRules.tavern_social_stress_relief(tavern_quality,kind=="tavern_drink"))
-        elif kind in ["watch_fire","cards","guitar"]:
-            s["stress"]=maxf(0.0,float(s.get("stress",0.0))-2.0)
+            s["stress"]=maxf(0.0,float(s.get("stress",0.0))-CampLifeRules.tavern_social_stress_relief(tavern_quality,kind=="tavern_drink",1))
+        elif kind=="watch_fire":
+            s["stress"]=maxf(0.0,float(s.get("stress",0.0))-CampLifeRules.fire_watch_stress_relief())
     s["camp_activity"]={}
 
 func _clear_camp_activity(s)->void:
