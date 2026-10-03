@@ -136,7 +136,7 @@ func _expedition_state_text(expedition: Dictionary) -> String:
     var state: String = str(expedition.get("state", "traveling"))
     var state_text: String = "OUT • %s" % zone
     if state == "traveling":
-        state_text += " • %.0fs remaining" % float(expedition.get("remaining", 0.0))
+        state_text += " • RETURN %s" % Game.expedition_return_eta(expedition)
     elif state == "pending":
         state_text += " • DECISION WAITING"
     elif state == "combat":
@@ -255,7 +255,7 @@ func _activity_text(survivor: Dictionary) -> String:
                 return "%s — decision pending" % zone
             if state == "combat":
                 return "%s — tactical encounter" % zone
-            return "%s — %.0fs remaining" % [zone, float(expedition.get("remaining", 0.0))]
+            return "%s — return %s" % [zone, Game.expedition_return_eta(expedition)]
     if ["Crafting", "Building", "Recovering", "Tending"].has(status):
         var active_task: Dictionary = survivor.get("task", {})
         if not active_task.is_empty():
