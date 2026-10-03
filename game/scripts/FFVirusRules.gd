@@ -112,10 +112,13 @@ static func progress_day(value) -> Dictionary:
         state["stage"] = STAGE_FEVERISH
         return {"state": state, "event": "terminal"}
 
-    if int(state["days"]) >= int(state["turn_days"]) - 1:
+    var desired_stage := STAGE_FEVERISH if int(state["days"]) >= int(state["turn_days"]) - 1 else STAGE_INFECTED
+    if previous_stage == STAGE_FEVERISH:
         state["stage"] = STAGE_FEVERISH
-    else:
+    elif previous_stage == STAGE_INFECTED and desired_stage == STAGE_INFECTED:
         state["stage"] = STAGE_INFECTED
+    else:
+        state["stage"] = desired_stage
 
     var event := ""
     if str(state["stage"]) != previous_stage:
