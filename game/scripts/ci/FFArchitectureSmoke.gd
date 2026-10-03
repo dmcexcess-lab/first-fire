@@ -145,8 +145,10 @@ func _init() -> void:
     var base_game_source := FileAccess.get_file_as_string("res://scripts/Game.gd")
     var combat_source := FileAccess.get_file_as_string("res://scripts/FFCombatThreeStat.gd")
     var active_combat_source := FileAccess.get_file_as_string("res://scripts/FFCombatVirus.gd")
+    var base_main_source := FileAccess.get_file_as_string("res://scripts/Main.gd")
     var main_source := FileAccess.get_file_as_string("res://scripts/MainThreeStat.gd")
     var active_main_source := FileAccess.get_file_as_string("res://scripts/MainSleepVirus.gd")
+    var survivor_panel_source := FileAccess.get_file_as_string("res://scripts/FFSurvivorPanel.gd")
     var inspector_source := FileAccess.get_file_as_string("res://scripts/FFInspectorThreeStat.gd")
     var active_inspector_source := FileAccess.get_file_as_string("res://scripts/FFInspectorVirus.gd")
     var base_camp_source := FileAccess.get_file_as_string("res://scripts/FFCampView.gd")
@@ -184,6 +186,7 @@ func _init() -> void:
     if not _check(finish_expedition_source.contains("living_returner_ids.is_empty()") and finish_expedition_source.find("living_returner_ids.is_empty()") < finish_expedition_source.find("_commit_expedition_return_payload(exp)") and finish_expedition_source.contains("return party from %s was lost"), "carried tactical loot only enters camp after at least one human returner survives the Away timer"): return
     if not _check(not base_game_source.contains("_queue_event(_build_field_event(exp[\"event_key\"], exp))") and not base_game_source.contains("_queue_event(_build_special_site_event(exp[\"special_site\"], exp))") and base_game_source.contains("nothing new is added to the haul"), "legacy field text rewards are unreachable from current expedition flow"): return
     if not _check(base_game_source.contains("\"remaining\": duration") and not base_game_source.contains("func _settle_expedition_time_cost") and not base_game_source.contains("func _advance_settlement_time_for_expedition_return") and base_game_source.contains("func _commit_expedition_return_payload"), "tactical pauses camp time then expedition return uses a live away timer instead of synchronous fast-forward"): return
+    if not _check(base_game_source.contains("func expedition_return_eta") and base_game_source.contains("_formatted_time_for_elapsed") and base_main_source.contains("Game.expedition_return_eta(exp)") and active_main_source.contains("RETURN %s") and active_main_source.contains("Game.expedition_return_eta(exp)") and survivor_panel_source.contains("Game.expedition_return_eta(expedition)"), "away expedition presentation uses in-game return ETA instead of raw real-second countdowns"): return
     if not _check(base_game_source.contains("exp[\"recovered_loot\"] = recovered_loot") and base_game_source.contains("exp[\"recovered_gear\"] = recovered_gear") and base_game_source.contains("_format_tactical_container_loot") and not base_game_source.contains("func _grant_tactical_explore_reward"), "physical tactical haul stays on the away expedition until actual camp return"): return
     if not _check(base_combat_source.contains("func setup_locks") and base_combat_source.contains("locked_doors") and base_combat_source.contains("locked_containers") and base_combat_source.contains("func try_unlock") and base_combat_source.contains("Lock Pick"), "tactical doors and optional containers support persistent lock picking"): return
     if not _check(combat_source.contains("func use_secondary_item") and combat_source.contains("Flashlight") and combat_source.contains("Firecracker") and combat_source.contains("charge_per_tick"), "active off-hand runtime supports flashlight charge lock pick and one-use firecracker"): return
