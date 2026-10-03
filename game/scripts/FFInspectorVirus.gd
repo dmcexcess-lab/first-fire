@@ -17,7 +17,7 @@ func _render_survivor() -> void:
     body.add_child(_make_label("Status: %s%s" % [stage.to_upper(), quarantine_note], 14))
 
     if bool(survivor.get("amputation_used", false)):
-        body.add_child(_make_label("Emergency amputation already used. Combat −1 and Agility −1 are permanent.", 11))
+        body.add_child(_make_label("Emergency amputation already used. It already applied its one-time Combat −1 and Agility −1 hit.", 11))
 
     if stage == VirusRules.STAGE_CLEAR:
         body.add_child(_make_label("No current zombie-virus exposure detected.", 11))
