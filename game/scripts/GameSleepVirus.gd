@@ -12,7 +12,7 @@ func new_game():
         survivor["previous_daily_activity"] = {}
         survivor["duty_days"] = []
         survivor["duty_eligible_days"] = []
-    flags["virus_model"] = "zombie-virus-v1"
+    flags["virus_model"] = "zombie-virus-v2"
     flags["camp_condition_model"] = "camp-condition-activity-v1"
     flags["camp_chore_model"] = "timed-maintenance-v1"
     flags["daily_chores"] = []
@@ -44,7 +44,7 @@ func load_game():
         survivor["duty_eligible_days"] = CampLifeRules.normalize_duty_days(survivor.get("duty_eligible_days", []), day)
         _migrate_passive_sleep(survivor)
         _normalize_health_status(survivor)
-    flags["virus_model"] = "zombie-virus-v1"
+    flags["virus_model"] = "zombie-virus-v2"
     flags["camp_condition_model"] = "camp-condition-activity-v1"
     if str(flags.get("camp_chore_model", "")) != "timed-maintenance-v1":
         # Schema-8 saves from the old guaranteed-daily system convert in place.
