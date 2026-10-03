@@ -2776,6 +2776,7 @@ func _handle_event_action(event, action):
         "camp_arrival_accept":
             var arrival_recruit: Variant = _add_recruit()
             if arrival_recruit != null:
+                flags["camp_story_recruit_cooldown_until_day"] = day + CampLifeRules.CAMP_STORY_RECRUIT_COOLDOWN_DAYS
                 _queue_closed_result(
                     event,
                     "%s Joins First Fire" % arrival_recruit["name"],
@@ -3227,6 +3228,9 @@ func _developed_camp_building_count() -> int:
             count += 1
     return count
 
+func _camp_story_arrival_ready() -> bool:
+    return day >= int(flags.get("camp_story_recruit_cooldown_until_day", 0))
+
 func _camp_attraction_snapshot() -> Dictionary:
     var present := _camp_present_survivors()
     if present.is_empty():
@@ -3270,7 +3274,7 @@ func _consider_camp_event():
 
     # Recruitment stories are a positive camp-success loop, separate from the
     # crisis/social event pressure below. Better camps attract arrivals faster.
-    if _has_room_for_recruit():
+    if _has_room_for_recruit() and _camp_story_arrival_ready():
         var attraction := _camp_attraction_snapshot()
         if rng.randf() < float(attraction.get("chance", 0.0)):
             _queue_event(_build_camp_arrival_event(float(attraction.get("score", 0.0))))
