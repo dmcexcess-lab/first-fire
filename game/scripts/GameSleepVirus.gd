@@ -954,7 +954,7 @@ func start_amputation(sid: int) -> bool:
         "duration": VirusRules.AMPUTATION_RECOVERY_SECONDS,
         "target": sid,
     }
-    survivor["history"].append("Day %d — Emergency amputation stopped zombie-virus exposure; Combat and Agility permanently fell by 1." % day)
+    survivor["history"].append("Day %d — Emergency amputation stopped zombie-virus exposure; Combat and Agility each fell by 1." % day)
     toast_requested.emit("%s survived an emergency amputation and must recover." % survivor["name"])
     save_game()
     state_changed.emit()
