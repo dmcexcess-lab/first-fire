@@ -180,7 +180,7 @@ Routine scavenging stays constrained by zone caps/depletion, pack capacity, and 
 
 Current save schema is **8**.
 
-Schema 8 is the deliberate camp-progression reset: the starter Workbench was removed, old additive housing/building identities were replaced by the tiered Large Tarp/Barracks/Dormitory and Tavern progression, and schema-7 saves are invalidated cleanly rather than ambiguously translating old Cabin/Bunkhouse/Communal Table state. Current survivor-model marker remains **`combat-agility-leadership-v1`** and zombie-virus state remains **`zombie-virus-v1`**.
+Schema 8 is the deliberate camp-progression reset: the starter Workbench was removed, old additive housing/building identities were replaced by the tiered Large Tarp/Barracks/Dormitory and Tavern progression, and schema-7 saves are invalidated cleanly rather than ambiguously translating old Cabin/Bunkhouse/Communal Table state. Current survivor-model marker remains **`combat-agility-leadership-v1`** and zombie-virus state remains **`zombie-virus-v2`**.
 
 The filename remains `user://first_fire_alpha01.json` intentionally.
 
