@@ -1895,6 +1895,7 @@ func finish_encounter(outcome: String):
         "companion_hp": int(ally.get("hp",-1)) if not ally.is_empty() else -1,
         "companion_max_hp": int(ally.get("max_hp",-1)) if not ally.is_empty() else -1,
         "kills": int(stats.kills), "shots": int(stats.shots), "melee": int(stats.get("melee", 0)), "shoves": int(stats.get("shoves", 0)), "damage": int(stats.damage),
+        "infected_encountered": zombies.size(),
         "searches_completed": explore_searched.size(), "search_sites_total": explore_cells.size(),
         "containers_opened": looted_containers.size(), "container_loot": collected_container_loot()
     }

@@ -37,7 +37,12 @@ const AWAKE_SLEEP_DECAY_PER_SECOND := 0.20
 const AWAY_SLEEP_DECAY_PER_SECOND := 0.24
 const SLEEP_RECOVERY_BY_TIER := [44.0, 58.0, 74.0, 90.0]
 const SLEEP_NEED_TARGET_BY_TIER := [72.0, 82.0, 92.0, 100.0]
-const SLEEP_STRESS_RELIEF_BY_TIER := [1.0, 3.0, 6.0, 10.0]
+const SLEEP_STRESS_RELIEF_BY_TIER := [0.0, 0.0, 0.0, 0.0]
+const FIRE_WATCH_STRESS_RELIEF := 2.0
+const STRESS_DECOMPRESSION_THRESHOLD := 35.0
+const STRESS_TANTRUM_THRESHOLD := 100.0
+const TANTRUM_DURATION := 25.0
+const TANTRUM_STRESS_RELEASE := 20.0
 const MEAL_ACTIVITY_SECONDS := 12.5
 const DRINK_ACTIVITY_SECONDS := 7.5
 const MEAL_HUNGER_GAIN := 55.0
@@ -81,12 +86,24 @@ static func tavern_tier(buildings: Dictionary) -> int:
     if bool(buildings.get("Tavern", false)): return 1
     return 0
 
-static func tavern_social_stress_relief(tier: int, beer_session: bool = false) -> float:
+static func tavern_social_stress_relief(tier: int, beer_session: bool = false, participants: int = 1) -> float:
     var normal := [0.0, 3.0, 5.0, 8.0]
     var value := float(normal[clampi(tier, 0, normal.size() - 1)])
     if beer_session:
         value += 4.0
-    return value
+    var group_multiplier := minf(2.0, 1.0 + 0.25 * float(maxi(0, participants - 1)))
+    return value * group_multiplier
+
+static func fire_watch_stress_relief() -> float:
+    return FIRE_WATCH_STRESS_RELIEF
+
+static func tactical_infected_stress(infected_count: int) -> float:
+    if infected_count <= 0:
+        return 0.0
+    return minf(16.0, 2.0 + float(infected_count) * 2.0)
+
+static func tantrum_duration() -> float:
+    return TANTRUM_DURATION
 
 static func sleep_recovery_amount(tier: int) -> float:
     return float(SLEEP_RECOVERY_BY_TIER[clampi(tier, 0, SLEEP_RECOVERY_BY_TIER.size() - 1)])
@@ -425,19 +442,10 @@ static func safety_target(buildings:Dictionary,population_count:int,shelter_capa
     elif camp_maintenance >= 85.0: v += 3.0
     return clampf(v,5.0,95.0)
 
-static func need_stress_rate(needs:Dictionary,camp_condition_value:float=70.0)->float:
-    var n:=normalize_needs(needs); var pressure:=0.0
-    for k in NEED_KEYS:
-        var v:=float(n[k])
-        if v<25.0: pressure+=(25.0-v)/25.0
-    var rate:=0.0
-    if pressure>0.0: rate=pressure*0.014
-    else:
-        var all_good:=true
-        for k in NEED_KEYS:
-            if float(n[k])<62.0: all_good=false; break
-        if all_good: rate=-0.0072
-    return rate+camp_condition_stress_rate(camp_condition_value)
+static func need_stress_rate(_needs:Dictionary,_camp_condition_value:float=70.0)->float:
+    # Stress is separate from need moodlets. Missed meals/sleep can add explicit
+    # Stress when resolved, but need values never continuously synthesize it.
+    return 0.0
 
 static func moodlets(needs:Dictionary)->Array:
     var n:=normalize_needs(needs); var r:Array=[]
@@ -465,7 +473,7 @@ static func moodlets(needs:Dictionary)->Array:
     if r.is_empty(): r.append("Okay")
     return r
 
-static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,tavern_quality:int,hygiene_support:bool,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0,beer:int=0)->Dictionary:
+static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int,pop:int,tavern_quality:int,hygiene_support:bool,rng:RandomNumberGenerator,hour:float=-1.0,daily_activity:Dictionary={},food:int=0,water:int=0,beer:int=0,stress:float=0.0)->Dictionary:
     # Ordinary needs are autonomous. Productive camp labor is never auto-assigned.
     # Schedule-critical needs take priority over flavor idles.
     var n:=normalize_needs(needs)
@@ -476,6 +484,12 @@ static func choose_available_activity(needs:Dictionary,fire_level:float,wood:int
         return {"kind":"eat_meal","label":"Eating Meal" if food>0 else "Checking Rations","remaining":MEAL_ACTIVITY_SECONDS,"duration":MEAL_ACTIVITY_SECONDS}
     if hour>=0.0 and _hour_in_window(hour,DAILY_SLEEP_WINDOW_START,DAILY_SLEEP_WINDOW_END) and float(n["sleep"])<=SLEEP_START_NEED:
         return {"kind":"rest","label":"Sleeping","remaining":SLEEP_DURATION,"duration":SLEEP_DURATION}
+    if stress >= STRESS_DECOMPRESSION_THRESHOLD:
+        if tavern_quality >= 3 and beer > 0:
+            return {"kind":"tavern_drink","label":"Sharing a Beer","remaining":17.5,"duration":17.5}
+        if tavern_quality > 0:
+            return {"kind":"tavern_social","label":"Unwinding at the Tavern","remaining":17.5,"duration":17.5}
+        return {"kind":"watch_fire","label":"Watching Fire","remaining":17.5,"duration":17.5}
     if float(n["hygiene"])<44.0 and hygiene_support: return {"kind":"wash","label":"Washing Up","remaining":12.5,"duration":12.5}
     if float(n["safety"])<44.0: return {"kind":"keep_watch","label":"Watching the Treeline","remaining":15.0,"duration":15.0}
     if float(n["fun"])<58.0:
@@ -562,21 +576,15 @@ static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator)
     var hours := rng.randi_range(FORCED_REST_MIN_HOURS, FORCED_REST_MAX_HOURS)
     return maxf(0.1, (maxf(1.0, day_seconds) / 24.0) * float(hours))
 
-static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, tavern_quality: int = 0) -> Vector2:
+static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, _tavern_quality: int = 0) -> Vector2:
     var tier := clampi(shelter_quality, 0, 3)
-    var tavern_tier_value := clampi(tavern_quality, 0, 3)
-    # Genuine camp downtime slowly unwinds both work fatigue and stress. These
-    # are background recovery rates across a five-minute day, not substitutes
-    # for sleep or explicit social/rest activities.
+    # Ordinary downtime slowly recovers work fatigue only. Stress has its own
+    # explicit event/decompression loop.
     var fatigue_rates := [0.020, 0.026, 0.035, 0.045]
-    var stress_rates := [0.012, 0.016, 0.022, 0.030]
-    var tavern_multipliers := [1.0, 1.18, 1.36, 1.55]
     var fatigue_rate: float = float(fatigue_rates[tier])
-    var stress_rate: float = float(stress_rates[tier]) * float(tavern_multipliers[tavern_tier_value])
     if caretaker_leader:
         fatigue_rate *= 1.2
-        stress_rate *= 1.2
-    return Vector2(fatigue_rate, stress_rate)
+    return Vector2(fatigue_rate, 0.0)
 
 static func injury_recovery_multiplier(has_infirmary: bool) -> float:
     return 1.45 if has_infirmary else 1.0

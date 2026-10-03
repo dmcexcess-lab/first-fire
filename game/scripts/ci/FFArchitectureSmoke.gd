@@ -373,9 +373,11 @@ func _init() -> void:
     var barracks_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 2)
     var dorm_sleep := CampLifeRules.complete_sleep({"sleep":40}, 90.0, 50.0, 3)
     if not _check(float(tarp_sleep["needs"]["sleep"]) > float(bedroll_sleep["needs"]["sleep"]) and float(barracks_sleep["needs"]["sleep"]) > float(tarp_sleep["needs"]["sleep"]) and float(dorm_sleep["needs"]["sleep"]) > float(barracks_sleep["needs"]["sleep"]), "eight-hour sleep raises the Rested moodlet faster as shelter improves"): return
-    if not _check(float(tarp_sleep["stress"]) < float(bedroll_sleep["stress"]) and float(barracks_sleep["stress"]) < float(tarp_sleep["stress"]) and float(dorm_sleep["stress"]) < float(barracks_sleep["stress"]), "better sleeping quarters provide progressively stronger mood recovery"): return
+    if not _check(is_equal_approx(float(bedroll_sleep["stress"]), 50.0) and is_equal_approx(float(dorm_sleep["stress"]), 50.0), "normal sleep leaves the separate Stress axis unchanged"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":20,"hygiene":90},0.0,5,1,0,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3).get("kind","")) == "keep_watch", "low safety drives treeline watch outside need windows"): return
     if not _check(str(CampLifeRules.choose_available_activity({"sleep":90,"fun":90},0.0,5,1,0,false,RandomNumberGenerator.new()).get("kind","")) != "maintain_fire", "productive chores are not autonomous"): return
+    var stress_fire_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":90,"safety":90,"hygiene":90},70.0,5,1,0,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,0,60.0)
+    if not _check(str(stress_fire_activity.get("kind","")) == "watch_fire" and CampLifeRules.fire_watch_stress_relief() > 0.0, "high Stress drives visible starter-camp fire watching even when Fun is healthy"): return
     var tavern_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":20,"safety":90,"hygiene":90},0.0,5,3,2,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,0)
     var beer_activity := CampLifeRules.choose_available_activity({"sleep":90,"hunger":90,"thirst":90,"fun":20,"safety":90,"hygiene":90},0.0,5,3,3,false,schedule_rng,16.0,CampLifeRules.default_daily_activity(2),3,3,1)
     if not _check(str(tavern_activity.get("kind","")) == "tavern_social" and str(beer_activity.get("kind","")) == "tavern_drink", "progressive tavern social activity culminates in optional beer sessions"): return
@@ -386,18 +388,21 @@ func _init() -> void:
     if not _check(int(D.BUILDINGS["Workbench"].get("cost", {}).get("Wood", 0)) == 2 and int(D.BUILDINGS["Workbench"].get("cost", {}).get("Scrap Metal", 0)) == 1 and not D.BUILDINGS["Workbench"].has("requires"), "first workbench is a light direct starter build"): return
     var base_recovery := CampLifeRules.idle_recovery_rates(0, false, 0)
     if not _check(base_recovery.x > 0.0 and base_recovery.x <= 0.05, "idle fatigue recovery is gradual enough for work fatigue to persist"): return
-    if not _check(base_recovery.y > 0.0 and base_recovery.y <= 0.02, "idle stress recovery is a slow background effect rather than an instant reset"): return
-    if not _check(base_recovery.x * 300.0 < 10.0 and base_recovery.y * 300.0 < 10.0, "a full idle camp day only removes a modest amount of base fatigue and stress"): return
-    if not _check(active_game_source.contains("if status == \"Available\":") and active_game_source.contains("survivor[\"fatigue\"] = maxf(0.0, float(survivor[\"fatigue\"]) - recovery.x * float(delta))") and active_game_source.contains("survivor[\"stress\"] = maxf(0.0, float(survivor[\"stress\"]) - recovery.y * float(delta))"), "available survivors recover fatigue and stress continuously while chilling in camp"): return
+    if not _check(is_equal_approx(base_recovery.y, 0.0), "idle time alone never drains the separate Stress axis"): return
+    if not _check(is_equal_approx(CampLifeRules.need_stress_rate({"hunger":0,"thirst":0,"sleep":0,"fun":0,"safety":0,"hygiene":0},0.0), 0.0), "need moodlets do not continuously synthesize Stress"): return
+    if not _check(active_game_source.contains("if status == \"Available\":") and active_game_source.contains("survivor[\"fatigue\"] = maxf(0.0, float(survivor[\"fatigue\"]) - recovery.x * float(delta))") and not active_game_source.contains("survivor[\"stress\"] = maxf(0.0, float(survivor[\"stress\"]) - recovery.y * float(delta))"), "available survivors recover fatigue passively but Stress only through explicit decompression"): return
     var tarp_recovery := CampLifeRules.idle_recovery_rates(1, false, 0)
     var barracks_recovery := CampLifeRules.idle_recovery_rates(2, false, 1)
     var kitchen_recovery := CampLifeRules.idle_recovery_rates(2, false, 2)
     var brewery_recovery := CampLifeRules.idle_recovery_rates(2, false, 3)
     var dorm_recovery := CampLifeRules.idle_recovery_rates(3, false, 3)
-    if not _check(tarp_recovery.y > base_recovery.y and barracks_recovery.x > tarp_recovery.x and kitchen_recovery.y > barracks_recovery.y and brewery_recovery.y > kitchen_recovery.y and dorm_recovery.x > brewery_recovery.x, "shelter and each tavern stage progressively improve recovery"): return
+    if not _check(barracks_recovery.x > tarp_recovery.x and dorm_recovery.x > brewery_recovery.x and is_equal_approx(tarp_recovery.y, 0.0) and is_equal_approx(brewery_recovery.y, 0.0), "shelter improves passive fatigue recovery without passively draining Stress"): return
     var tavern_social_one := CampLifeRules.complete_activity({"fun":20,"safety":60}, 0.0, "tavern_social", 1)
     var tavern_social_three := CampLifeRules.complete_activity({"fun":20,"safety":60}, 0.0, "tavern_social", 3)
-    if not _check(float(tavern_social_three["needs"]["fun"]) > float(tavern_social_one["needs"]["fun"]) and CampLifeRules.tavern_social_stress_relief(3, true) > CampLifeRules.tavern_social_stress_relief(1, false), "later tavern stages and beer provide stronger social mood recovery"): return
+    if not _check(float(tavern_social_three["needs"]["fun"]) > float(tavern_social_one["needs"]["fun"]) and CampLifeRules.tavern_social_stress_relief(3, true, 3) > CampLifeRules.tavern_social_stress_relief(1, false, 1), "later tavern stages, beer and group participation provide stronger explicit Stress relief"): return
+    if not _check(CampLifeRules.tactical_infected_stress(0) == 0.0 and CampLifeRules.tactical_infected_stress(5) > CampLifeRules.tactical_infected_stress(1), "tactical infected presence raises Stress independently of damage"): return
+    if not _check(active_game_source.contains("func _begin_tantrum_if_stressed") and active_game_source.contains("\"status\"] = \"Tantrum\"") and active_game_source.contains("CampLifeRules.TANTRUM_STRESS_RELEASE"), "maximum Stress creates a timed camp breakdown with explicit recovery"): return
+    if not _check(base_game_source.contains("infected_stress := CampLifeRules.tactical_infected_stress") and combat_source.contains("\"infected_encountered\": zombies.size()"), "tactical infected count feeds persistent survivor Stress"): return
     if not _check(active_game_source.contains("resources[\"Beer\"] = int(resources.get(\"Beer\", 0)) - 1") and active_main_source.contains("\"Tavern\", \"Tavern Kitchen\", \"Tavern Brewery\""), "active runtime consumes beer socially and work board exposes the full tavern chain"): return
     if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary"): return
     if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
