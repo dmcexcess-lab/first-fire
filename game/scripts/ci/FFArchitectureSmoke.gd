@@ -163,7 +163,7 @@ func _init() -> void:
     if not _check(active_game_source.count("func _resolve_daily_rations()") == 1 and active_game_source.contains("finalize_daily_activity") and active_game_source.contains("ate_normally") and active_game_source.contains("drank_normally"), "active camp life has one visible-consumption ration owner instead of hidden midnight rations"): return
     if not _check(base_camp_source.contains("\"eat_meal\": return \"EATING\"") and base_camp_source.contains("\"drink_water\": return \"DRINKING\""), "living camp visibly labels autonomous eating and drinking"): return
     if not _check(inspector_source.contains("ThreeStatRules.STAT_NAMES") and not inspector_source.contains("Scavenging\", \"Survival"), "inspector exposes three stats"): return
-    if not _check(active_inspector_source.contains("ZOMBIE VIRUS") and active_inspector_source.contains("QUARANTINE") and active_inspector_source.contains("start_virus_treatment"), "virus choices exposed in inspector"): return
+    if not _check(active_inspector_source.contains("ZOMBIE VIRUS") and active_inspector_source.contains("AMPUTATE NOW") and active_inspector_source.contains("USE ZOMBIE CURE") and active_inspector_source.contains("QUARANTINE") and not active_inspector_source.contains("start_virus_treatment"), "virus inspector exposes amputation cure and quarantine without legacy treatment"): return
     if not _check(combat_source.contains("No armor layer") and combat_source.contains("target_actor.hp -= dmg"), "no armor damage mitigation"): return
     if not _check(combat_source.contains("zombie_attack_kind(rng)") and combat_source.contains("zombie_attack_hit_chance(target_actor, attack_kind, mob_size)") and combat_source.contains("zombie_attack_damage_range") and combat_source.contains("mob_attack_cost_multiplier"), "active three-stat combat uses scratch bite and mob attack tuning"): return
     if not _check(combat_source.contains("func reload_or_pump") and combat_source.contains("weapon_loaded") and combat_source.contains("weapon_needs_pump") and combat_source.contains("ranged_falloff_penalty") and combat_source.contains("func _fire_shotgun") and combat_source.contains("weapon_projectile_range") and not combat_source.contains("consume_combat_ammo"), "active ranged combat uses tactical magazines reloads falloff and physical shotgun projectile range"): return
@@ -194,9 +194,9 @@ func _init() -> void:
     if not _check(base_combat_source.contains("func harvest_zombie_corpse") and base_combat_source.contains("\"Zombie Corpse\"") and base_combat_source.contains("\"harvested\"") and base_combat_source.contains("Carry full — no slot available for the corpse."), "killed infected corpses are physical slot-limited tactical loot and persist across reloads"): return
     if not _check(active_camp_source.contains("craft_station_pressed.emit(\"Infirmary\")"), "built infirmary exposes zombie cure crafting in the living camp"): return
     if not _check(combat_source.contains("nearest_exit_distance") and combat_source.contains("LOOT %d/%d"), "route-oriented tactical HUD"): return
-    if not _check(not active_game_source.contains("SIM_TIME_SCALE") and base_game_source.contains("const DAY_SECONDS := 300.0") and active_game_source.contains("var camp_delta := float(delta)") and active_game_source.contains("func _advance_settlement_simulation") and active_game_source.contains("\"status\"] = \"Sleeping\"") and active_game_source.contains("func survivor_can_assign") and active_game_source.contains("func start_virus_treatment") and active_game_source.contains("func quarantine_survivor"), "single authoritative five-minute settlement day"): return
+    if not _check(not active_game_source.contains("SIM_TIME_SCALE") and base_game_source.contains("const DAY_SECONDS := 300.0") and active_game_source.contains("var camp_delta := float(delta)") and active_game_source.contains("func _advance_settlement_simulation") and active_game_source.contains("\"status\"] = \"Sleeping\"") and active_game_source.contains("func survivor_can_assign") and active_game_source.contains("func start_amputation") and active_game_source.contains("func use_zombie_cure") and active_game_source.contains("func quarantine_survivor"), "single authoritative five-minute settlement day"): return
     if not _check(active_game_source.contains("func _begin_forced_rest_if_exhausted") and active_game_source.contains("\"status\"] = \"Exhausted\"") and active_game_source.contains("\"resume_task\":resume_task") and active_game_source.contains("survivor[\"fatigue\"] = maxf(0.0") and active_game_source.contains("survivor[\"fatigue\"] = 0.0") and not active_game_source.contains("AWAKE_FATIGUE_PER_SECOND"), "idle camp time lowers fatigue and 100 fatigue suspends work for forced full recovery"): return
-    if not _check(active_camp_source.contains("status in [\"Sleeping\", \"Exhausted\"]") and active_camp_source.contains("_sleep_cell_for_survivor") and active_camp_source.contains("POUTING") and active_camp_source.contains("work_phase") and active_camp_source.contains("QUARANTINE"), "camp reflects sleep exhaustion and live chore animation"): return
+    if not _check(active_camp_source.contains("status in [\"Sleeping\", \"Exhausted\", \"Quarantined\"]") and active_camp_source.contains("_sleep_cell_for_survivor") and active_camp_source.contains("amputation_recovery") and active_camp_source.contains("POUTING") and active_camp_source.contains("work_phase") and active_camp_source.contains("QUARANTINE"), "camp reflects sleep exhaustion quarantine forced rest amputation recovery and live chore animation"): return
     if not _check(active_game_source.contains("func camp_chore_needed") and active_game_source.contains("func start_training") and active_game_source.contains("\"Training\"") and active_main_source.contains("PLAY EXPEDITION") and active_camp_source.contains("MENU_VISIBLE_GRID_WIDTH := 8.5") and active_camp_source.contains("_continue_pan_drag"), "camp focus routing timed work and survivor training"): return
     if not _check(active_game_source.contains("func camp_condition_summary") and active_game_source.contains("previous_daily_activity") and active_game_source.contains("CampLifeRules.record_daily_activity") and active_game_source.contains("if not initialized or sim_paused or game_over"), "camp condition and daily activity stay behind settlement pause boundary"): return
     if not _check(base_game_source.contains("func _resolve_daily_rations") and active_game_source.contains("func _resolve_daily_rations") and active_game_source.contains("eat_meal") and active_game_source.contains("drink_water"), "autonomous meal water consumption overrides abstract daily ration batch"): return
@@ -220,15 +220,36 @@ func _init() -> void:
     if not _check(active_camp_source.contains("func _draw_wilderness") and active_camp_source.contains("remain code/data only") and not active_camp_source.contains("build_plot_pressed.emit"), "sparse wilderness hides future build placeholders"): return
     if not _check(inspector_source.contains("CAMP LIFE") and inspector_source.contains("_start_training") and inspector_source.contains("physical camp work board") and not inspector_source.contains("camp_chore_needed"), "survivor inspector routes daily chores to physical work board"): return
 
-    if not _check(is_equal_approx(VirusRules.bite_exposure_chance(), 0.03) and is_equal_approx(VirusRules.exposure_chance(1), VirusRules.exposure_chance(8)) and VirusRules.EXPOSED_NATURAL_CLEAR_CHANCE >= 0.50, "virus exposure is a fixed small independent chance per successful bite"): return
+    if not _check(is_equal_approx(VirusRules.bite_exposure_chance(), 0.03) and is_equal_approx(VirusRules.exposure_chance(1), VirusRules.exposure_chance(8)), "virus exposure is a fixed small independent chance per successful bite"): return
     if not _check(active_game_source.contains("bite_exposure_occurs(lead_bites, rng)") and active_game_source.contains("companion_bite_hits") and not active_game_source.contains("exposure_chance(infected_hits)"), "game resolves bite-only exposure without stacked hit chance"): return
-    var early_plan: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_EXPOSED, false)
-    var infected_plan: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_INFECTED, false)
-    var fever_no_infirmary: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_FEVERISH, false)
-    var fever_infirmary: Dictionary = VirusRules.treatment_plan(VirusRules.STAGE_FEVERISH, true)
-    if not _check(int(early_plan.get("resources", {}).get("Clean Water", 0)) == 1 and int(early_plan.get("components", {}).get("Bandage", 0)) == 1, "early virus decontamination uses a crafted bandage plus clean water"): return
-    if not _check(int(infected_plan.get("components", {}).get("Zombie Cure", 0)) == 1, "established virus consumes one zombie cure"): return
-    if not _check(not bool(fever_no_infirmary.get("available", true)) and bool(fever_infirmary.get("available", false)) and int(fever_infirmary.get("components", {}).get("Zombie Cure", 0)) == 1, "feverish virus requires infirmary plus one zombie cure"): return
+
+    var exposed_fast := VirusRules.expose({}, 1)
+    if not _check(VirusRules.can_amputate(exposed_fast, false) and not VirusRules.can_amputate(exposed_fast, true), "amputation is immediate-only and once per survivor"): return
+    var fast_day_one := VirusRules.progress_day(exposed_fast)
+    if not _check(str(fast_day_one.get("event", "")) == "terminal", "unquarantined exposure may turn at the first daily transition"): return
+
+    var exposed_slow := VirusRules.expose({}, 2)
+    var slow_day_one := VirusRules.progress_day(exposed_slow)
+    var slow_day_two := VirusRules.progress_day(slow_day_one.get("state", {}))
+    if not _check(str(slow_day_one.get("event", "")) == "feverish" and str(slow_day_two.get("event", "")) == "terminal", "unquarantined exposure turns within one to two days"): return
+
+    var quarantined_three := VirusRules.quarantine(VirusRules.expose({}, 2), 3)
+    if not _check(VirusRules.days_until_turn(quarantined_three) == 3 and not VirusRules.can_amputate(quarantined_three, false), "quarantine closes amputation and resets a three-day turn window"): return
+    var q3_day_one := VirusRules.progress_day(quarantined_three)
+    var q3_day_two := VirusRules.progress_day(q3_day_one.get("state", {}))
+    var q3_day_three := VirusRules.progress_day(q3_day_two.get("state", {}))
+    if not _check(str(q3_day_one.get("event", "")) == "infected" and str(q3_day_two.get("event", "")) == "feverish" and str(q3_day_three.get("event", "")) == "terminal", "three-day quarantine timeline progresses infected feverish terminal"): return
+
+    var quarantined_four := VirusRules.quarantine(VirusRules.expose({}, 2), 4)
+    var q4_day_one := VirusRules.progress_day(quarantined_four)
+    var q4_day_two := VirusRules.progress_day(q4_day_one.get("state", {}))
+    var q4_day_three := VirusRules.progress_day(q4_day_two.get("state", {}))
+    var q4_day_four := VirusRules.progress_day(q4_day_three.get("state", {}))
+    if not _check(str(q4_day_one.get("event", "")) == "infected" and str(q4_day_two.get("event", "")) == "" and str(q4_day_three.get("event", "")) == "feverish" and str(q4_day_four.get("event", "")) == "terminal", "four-day quarantine timeline buys the full extra day"): return
+
+    if not _check(VirusRules.stage(VirusRules.cure(quarantined_four)) == VirusRules.STAGE_CLEAR and is_equal_approx(VirusRules.AMPUTATION_RECOVERY_SECONDS, 100.0), "zombie cure clears immediately and amputation forces eight in-game hours of recovery"): return
+    if not _check(active_game_source.contains("components[\"First Aid Kit\"]") and active_game_source.contains("survivor[\"amputation_used\"] = true") and active_game_source.contains("survivor[\"skills\"][\"Combat\"] = maxi(0") and active_game_source.contains("survivor[\"skills\"][\"Agility\"] = maxi(0") and active_game_source.contains("\"kind\": \"amputation_recovery\""), "amputation consumes a medkit applies permanent combat agility penalties and forces recovery"): return
+    if not _check(active_game_source.contains("func use_zombie_cure") and active_game_source.contains("components[\"Zombie Cure\"]") and not active_game_source.contains("func start_virus_treatment") and not active_game_source.contains("func _spread_camp_virus"), "zombie cure is immediate and camp transmission plus legacy virus treatment are removed"): return
 
     if not _check(ExpeditionRules.zone_cap("Camp Perimeter") == 3, "perimeter cap"): return
     if not _check(ExpeditionRules.starting_routes() == ["Camp Perimeter", "Nearby Streets", "Residential Blocks", "Commercial Fringe"], "very short through far are available without a vehicle"): return
