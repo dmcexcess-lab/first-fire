@@ -134,7 +134,7 @@ Each living survivor also carries compact current-day activity accounting plus o
 
 Camp events remain an important interaction layer, including later settlement politics. In addition to authored social/political choices, occasional physical camp emergencies can interrupt normal camp life with brief touch-first minigames (for example rapidly containing a spreading camp fire). These events should be uncommon enough to feel consequential rather than constant popup maintenance.
 
-Unassigned survivors remain worth watching: their needs can drive sleep, checking food/water, washing, watching the treeline, wandering, watching the fire, fun, and autonomous social chatter.
+Unassigned survivors remain worth watching: their needs can drive sleep, checking food/water, watching the treeline, wandering, watching the fire, fun, and autonomous social chatter.
 
 Physical trauma and zombie virus are separate health axes.
 
@@ -143,18 +143,19 @@ Physical wound treatment:
 - **Wounded:** 1 Bandage; timed wound care.
 - **Critical:** 1 First Aid Kit; timed emergency stabilization to Wounded, after which normal wound care applies.
 
-Medical supply economy is explicit: **Bandages are crafted** at the First Fire from Cloth + Clean Water; **First Aid Kits are rare found-only supplies**; **Zombie Cure is the rarest direct medical find and can also be crafted at a built Infirmary from 2 recovered Zombie Corpses**. Zombie corpses are physically recovered from killed infected in tactical play and each recovered corpse uses one expedition carry slot.
+Medical supply economy is explicit: **Bandages are crafted** at the First Fire from Cloth + Clean Water for ordinary physical wounds; **First Aid Kits are rare found-only supplies** used for Critical trauma and one-time emergency amputation; **Zombie Cure is the rarest direct medical find and can also be crafted at a built Infirmary from 2 recovered Zombie Corpses**. Zombie corpses are physically recovered from killed infected in tactical play and each recovered corpse uses one expedition carry slot.
 
 Zombie virus:
 - **Only a successful Bite can create field exposure. Scratches never roll infection.** Generic physical damage does not create exposure either.
 - Every successful Bite gets the same independent **3% exposure roll**. The percentage does not rise, stack, or accumulate because of earlier scratches/bites; multiple bites simply produce multiple separate 3% checks.
-- Exposed survivors have a **50%** natural-clear chance at the next daily progression; established camp spread remains substantially lower than the earlier Alpha tuning.
-- **Exposed:** can be decontaminated with 1 Clean Water + 1 Bandage; untreated exposure gets the 50% natural-clear check, otherwise becomes Infected at the next daily transition.
-- **Infected:** 1 Zombie Cure starts a timed cure course; untreated infection becomes Feverish at the next daily transition.
-- **Feverish:** survivor is automatically unavailable; emergency treatment requires a built Infirmary + 1 Zombie Cure. An untreated feverish case can become terminal at the next daily transition.
-- **Quarantine:** available for any active virus stage when the survivor is otherwise free; it makes the survivor unavailable and prevents close-contact camp spread. Unquarantined Infected/Feverish survivors can expose campmates.
+- There is **no survivor-to-survivor camp transmission** and no natural-clear roll.
+- A new unquarantined exposure gets a hidden **1–2 day turn deadline**. Display stages still progress through Exposed / Infected / Feverish as that deadline approaches; reaching the deadline is terminal.
+- **Emergency amputation:** available only in the immediate Exposed window, before quarantine or the first daily virus progression, and only once in that survivor's lifetime. It consumes **1 First Aid Kit**, immediately clears the virus, permanently reduces **Combat by 1 and Agility by 1** (minimum 0), and forces **8 in-game hours / 100 settlement seconds** of recovery.
+- **Quarantine:** available for an active case when the survivor is free. Choosing it closes the amputation window, incapacitates the survivor in bed/forced rest, adds the existing quarantine Stress hit, and replaces the virus clock with a fresh **3–4 day** deadline from quarantine. Quarantine buys time; it does not cure.
+- **Zombie Cure:** if the camp has one, it can be used immediately at any active stage, including during quarantine or fever, and clears the virus at once. Administration does **not** require an Infirmary; the Infirmary remains the place that can craft a Cure from 2 Zombie Corpses.
+- There is no Clean Water/Bandage decontamination and no staged Infirmary emergency-treatment path. The active decision is **amputate now or preserve the limb and buy time while hunting a Zombie Cure**.
 
-Virus treatment is timed and visible in the survivor inspector/camp view. Completing a cure course clears the virus axis without rewriting the physical wound condition ladder. First Aid Kits remain physical-trauma supplies; Zombie Cure is reserved for established/severe viral treatment.
+Amputation recovery and quarantine are visible forced-rest states in the living camp. Virus state remains separate from the physical wound condition ladder.
 
 Treatment time does not depend on a removed Medical stat. Craft/build duration does not depend on a removed Technical stat.
 
@@ -183,7 +184,7 @@ Schema 8 is the deliberate camp-progression reset: the starter Workbench was rem
 
 The filename remains `user://first_fire_alpha01.json` intentionally.
 
-`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with the direct five-minute camp day, **live post-tactical Away timers**, authoritative sleep/work availability, survivor training, zombie-virus state/treatment/quarantine, and tactical exposure integration.
+`FFSaveCodec.gd` owns JSON/file transport. `GameThreeStat.gd` retains the three-stat compatibility layer; active runtime orchestration is `GameSleepVirus.gd`, which extends it with the direct five-minute camp day, **live post-tactical Away timers**, authoritative sleep/work availability, survivor training, zombie-virus deadlines/amputation/quarantine/cure use, and tactical exposure integration.
 
 ## Canonical technical reality
 
