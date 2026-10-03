@@ -143,7 +143,6 @@ func _init() -> void:
     var game_source := FileAccess.get_file_as_string("res://scripts/GameThreeStat.gd")
     var active_game_source := FileAccess.get_file_as_string("res://scripts/GameSleepVirus.gd")
     var base_game_source := FileAccess.get_file_as_string("res://scripts/Game.gd")
-    var base_combat_source := FileAccess.get_file_as_string("res://scripts/FFCombat.gd")
     var combat_source := FileAccess.get_file_as_string("res://scripts/FFCombatThreeStat.gd")
     var active_combat_source := FileAccess.get_file_as_string("res://scripts/FFCombatVirus.gd")
     var main_source := FileAccess.get_file_as_string("res://scripts/MainThreeStat.gd")
