@@ -1,3 +1,14 @@
+## Beta Candidate — Distance-Scaled Rescue Rarity — 2026-10-03
+
+- Made survivor/pet rescue opportunities **much rarer near camp** and progressively less rare on deeper routes.
+- **Very Short / Camp Perimeter is capped at 5% total rescue chance:** 3% stranded survivor + 2% pet. This prevents cheap Very Short runs from becoming a viable recruit-farming strategy.
+- Combined rescue chance now rises with route depth: **5% / 6% / 8% / 10% / 12%** across Very Short / Short / Medium / Far / Very Far.
+- Survivor rescue weights rise **3% → 4% → 5% → 6% → 7%**; pet rescue rises **2% → 2% → 3% → 4% → 5%**.
+- Ambush chance stays **20%** at every distance; the remaining probability is exploration.
+- The separate non-ambush infected population remains **0/1/2/3 = 10/40/40/10**; this change affects how often rescue objectives occur, not their infected-count distribution.
+- Added architecture-smoke coverage for the 5% Very Short cap, monotonic rescue-frequency increase, per-type weights, and 100-point zone totals.
+- Save schema remains **8**.
+
 ## Beta Candidate — Sparse Non-Ambush Infected Counts — 2026-10-03
 
 - Rebalanced every **non-ambush** tactical outing to a shared **0–3 infected** distribution.

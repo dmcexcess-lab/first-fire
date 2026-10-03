@@ -3,34 +3,68 @@ class_name FFTacticalScenarios
 
 const Environments = preload("res://scripts/FFTacticalEnvironments.gd")
 
-# Standard Send Out distribution. Exploration dominates; ambushes are
-# occasional; human rescues are rare; pet rescues are very rare.
-const OUTING_WEIGHTS := [
-    {"id":"quiet_explore", "weight":40},
-    {"id":"infected_explore", "weight":33},
-    {"id":"ambush", "weight":20},
-    {"id":"survivor_rescue", "weight":5},
-    {"id":"pet_rescue", "weight":2},
-]
-
-# Compatibility aggregate used by older source contracts. The active selector
-# below preserves the more specific quiet/infected/pet distinction.
-const KIND_WEIGHTS := {
-    "Camp Perimeter": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
-    "Nearby Streets": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
-    "Residential Blocks": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
-    "Commercial Fringe": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
-    "Industrial Edge": [["explore", 0.73], ["ambush", 0.93], ["rescue", 1.00]],
+# Send Out distribution scales rescue rarity by route depth. Very Short caps
+# all rescue opportunities at 5% total so near-camp survivor farming is not a
+# viable strategy; deeper travel makes both survivor and pet rescues less rare.
+const OUTING_WEIGHTS_BY_ZONE := {
+    "Camp Perimeter": [
+        {"id":"quiet_explore", "weight":41},
+        {"id":"infected_explore", "weight":34},
+        {"id":"ambush", "weight":20},
+        {"id":"survivor_rescue", "weight":3},
+        {"id":"pet_rescue", "weight":2},
+    ],
+    "Nearby Streets": [
+        {"id":"quiet_explore", "weight":40},
+        {"id":"infected_explore", "weight":34},
+        {"id":"ambush", "weight":20},
+        {"id":"survivor_rescue", "weight":4},
+        {"id":"pet_rescue", "weight":2},
+    ],
+    "Residential Blocks": [
+        {"id":"quiet_explore", "weight":39},
+        {"id":"infected_explore", "weight":33},
+        {"id":"ambush", "weight":20},
+        {"id":"survivor_rescue", "weight":5},
+        {"id":"pet_rescue", "weight":3},
+    ],
+    "Commercial Fringe": [
+        {"id":"quiet_explore", "weight":38},
+        {"id":"infected_explore", "weight":32},
+        {"id":"ambush", "weight":20},
+        {"id":"survivor_rescue", "weight":6},
+        {"id":"pet_rescue", "weight":4},
+    ],
+    "Industrial Edge": [
+        {"id":"quiet_explore", "weight":37},
+        {"id":"infected_explore", "weight":31},
+        {"id":"ambush", "weight":20},
+        {"id":"survivor_rescue", "weight":7},
+        {"id":"pet_rescue", "weight":5},
+    ],
 }
 
+# Compatibility aggregate used by older source contracts.
+const KIND_WEIGHTS := {
+    "Camp Perimeter": [["explore", 0.75], ["ambush", 0.95], ["rescue", 1.00]],
+    "Nearby Streets": [["explore", 0.74], ["ambush", 0.94], ["rescue", 1.00]],
+    "Residential Blocks": [["explore", 0.72], ["ambush", 0.92], ["rescue", 1.00]],
+    "Commercial Fringe": [["explore", 0.70], ["ambush", 0.90], ["rescue", 1.00]],
+    "Industrial Edge": [["explore", 0.68], ["ambush", 0.88], ["rescue", 1.00]],
+}
+
+static func outing_weights(zone: String) -> Array:
+    return Array(OUTING_WEIGHTS_BY_ZONE.get(zone, OUTING_WEIGHTS_BY_ZONE["Nearby Streets"]))
+
 static func pick_outing(zone: String, rng: RandomNumberGenerator) -> Dictionary:
+    var weights := outing_weights(zone)
     var total := 0
-    for entry in OUTING_WEIGHTS:
+    for entry in weights:
         total += int(entry.get("weight", 0))
     var roll := rng.randi_range(1, maxi(1, total))
     var running := 0
     var picked := "infected_explore"
-    for entry in OUTING_WEIGHTS:
+    for entry in weights:
         running += int(entry.get("weight", 0))
         if roll <= running:
             picked = str(entry.get("id", "infected_explore"))
@@ -51,11 +85,14 @@ static func pick_outing(zone: String, rng: RandomNumberGenerator) -> Dictionary:
 static func pick_kind(zone: String, rng: RandomNumberGenerator) -> String:
     return str(pick_outing(zone, rng).get("kind", "explore"))
 
-static func outing_weight(id: String) -> int:
-    for entry in OUTING_WEIGHTS:
+static func outing_weight(id: String, zone: String = "Camp Perimeter") -> int:
+    for entry in outing_weights(zone):
         if str(entry.get("id", "")) == id:
             return int(entry.get("weight", 0))
     return 0
+
+static func rescue_weight(zone: String) -> int:
+    return outing_weight("survivor_rescue", zone) + outing_weight("pet_rescue", zone)
 
 static func pick_environment(zone: String, kind: String, rng: RandomNumberGenerator) -> String:
     return Environments.pick(zone, kind, rng)
