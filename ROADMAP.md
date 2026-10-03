@@ -44,7 +44,7 @@ Finish tuning the systems that already exist:
 - shortages and repeated expedition duty feeding camp opinion;
 - coordinator → formal election progression;
 - recurring confidence challenges when an elected leader loses support;
-- camp events for shelter pressure, duty complaints, food, theft, fights, burnout, perimeter danger, personal requests, shared meals, shortage politics, and **positive survivor-arrival stories whose frequency increases with a stable, maintained, happy, developed camp, with a **two full in-game day** post-accept cooldown preventing back-to-back passive recruits**;
+- camp events for shelter pressure, duty complaints, food, theft, fights, burnout, perimeter danger, personal requests, shared meals, shortage politics, and **positive survivor-arrival stories whose frequency increases with a stable, maintained, happy, developed camp, with a two-full-in-game-day post-accept cooldown preventing back-to-back passive recruits**;
 - enough event weighting/cooldowns that camp life feels alive without becoming popup spam.
 
 The core presentation goal is **watch, prioritize, assign, prepare, grow**. The player should feel like they are nurturing a small settlement, not operating a spreadsheet with a decorative camp preview.
