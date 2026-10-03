@@ -143,6 +143,7 @@ func _init() -> void:
     var game_source := FileAccess.get_file_as_string("res://scripts/GameThreeStat.gd")
     var active_game_source := FileAccess.get_file_as_string("res://scripts/GameSleepVirus.gd")
     var base_game_source := FileAccess.get_file_as_string("res://scripts/Game.gd")
+    var base_combat_source := FileAccess.get_file_as_string("res://scripts/FFCombat.gd")
     var combat_source := FileAccess.get_file_as_string("res://scripts/FFCombatThreeStat.gd")
     var active_combat_source := FileAccess.get_file_as_string("res://scripts/FFCombatVirus.gd")
     var main_source := FileAccess.get_file_as_string("res://scripts/MainThreeStat.gd")
@@ -402,7 +403,7 @@ func _init() -> void:
     if not _check(float(tavern_social_three["needs"]["fun"]) > float(tavern_social_one["needs"]["fun"]) and CampLifeRules.tavern_social_stress_relief(3, true, 3) > CampLifeRules.tavern_social_stress_relief(1, false, 1), "later tavern stages, beer and group participation provide stronger explicit Stress relief"): return
     if not _check(CampLifeRules.tactical_infected_stress(0) == 0.0 and CampLifeRules.tactical_infected_stress(5) > CampLifeRules.tactical_infected_stress(1), "tactical infected presence raises Stress independently of damage"): return
     if not _check(active_game_source.contains("func _begin_tantrum_if_stressed") and active_game_source.contains("\"status\"] = \"Tantrum\"") and active_game_source.contains("CampLifeRules.TANTRUM_STRESS_RELEASE"), "maximum Stress creates a timed camp breakdown with explicit recovery"): return
-    if not _check(base_game_source.contains("infected_stress := CampLifeRules.tactical_infected_stress") and combat_source.contains("\"infected_encountered\": zombies.size()"), "tactical infected count feeds persistent survivor Stress"): return
+    if not _check(base_game_source.contains("infected_stress := CampLifeRules.tactical_infected_stress") and base_combat_source.contains("\"infected_encountered\": zombies.size()"), "tactical infected count feeds persistent survivor Stress"): return
     if not _check(active_game_source.contains("resources[\"Beer\"] = int(resources.get(\"Beer\", 0)) - 1") and active_main_source.contains("\"Tavern\", \"Tavern Kitchen\", \"Tavern Brewery\""), "active runtime consumes beer socially and work board exposes the full tavern chain"): return
     if not _check(str(D.GEAR["Flashlight"].get("slot", "")) == "Secondary", "flashlight secondary"): return
     if not _check(TacticalTiles.item_region("Headlamp") >= 0, "atlas secondary item"): return
