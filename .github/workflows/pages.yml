@@ -278,15 +278,22 @@ jobs:
           grep -Fq '"resume_task":resume_task' game/scripts/GameSleepVirus.gd
           grep -Fq 'survivor["fatigue"] = 0.0' game/scripts/GameSleepVirus.gd
           if grep -q 'AWAKE_FATIGUE_PER_SECOND' game/scripts/GameSleepVirus.gd game/scripts/FFCampLifeRules.gd; then exit 1; fi
-          grep -q 'func start_virus_treatment' game/scripts/GameSleepVirus.gd
+          grep -q 'func start_amputation' game/scripts/GameSleepVirus.gd
+          grep -q 'func use_zombie_cure' game/scripts/GameSleepVirus.gd
           grep -q 'func quarantine_survivor' game/scripts/GameSleepVirus.gd
+          if grep -q 'func start_virus_treatment' game/scripts/GameSleepVirus.gd; then exit 1; fi
+          if grep -q 'func _spread_camp_virus' game/scripts/GameSleepVirus.gd; then exit 1; fi
+          grep -q 'zombie-virus-v2' game/scripts/GameSleepVirus.gd
           grep -q 'infected_hits' game/scripts/FFCombatVirus.gd
-          grep -Fq 'status in ["Sleeping", "Exhausted"]' game/scripts/FFCampViewSleepVirus.gd
+          grep -Fq 'status in ["Sleeping", "Exhausted", "Quarantined"]' game/scripts/FFCampViewSleepVirus.gd
+          grep -q 'amputation_recovery' game/scripts/FFCampViewSleepVirus.gd
           grep -q 'work_phase' game/scripts/FFCampViewSleepVirus.gd
           grep -q 'POUTING' game/scripts/FFCampViewSleepVirus.gd
           if grep -q 'chore_pause_before' game/scripts/MainSleepVirus.gd; then exit 1; fi
           if grep -q 'Game.set_paused(true)' game/scripts/MainSleepVirus.gd; then exit 1; fi
           grep -q 'ZOMBIE VIRUS' game/scripts/FFInspectorVirus.gd
+          grep -q 'AMPUTATE NOW' game/scripts/FFInspectorVirus.gd
+          grep -q 'USE ZOMBIE CURE' game/scripts/FFInspectorVirus.gd
           grep -q 'pointing/emulate_mouse_from_touch=false' game/project.godot
           grep -q 'vram_texture_compression/for_mobile=false' game/export_presets.cfg
           if grep -q 'func _normalize_loaded_state' game/scripts/Game.gd; then exit 1; fi
