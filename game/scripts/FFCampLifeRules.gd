@@ -576,9 +576,8 @@ static func forced_rest_duration(day_seconds: float, rng: RandomNumberGenerator)
     var hours := rng.randi_range(FORCED_REST_MIN_HOURS, FORCED_REST_MAX_HOURS)
     return maxf(0.1, (maxf(1.0, day_seconds) / 24.0) * float(hours))
 
-static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, tavern_quality: int = 0) -> Vector2:
+static func idle_recovery_rates(shelter_quality: int, caretaker_leader: bool, _tavern_quality: int = 0) -> Vector2:
     var tier := clampi(shelter_quality, 0, 3)
-    var tavern_tier_value := clampi(tavern_quality, 0, 3)
     # Ordinary downtime slowly recovers work fatigue only. Stress has its own
     # explicit event/decompression loop.
     var fatigue_rates := [0.020, 0.026, 0.035, 0.045]
