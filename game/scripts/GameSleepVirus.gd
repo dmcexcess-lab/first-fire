@@ -571,6 +571,7 @@ func _process_survivors(delta):
             survivor["needs"] = CampLifeRules.default_needs()
         _normalize_health_status(survivor)
         _begin_forced_rest_if_exhausted(survivor)
+        _begin_tantrum_if_stressed(survivor)
         var status := str(survivor.get("status", "Available"))
         var away := status in ["Expedition", "Pending Expedition Event", "Tactical Encounter"]
         var task_kind := str(survivor.get("task", {}).get("kind", ""))
@@ -592,8 +593,7 @@ func _process_survivors(delta):
             away,
             status in ["Sleeping", "Exhausted"]
         )
-        survivor["stress"] = clampf(float(survivor.get("stress", 0.0)) + CampLifeRules.need_stress_rate(survivor["needs"], camp_maintenance) * float(delta), 0.0, 100.0)
-
+        # Stress is event-driven and separate from need moodlets.
         var caretaker := false
         if leader_id != -1:
             var leader: Variant = get_survivor(leader_id)
@@ -606,14 +606,12 @@ func _process_survivors(delta):
 
         if status == "Available":
             survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta))
-            survivor["stress"] = maxf(0.0, float(survivor["stress"]) - recovery.y * float(delta))
             survivor["needs"] = CampLifeRules.update_needs(survivor["needs"], float(survivor["fatigue"]), 0.0, safety, hygiene_support, false)
             _process_camp_activity(survivor, float(delta), pop, hygiene_support)
         elif status in ["Sick", "Quarantined"]:
             survivor["camp_activity"] = {}
             survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta) * 0.6)
-            survivor["stress"] = maxf(0.0, float(survivor["stress"]) - recovery.y * float(delta) * 0.6)
-        elif status in ["Crafting", "Building", "Recovering", "Tending", "Sleeping", "Exhausted", "Chore", "Pet Care", "Training"]:
+        elif status in ["Crafting", "Building", "Recovering", "Tending", "Sleeping", "Exhausted", "Tantrum", "Chore", "Pet Care", "Training"]:
             survivor["camp_activity"] = {}
             if survivor["task"].is_empty():
                 survivor["status"] = _home_idle_status(survivor)
@@ -649,7 +647,8 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
             survivor.get("daily_activity", {}),
             int(resources.get("Cooked Food", 0)),
             int(resources.get("Clean Water", 0)),
-            int(resources.get("Beer", 0))
+            int(resources.get("Beer", 0)),
+            float(survivor.get("stress", 0.0))
         )
         if activity.is_empty():
             return
@@ -696,10 +695,51 @@ func _process_camp_activity(survivor: Dictionary, delta: float, pop: int, hygien
         survivor["needs"] = result.get("needs", survivor.get("needs", {}))
         survivor["fatigue"] = float(result.get("fatigue", survivor.get("fatigue", 0.0)))
         if kind in ["tavern_social", "tavern_drink"]:
-            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - CampLifeRules.tavern_social_stress_relief(tavern_quality, kind == "tavern_drink"))
-        elif kind in ["watch_fire", "cards", "guitar"]:
-            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - 2.0)
+            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - CampLifeRules.tavern_social_stress_relief(tavern_quality, kind == "tavern_drink", _tavern_decompression_participants()))
+        elif kind == "watch_fire":
+            survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - CampLifeRules.fire_watch_stress_relief())
     survivor["camp_activity"] = {}
+
+func _tavern_decompression_participants() -> int:
+    var count := 0
+    for survivor in survivors:
+        if str(survivor.get("condition", "Dead")) == "Dead":
+            continue
+        var activity: Dictionary = survivor.get("camp_activity", {})
+        if str(activity.get("kind", "")) in ["tavern_social", "tavern_drink"]:
+            count += 1
+    return maxi(1, count)
+
+func _begin_tantrum_if_stressed(survivor) -> bool:
+    if survivor == null or str(survivor.get("condition", "Dead")) == "Dead":
+        return false
+    if float(survivor.get("stress", 0.0)) < CampLifeRules.STRESS_TANTRUM_THRESHOLD:
+        return false
+    var status := str(survivor.get("status", "Available"))
+    if status in ["Tantrum", "Sleeping", "Exhausted", "Expedition", "Pending Expedition Event", "Tactical Encounter", "Recovering", "Quarantined", "Sick"]:
+        return false
+    var current_task_value = survivor.get("task", {})
+    var current_task: Dictionary = current_task_value if current_task_value is Dictionary else {}
+    var resume_task: Dictionary = {}
+    var resume_status := ""
+    if not current_task.is_empty():
+        if status not in ["Crafting", "Building", "Tending", "Chore", "Pet Care", "Training"]:
+            return false
+        resume_task = current_task.duplicate(true)
+        resume_status = status
+    _clear_camp_activity(survivor)
+    survivor["status"] = "Tantrum"
+    survivor["task"] = {
+        "kind":"tantrum",
+        "label":"Tantrum",
+        "remaining":CampLifeRules.tantrum_duration(),
+        "duration":CampLifeRules.tantrum_duration(),
+        "resume_status":resume_status,
+        "resume_task":resume_task,
+    }
+    survivor["history"].append("Day %d — Stress hit the breaking point and they lost it at camp." % day)
+    toast_requested.emit("%s is having a stress tantrum." % survivor["name"])
+    return true
 
 func _complete_task(survivor):
     if survivor == null or survivor.get("task", {}).is_empty():
@@ -741,6 +781,22 @@ func _complete_task(survivor):
         survivor["history"].append("Day %d — Took a turn on camp duty: %s." % [day, str(chore.get("label", "Camp chore"))])
         _add_history("Day %d — %s completed %s." % [day, survivor["name"], str(chore.get("label", "camp duty")).to_lower()])
         toast_requested.emit("%s finished %s." % [survivor["name"], str(chore.get("label", "camp duty"))])
+        save_game()
+        state_changed.emit()
+        return
+    if kind == "tantrum":
+        survivor["stress"] = maxf(0.0, float(survivor.get("stress", 0.0)) - CampLifeRules.TANTRUM_STRESS_RELEASE)
+        var tantrum_resume_value = task.get("resume_task", {})
+        var tantrum_resume: Dictionary = tantrum_resume_value if tantrum_resume_value is Dictionary else {}
+        var tantrum_resume_status := str(task.get("resume_status", ""))
+        if not tantrum_resume.is_empty() and tantrum_resume_status != "":
+            survivor["task"] = tantrum_resume
+            survivor["status"] = tantrum_resume_status
+            survivor["history"].append("Day %d — Calmed down enough to resume %s." % [day, str(tantrum_resume.get("label", "work")).to_lower()])
+        else:
+            survivor["task"] = {}
+            survivor["status"] = _home_idle_status(survivor)
+            survivor["history"].append("Day %d — Calmed down after a stress tantrum." % day)
         save_game()
         state_changed.emit()
         return
