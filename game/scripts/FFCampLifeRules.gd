@@ -21,6 +21,8 @@ const CAMP_CONDITION_WELL_KEPT := 85.0
 const CAMP_CONDITION_ACCEPTABLE := 60.0
 const CAMP_CONDITION_NEGLECTED := 40.0
 const CAMP_CONDITION_POOR := 20.0
+const CAMP_ATTRACTION_MIN_SCORE := 50.0
+const CAMP_ATTRACTION_MAX_CHANCE := 0.10
 const DAILY_DRINK_WINDOW_START := 12.0
 const DAILY_DRINK_WINDOW_END := 14.0
 const DAILY_MEAL_WINDOW_START := 18.0
@@ -146,6 +148,32 @@ static func camp_condition_mood_modifier(value: float) -> int:
 
 static func camp_condition_stress_rate(value: float) -> float:
     return -0.0048 * float(camp_condition_mood_modifier(value))
+
+static func camp_attraction_score(
+    maintenance: float,
+    average_stress: float,
+    positive_moodlet_ratio: float,
+    shortage_days: int,
+    fire_level: float,
+    developed_buildings: int
+) -> float:
+    # Attraction is visible camp success, not a hidden reputation stat.
+    var maintenance_points := clampf(maintenance, 0.0, 100.0) * 0.30
+    var stress_points := (100.0 - clampf(average_stress, 0.0, 100.0)) * 0.15
+    var mood_points := clampf(positive_moodlet_ratio, 0.0, 1.0) * 15.0
+    var stability_points := maxf(0.0, 15.0 - float(maxi(0, shortage_days)) * 5.0)
+    var fire_points := clampf(fire_level, 0.0, 100.0) * 0.05
+    var development_points := minf(20.0, float(maxi(0, developed_buildings)) * 2.0)
+    return clampf(
+        maintenance_points + stress_points + mood_points + stability_points + fire_points + development_points,
+        0.0,
+        100.0
+    )
+
+static func camp_arrival_chance(attraction_score: float) -> float:
+    if attraction_score < CAMP_ATTRACTION_MIN_SCORE:
+        return 0.0
+    return minf(CAMP_ATTRACTION_MAX_CHANCE, (attraction_score - CAMP_ATTRACTION_MIN_SCORE) * 0.002)
 
 static func camp_condition_recovery(chore: String) -> float:
     match chore:
