@@ -6,12 +6,13 @@ func new_game():
     super.new_game()
     for survivor in survivors:
         survivor["virus"] = VirusRules.default_state()
+        survivor["amputation_used"] = false
         survivor["equipment_state"] = {}
         survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
         survivor["previous_daily_activity"] = {}
         survivor["duty_days"] = []
         survivor["duty_eligible_days"] = []
-    flags["virus_model"] = "zombie-virus-v1"
+    flags["virus_model"] = "zombie-virus-v2"
     flags["camp_condition_model"] = "camp-condition-activity-v1"
     flags["camp_chore_model"] = "timed-maintenance-v1"
     flags["daily_chores"] = []
@@ -28,6 +29,13 @@ func load_game():
     buildings["Storage Crate"] = true
     for survivor in survivors:
         survivor["virus"] = VirusRules.normalize(survivor.get("virus", {}))
+        survivor["amputation_used"] = bool(survivor.get("amputation_used", false))
+        var legacy_virus_task: Dictionary = survivor.get("task", {})
+        if str(legacy_virus_task.get("kind", "")) == "virus_treatment":
+            survivor["task"] = {}
+            survivor["virus"] = VirusRules.default_state()
+            survivor["status"] = "Available"
+            survivor["history"].append("Day %d — Prior virus treatment was grandfathered clear under the new infection rules." % day)
         _normalize_survivor_equipment_state(survivor)
         survivor["daily_activity"] = CampLifeRules.normalize_daily_activity(survivor.get("daily_activity", {}), day)
         if not survivor.has("previous_daily_activity"):
@@ -36,7 +44,7 @@ func load_game():
         survivor["duty_eligible_days"] = CampLifeRules.normalize_duty_days(survivor.get("duty_eligible_days", []), day)
         _migrate_passive_sleep(survivor)
         _normalize_health_status(survivor)
-    flags["virus_model"] = "zombie-virus-v1"
+    flags["virus_model"] = "zombie-virus-v2"
     flags["camp_condition_model"] = "camp-condition-activity-v1"
     if str(flags.get("camp_chore_model", "")) != "timed-maintenance-v1":
         # Schema-8 saves from the old guaranteed-daily system convert in place.
@@ -69,6 +77,7 @@ func load_game():
 func _generate_survivor(founder = false, preferred_background = ""):
     var survivor: Dictionary = super._generate_survivor(founder, preferred_background)
     survivor["virus"] = VirusRules.default_state()
+    survivor["amputation_used"] = false
     survivor["equipment_state"] = {}
     survivor["daily_activity"] = CampLifeRules.default_daily_activity(day)
     survivor["previous_daily_activity"] = {}
@@ -589,7 +598,7 @@ func _process_survivors(delta):
             float(delta),
             safety,
             away,
-            status in ["Sleeping", "Exhausted"]
+            status in ["Sleeping", "Exhausted", "Quarantined"] or task_kind == "amputation_recovery"
         )
         # Need moodlets only affect Stress while genuinely idle: each positive
         # moodlet contributes +1 comfort and each negative moodlet contributes -1.
@@ -848,12 +857,11 @@ func _complete_task(survivor):
         save_game()
         state_changed.emit()
         return
-    if kind == "virus_treatment":
+    if kind == "amputation_recovery":
         survivor["task"] = {}
-        survivor["virus"] = VirusRules.default_state()
         survivor["status"] = "Available"
-        survivor["history"].append("Day %d — Completed zombie-virus treatment and tested clear." % day)
-        toast_requested.emit("%s completed zombie-virus treatment and is clear." % survivor["name"])
+        survivor["history"].append("Day %d — Finished forced recovery after emergency amputation." % day)
+        toast_requested.emit("%s finished recovering from the amputation." % survivor["name"])
         save_game()
         state_changed.emit()
         return
@@ -894,7 +902,7 @@ func _process_camp_chatter(delta):
 func _expose_survivor(survivor, source_note: String) -> bool:
     if survivor == null or str(survivor.get("condition", "Dead")) == "Dead" or virus_stage(survivor) != VirusRules.STAGE_CLEAR:
         return false
-    survivor["virus"] = VirusRules.expose(survivor.get("virus", {}))
+    survivor["virus"] = VirusRules.expose(survivor.get("virus", {}), VirusRules.roll_turn_days(false, rng))
     survivor["history"].append("Day %d — Zombie-virus exposure: %s." % [day, source_note])
     _add_history("Day %d — %s was exposed to the zombie virus." % [day, survivor["name"]])
     return true
@@ -903,55 +911,73 @@ func quarantine_survivor(sid: int) -> bool:
     var survivor: Variant = get_survivor(sid)
     if survivor == null or survivor["condition"] == "Dead" or virus_stage(survivor) == VirusRules.STAGE_CLEAR:
         return false
+    if bool(virus_state(survivor).get("quarantined", false)):
+        return false
     if str(survivor.get("status", "Available")) not in ["Available", "Sick"] or not survivor.get("task", {}).is_empty():
         toast_requested.emit("%s is busy and cannot enter quarantine yet." % survivor["name"])
         return false
-    var virus := virus_state(survivor)
-    virus["quarantined"] = true
-    survivor["virus"] = virus
+    survivor["virus"] = VirusRules.quarantine(survivor.get("virus", {}), VirusRules.roll_turn_days(true, rng))
     _clear_camp_activity(survivor)
     survivor["status"] = "Quarantined"
     survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + 4.0)
-    survivor["history"].append("Day %d — Entered quarantine for zombie-virus exposure." % day)
-    toast_requested.emit("%s is quarantined and unavailable for assignments." % survivor["name"])
+    survivor["history"].append("Day %d — Entered forced-rest quarantine; the virus clock slowed to %d days." % [day, VirusRules.days_until_turn(survivor["virus"])])
+    toast_requested.emit("%s is quarantined in forced rest for roughly %d more day(s)." % [survivor["name"], VirusRules.days_until_turn(survivor["virus"])])
     save_game()
     state_changed.emit()
     return true
 
-func start_virus_treatment(sid: int) -> bool:
+func start_amputation(sid: int) -> bool:
     var survivor: Variant = get_survivor(sid)
     if survivor == null or survivor["condition"] == "Dead":
         return false
-    var stage_name := virus_stage(survivor)
-    if stage_name == VirusRules.STAGE_CLEAR:
-        return false
-    if str(survivor.get("status", "Available")) not in ["Available", "Quarantined", "Sick"] or not survivor.get("task", {}).is_empty():
-        toast_requested.emit("%s is already occupied." % survivor["name"])
-        return false
-    var plan: Dictionary = VirusRules.treatment_plan(stage_name, bool(buildings.get("Infirmary", false)))
-    if not bool(plan.get("available", false)):
-        toast_requested.emit(str(plan.get("reason", "Virus treatment is not available.")))
-        return false
-    var resource_cost: Dictionary = plan.get("resources", {})
-    var component_cost: Dictionary = plan.get("components", {})
-    if not _can_pay(resource_cost, component_cost):
-        toast_requested.emit("Virus treatment needs %s." % str(plan.get("summary", "medical supplies")))
-        return false
-    _pay(resource_cost, component_cost)
-    _clear_camp_activity(survivor)
     var virus := virus_state(survivor)
-    virus["quarantined"] = true
-    survivor["virus"] = virus
+    if not VirusRules.can_amputate(virus, bool(survivor.get("amputation_used", false))):
+        toast_requested.emit("Emergency amputation is only possible immediately after exposure and only once per survivor.")
+        return false
+    if str(survivor.get("status", "Available")) != "Available" or not survivor.get("task", {}).is_empty():
+        toast_requested.emit("%s must be free before emergency amputation." % survivor["name"])
+        return false
+    if int(components.get("First Aid Kit", 0)) <= 0:
+        toast_requested.emit("Emergency amputation needs 1 First Aid Kit.")
+        return false
+    components["First Aid Kit"] = int(components.get("First Aid Kit", 0)) - 1
+    _clear_camp_activity(survivor)
+    survivor["amputation_used"] = true
+    var skills: Dictionary = survivor.get("skills", {}).duplicate(true)
+    skills["Combat"] = maxi(0, int(skills.get("Combat", 0)) - 1)
+    skills["Agility"] = maxi(0, int(skills.get("Agility", 0)) - 1)
+    survivor["skills"] = skills
+    survivor["virus"] = VirusRules.default_state()
     survivor["status"] = "Recovering"
     survivor["task"] = {
-        "kind": "virus_treatment",
-        "label": str(plan.get("label", "Virus treatment")),
-        "remaining": float(plan.get("duration", 60.0)),
-        "duration": float(plan.get("duration", 60.0)),
+        "kind": "amputation_recovery",
+        "label": "Amputation Recovery",
+        "remaining": VirusRules.AMPUTATION_RECOVERY_SECONDS,
+        "duration": VirusRules.AMPUTATION_RECOVERY_SECONDS,
         "target": sid,
     }
-    survivor["history"].append("Day %d — Began %s." % [day, str(plan.get("label", "zombie-virus treatment")).to_lower()])
-    toast_requested.emit("%s started %s." % [survivor["name"], str(plan.get("label", "virus treatment")).to_lower()])
+    survivor["history"].append("Day %d — Emergency amputation stopped zombie-virus exposure; Combat and Agility each fell by 1." % day)
+    toast_requested.emit("%s survived an emergency amputation and must recover." % survivor["name"])
+    save_game()
+    state_changed.emit()
+    return true
+
+func use_zombie_cure(sid: int) -> bool:
+    var survivor: Variant = get_survivor(sid)
+    if survivor == null or survivor["condition"] == "Dead" or virus_stage(survivor) == VirusRules.STAGE_CLEAR:
+        return false
+    if str(survivor.get("status", "Available")) not in ["Available", "Quarantined", "Sick"] or not survivor.get("task", {}).is_empty():
+        toast_requested.emit("%s cannot use the Zombie Cure right now." % survivor["name"])
+        return false
+    if int(components.get("Zombie Cure", 0)) <= 0:
+        toast_requested.emit("You need 1 Zombie Cure.")
+        return false
+    components["Zombie Cure"] = int(components.get("Zombie Cure", 0)) - 1
+    _clear_camp_activity(survivor)
+    survivor["virus"] = VirusRules.cure(survivor.get("virus", {}))
+    survivor["status"] = "Available"
+    survivor["history"].append("Day %d — Used a Zombie Cure and tested clear." % day)
+    toast_requested.emit("%s used a Zombie Cure and is clear." % survivor["name"])
     save_game()
     state_changed.emit()
     return true
@@ -966,7 +992,7 @@ func resolve_combat(result):
             if VirusRules.bite_exposure_occurs(lead_bites, rng):
                 if _expose_survivor(lead, "%d infected bite%s in the field" % [lead_bites, "" if lead_bites == 1 else "s"]):
                     lead["stress"] = minf(100.0, float(lead.get("stress", 0.0)) + 10.0)
-                    toast_requested.emit("%s was exposed to the zombie virus by a bite. Early decontamination can stop it." % lead["name"])
+                    toast_requested.emit("%s was exposed by a bite. Amputate immediately or quarantine while hunting a Zombie Cure." % lead["name"])
         if ids.size() > 1:
             var companion: Variant = get_survivor(int(ids[1]))
             var companion_bites := int(result.get("companion_bite_hits", 0))
@@ -1059,50 +1085,20 @@ func _process_daily_virus() -> void:
         survivor["virus"] = VirusRules.normalize(survivor.get("virus", {}))
         if virus_stage(survivor) == VirusRules.STAGE_CLEAR:
             continue
-        if str(survivor.get("task", {}).get("kind", "")) == "virus_treatment":
-            continue
-        var progressed: Dictionary = VirusRules.progress_day(survivor["virus"], rng)
+        var progressed: Dictionary = VirusRules.progress_day(survivor["virus"])
         survivor["virus"] = progressed.get("state", survivor["virus"])
         match str(progressed.get("event", "")):
-            "cleared":
-                if str(survivor.get("status", "")) in ["Quarantined", "Sick"] and survivor.get("task", {}).is_empty():
-                    survivor["status"] = "Available"
-                survivor["history"].append("Day %d — Cleared a zombie-virus exposure without progressing." % day)
-                toast_requested.emit("%s cleared the zombie-virus exposure." % survivor["name"])
             "infected":
                 survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue", 0.0)) + 12.0)
                 survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + 8.0)
-                survivor["history"].append("Day %d — Zombie-virus infection established." % day)
-                toast_requested.emit("%s is now infected. A Zombie Cure can still stop it." % survivor["name"])
+                survivor["history"].append("Day %d — Zombie-virus infection established; %d day(s) remain before turning." % [day, VirusRules.days_until_turn(survivor["virus"])])
+                toast_requested.emit("%s is infected. Find a Zombie Cure before the clock runs out." % survivor["name"])
             "feverish":
                 survivor["fatigue"] = minf(100.0, float(survivor.get("fatigue", 0.0)) + 25.0)
                 survivor["stress"] = minf(100.0, float(survivor.get("stress", 0.0)) + 15.0)
-                if str(survivor.get("status", "")) in ["Available", "Quarantined", "Sick"] and survivor.get("task", {}).is_empty():
-                    survivor["status"] = _home_idle_status(survivor)
-                survivor["history"].append("Day %d — Zombie-virus fever became severe." % day)
-                toast_requested.emit("%s is feverish. Without Infirmary treatment, the next day can be fatal." % survivor["name"])
+                if not bool(survivor["virus"].get("quarantined", false)) and survivor.get("task", {}).is_empty():
+                    survivor["status"] = "Sick"
+                survivor["history"].append("Day %d — Zombie-virus fever became severe; %d day(s) remain before turning." % [day, VirusRules.days_until_turn(survivor["virus"])])
+                toast_requested.emit("%s is feverish. Only a Zombie Cure can stop the turn now." % survivor["name"])
             "terminal":
-                _kill_survivor(survivor, "turned after an untreated zombie-virus infection")
-    _spread_camp_virus()
-
-func _spread_camp_virus() -> void:
-    var candidates: Array = []
-    for survivor in survivors:
-        if survivor["condition"] == "Dead" or virus_stage(survivor) != VirusRules.STAGE_CLEAR:
-            continue
-        if str(survivor.get("status", "Available")) in ["Expedition", "Pending Expedition Event", "Tactical Encounter"]:
-            continue
-        candidates.append(survivor)
-    if candidates.is_empty():
-        return
-    for source in survivors:
-        if source["condition"] == "Dead" or str(source.get("status", "Available")) in ["Expedition", "Pending Expedition Event", "Tactical Encounter"]:
-            continue
-        var chance := VirusRules.spread_chance(source.get("virus", {}))
-        if chance <= 0.0 or rng.randf() >= chance or candidates.is_empty():
-            continue
-        var target: Variant = candidates[rng.randi_range(0, candidates.size() - 1)]
-        if _expose_survivor(target, "close contact with an unquarantined infected campmate"):
-            target["stress"] = minf(100.0, float(target.get("stress", 0.0)) + 8.0)
-            toast_requested.emit("%s was exposed in camp. Quarantine infected survivors to prevent close-contact spread." % target["name"])
-            candidates.erase(target)
+                _kill_survivor(survivor, "turned after zombie-virus infection")

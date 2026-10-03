@@ -1,3 +1,15 @@
+## Beta Candidate — Virus Amputation & Quarantine Clock — 2026-10-02
+
+- Removed all **survivor-to-survivor camp virus transmission**. Zombie-virus exposure now comes only from successful tactical Bite rolls.
+- Removed the old 50% natural-clear roll, Clean Water + Bandage exposure decontamination, timed Zombie Cure treatment course, and Infirmary-gated fever emergency treatment.
+- New unquarantined exposure receives a **1–2 day turn deadline**. The displayed Exposed / Infected / Feverish stages are now symptoms along that deadline rather than separate fixed-duration treatment gates.
+- Added a very early **AMPUTATE NOW** choice. It is available only during the immediate Exposed window, before quarantine or daily progression, and only once per survivor. It consumes **1 First Aid Kit**, immediately clears the virus, applies **Combat −1 / Agility −1** with a floor of 0, and forces **100 settlement seconds / 8 in-game hours** of recovery.
+- **Quarantine** is now literal forced rest: the survivor is incapacitated in their bed, cannot work, and receives a fresh **3–4 day turn window** from quarantine. Choosing quarantine permanently closes the amputation window for that infection.
+- **Zombie Cure** remains the alternative to amputation: using one from camp inventory immediately clears any active virus stage. It no longer needs a timed treatment task or Infirmary to administer; the built Infirmary still crafts one Cure from 2 recovered Zombie Corpses.
+- The survivor inspector now presents the intended decision directly: amputate immediately, quarantine to buy time, or use a Zombie Cure if one is available.
+- Added architecture-smoke coverage for 1/2-day unquarantined timelines, 3/4-day quarantine timelines, one-use amputation eligibility, medkit/stat/recovery consequences, immediate Cure clearing, and absence of camp spread/legacy virus-treatment functions.
+- Existing schema-8 saves remain valid. The additive virus marker is now **`zombie-virus-v2`**; a missing `amputation_used` field defaults false, old virus states gain a normalized deadline, and any old in-progress virus-treatment task is grandfathered clear instead of being left in a deleted treatment state.
+
 ## Beta Candidate — Remove Survivor Hygiene Need — 2026-10-02
 
 - Removed **Hygiene** from the survivor need model. Survivors now have exactly five needs: Hunger, Thirst, Sleep, Fun, and Safety.

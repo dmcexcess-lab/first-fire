@@ -300,13 +300,15 @@ func _target_cell(survivor: Dictionary) -> Vector2i:
         return building_cell(str(task.get("building", ""))) + Vector2i(-1, 0)
     if status == "Tending":
         return building_cell("Garden Plot") + Vector2i(1, 0)
-    if status in ["Sleeping", "Exhausted"]:
+    if status in ["Sleeping", "Exhausted", "Quarantined"]:
         return _sleep_cell_for_survivor(survivor)
     if status == "Tantrum":
         return FIRE_CELL + Vector2i(-1, 1)
     if status == "Recovering":
+        if str(task.get("kind", "")) == "amputation_recovery":
+            return _sleep_cell_for_survivor(survivor)
         return building_cell("Infirmary") + Vector2i(-1, 0) if bool(Game.buildings.get("Infirmary", false)) else _sleep_cell_for_survivor(survivor)
-    if status in ["Quarantined", "Sick"]:
+    if status == "Sick":
         return building_cell("Infirmary") + Vector2i(1, 0) if bool(Game.buildings.get("Infirmary", false)) else Vector2i(16, 7)
     if status == "Chore":
         match str(task.get("chore", "")):
@@ -456,7 +458,7 @@ func _draw_activity_graphic(survivor: Dictionary, center: Vector2, tile: float) 
         draw_line(center + Vector2(-tile * 0.28, -tile * 0.38), center + Vector2(-tile * 0.08, -tile * (0.48 + phase * 0.06)), Color(0.96, 0.42, 0.25, 0.92), maxf(2.0, tile * 0.05))
         draw_line(center + Vector2(tile * 0.10, -tile * 0.44), center + Vector2(tile * 0.30, -tile * (0.34 - phase * 0.05)), Color(0.96, 0.42, 0.25, 0.92), maxf(2.0, tile * 0.05))
         return
-    if status in ["Sleeping", "Exhausted"]:
+    if status in ["Sleeping", "Exhausted", "Quarantined"] or str(survivor.get("task", {}).get("kind", "")) == "amputation_recovery":
         var bed := Rect2(center + Vector2(-tile * 0.42, -tile * 0.20), Vector2(tile * 0.84, tile * 0.40))
         draw_rect(bed, Color(0.19, 0.24, 0.24, 0.92))
         draw_rect(Rect2(bed.position, Vector2(tile * 0.20, bed.size.y)), Color(0.70, 0.68, 0.55, 0.88))
@@ -464,12 +466,10 @@ func _draw_activity_graphic(survivor: Dictionary, center: Vector2, tile: float) 
         var font := get_theme_default_font()
         var rest_mark := "Z" if status == "Sleeping" else "..."
         draw_string(font, center + Vector2(tile * 0.18, -tile * 0.28), rest_mark, HORIZONTAL_ALIGNMENT_LEFT, -1.0, maxi(8, int(tile * 0.34)), Color(0.72, 0.82, 0.92, 0.92))
+        if status == "Quarantined":
+            draw_arc(center, tile * 0.34, 0.0, TAU, 20, Color(0.90, 0.58, 0.30, 0.88), maxf(1.0, tile * 0.05))
         return
-    if str(survivor.get("task", {}).get("kind", "")) == "virus_treatment":
-        draw_line(center + Vector2(-tile * 0.18, 0), center + Vector2(tile * 0.18, 0), Color(0.72, 0.94, 0.88, 0.90), maxf(2.0, tile * 0.07))
-        draw_line(center + Vector2(0, -tile * 0.18), center + Vector2(0, tile * 0.18), Color(0.72, 0.94, 0.88, 0.90), maxf(2.0, tile * 0.07))
-        return
-    if status in ["Quarantined", "Sick"]:
+    if status == "Sick":
         draw_arc(center, tile * 0.34, 0.0, TAU, 20, Color(0.90, 0.58, 0.30, 0.88), maxf(1.0, tile * 0.05))
         return
     super._draw_activity_graphic(survivor, center, tile)
@@ -483,8 +483,8 @@ func _activity_short(survivor: Dictionary) -> String:
         "Quarantined": return "QUARANTINE"
         "Sick": return "FEVER"
         "Recovering":
-            if str(survivor.get("task", {}).get("kind", "")) == "virus_treatment":
-                return "VIRUS CARE"
+            if str(survivor.get("task", {}).get("kind", "")) == "amputation_recovery":
+                return "AMPUTATION"
         "Training": return "TRAINING"
         "Chore": return str(survivor.get("task", {}).get("label", "WORK")).to_upper()
         "Pet Care": return "PET CARE"
