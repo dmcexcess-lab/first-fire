@@ -606,7 +606,7 @@ func _process_survivors(delta):
         )
 
         if status == "Available":
-            var was_idle := survivor.get("camp_activity", {}).is_empty()
+            var was_idle: bool = bool(survivor.get("camp_activity", {}).is_empty())
             survivor["fatigue"] = maxf(0.0, float(survivor["fatigue"]) - recovery.x * float(delta))
             survivor["needs"] = CampLifeRules.update_needs(survivor["needs"], float(survivor["fatigue"]), 0.0, safety, hygiene_support, false)
             if was_idle:

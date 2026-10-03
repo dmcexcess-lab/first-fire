@@ -499,7 +499,7 @@ func _process_survivors(delta):
         var safety:=CampLifeRules.safety_target(buildings,pop,capacity,fire_level,away,camp_maintenance)
         s["needs"]=CampLifeRules.update_needs(s.get("needs",{}),float(s.get("fatigue",0.0)),float(delta),safety,hygiene_support,away)
         if s["status"]=="Available":
-            var was_idle := s.get("camp_activity", {}).is_empty()
+            var was_idle: bool = bool(s.get("camp_activity", {}).is_empty())
             var caretaker:=false
             if leader_id!=-1:
                 var leader:Variant=get_survivor(leader_id)
