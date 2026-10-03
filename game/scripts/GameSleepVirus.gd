@@ -943,8 +943,10 @@ func start_amputation(sid: int) -> bool:
     components["First Aid Kit"] = int(components.get("First Aid Kit", 0)) - 1
     _clear_camp_activity(survivor)
     survivor["amputation_used"] = true
-    survivor["skills"]["Combat"] = maxi(0, int(survivor.get("skills", {}).get("Combat", 0)) - 1)
-    survivor["skills"]["Agility"] = maxi(0, int(survivor.get("skills", {}).get("Agility", 0)) - 1)
+    var skills: Dictionary = survivor.get("skills", {}).duplicate(true)
+    skills["Combat"] = maxi(0, int(skills.get("Combat", 0)) - 1)
+    skills["Agility"] = maxi(0, int(skills.get("Agility", 0)) - 1)
+    survivor["skills"] = skills
     survivor["virus"] = VirusRules.default_state()
     survivor["status"] = "Recovering"
     survivor["task"] = {
