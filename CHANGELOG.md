@@ -1,3 +1,12 @@
+## Beta Candidate — Sparse Non-Ambush Infected Counts — 2026-10-03
+
+- Rebalanced every **non-ambush** tactical outing to a shared **0–3 infected** distribution.
+- New weights are **0 = 10%**, **1 = 40%**, **2 = 40%**, **3 = 10%**. One or two infected are therefore the normal result; empty maps and three-infected maps are deliberately uncommon.
+- Removed the old distance-based non-ambush population escalation and the fixed **3-infected pet rescue / 5-infected survivor rescue** counts.
+- **Ambush remains unchanged at exactly 5 infected** as the dedicated high-pressure encounter.
+- Updated architecture smoke and canonical source validation to lock the weighted distribution in place.
+- Save schema remains **8**.
+
 ## Beta Candidate — In-Game Expedition Return ETA — 2026-10-03
 
 - Replaced player-facing Away-expedition real-second countdowns with an **in-game return ETA** using the settlement day and clock, e.g. `RETURN D4 6:30 PM`.
