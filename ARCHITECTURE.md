@@ -82,7 +82,7 @@ Pure tactical tuning. Current formulas use Combat and Agility only. Owns infecte
 Low-level tactical timeline utilities for fatigue, condition, stance, weapon timing, and infected pace. Equipment weight/size no longer modifies timing; carry capacity is owned separately by the tactical 4/6/8 slot rule. `FFThreeStatRules.gd` applies current Agility-based normal/stealth/sprint movement modifiers on top of those base action costs.
 
 ### `FFTacticalScenarios.gd`
-Encounter objective/catalog ownership and objective/place pairing. Tactical scene time snapshots the real settlement clock at encounter creation.
+Encounter objective/catalog ownership and objective/place pairing. Owns route-dependent outing weights, including deliberately rare near-camp survivor/pet rescues that become less rare with expedition distance. Tactical scene time snapshots the real settlement clock at encounter creation.
 
 ### `FFTacticalEnvironments.gd`
 Authored physical places, geometry, props, searchable container anchors, entries, and deliberately separated extraction exits. Current families include alley, gas station, house, apartment, store, warehouse yard, and drainage wash.
