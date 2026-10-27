@@ -1,3 +1,14 @@
+## Extraction + Base Sim — Vertical Slice 1 — 2026-10-26
+
+- Replaced production turn-driven encounters with solo real-time grid-based extraction raids on the existing authored maps. Infected act continuously while the settlement remains frozen.
+- Added visible held touch movement/fire, tap-to-aim/fire, use/search, reload/pump, melee/shove, stealth, sprint, tool and pause controls plus keyboard equivalents. Movement and weapon recovery can run together.
+- Escape now requires holding the far-side exit for three uninterrupted seconds; leaving the exit resets progress and contacted living rescues must catch up. Objectives/kills stay optional.
+- New founders start with a 6-Shot Revolver, 6 loaded rounds and 12 spare rounds. All ranged weapons use finite loaded/reserve ammunition; reloads transfer only reserve and empty shots spend rounds. Gun state persists across raids, saves and stash swaps. A built Workbench resupplies the equipped weapon from the gate sheet for 1 Scrap Metal.
+- Preserved physical-only loot, pack limits, Away return timers, persistent trauma/virus, recruitment protection and the existing living camp, building, crafting, care, needs, social/political and minigame systems. Raid death explicitly loses equipped kit as well as carried loot and the survivor.
+- Raids load paused and pause on focus loss without suspended-time catch-up. Saved runtime includes recovery deadlines, reserve ammunition, extraction progress and RNG state; inherited snapshots now save once after all fields are assembled. Schema stays 8; no camp wipe.
+- Added deterministic production raid integration smoke to permanent CI: independent enemy clock, cooldowns, simultaneous touch actions, disk resume, extraction hold, haul escrow/exact-once return, paid resupply, empty-gun persistence and death/kit loss.
+- This is the first bounded playable transformation slice, not a completed shooter overhaul: no PvP, human gunner factions, free-position movement, traders or new quest economy.
+
 ## Beta Candidate — Camp Story Recruit Streak Protection & Doc Cleanup — 2026-10-03
 
 - Added a **two full in-game days of cooldown after accepting a survivor from a camp-story arrival**. During that window, the positive camp-attraction system cannot generate another passive survivor-arrival story.

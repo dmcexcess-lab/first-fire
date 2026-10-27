@@ -1,20 +1,22 @@
 # First Fire
 
-**First Fire** is an early playable zombie-apocalypse survivor settlement game built in Godot 4. It mixes menu-driven camp management, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
+**First Fire** is an early playable zombie-apocalypse survivor settlement game built in Godot 4. It combines a living camp/base simulation with solo real-time extraction raids and persistent survivor consequences.
 
 Created by DMC and AI.
 
-## Play the current Alpha
+## Play the extraction/base-sim slice
 
 **Web build:** https://dmcexcess-lab.github.io/first-fire/
 
-The current playable milestone is **Alpha 0.2 — Tactical Expedition Encounters**. The game is designed phone-first and actively tested in mobile browsers, including iPhone/Safari.
+The current playable milestone is **Extraction + Base Sim — Vertical Slice 1**. Phone/Web remains the primary target; actual mobile Safari playtesting is still required for the new real-time controls.
 
 > Alpha saves may be intentionally invalidated when major systems or save structures change. This is deliberate while the game is still in active development.
 
+The founder starts with a Revolver and finite ammunition. Equip at the gate, loot physical containers, escape, and bring supplies home to build and sustain the camp. Ammunition persists; Workbench resupply costs Scrap Metal. Raid death loses the survivor and equipped kit. Existing schema-8 camp saves are preserved.
+
 ## What you do
 
-Build a fragile survivor camp, keep people fed and supplied, craft and build infrastructure, send real survivors into the outside world, make decisions during tactical encounters, and bring the consequences home.
+Build a fragile survivor camp, keep people fed and supplied, craft and build infrastructure, send real survivors into the outside world, loot and fight in real time, hold an exit for three seconds, and bring the consequences home.
 
 The field game is about **survival, looting, rescue, investigation, and escape** rather than clearing every enemy from a map.
 

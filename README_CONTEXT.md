@@ -6,15 +6,28 @@ This file records durable product/design context. `README_SOPS.md` records proce
 
 ## Current game
 
-**First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game combining a living camp-management home screen, extraction-style expeditions, persistent survivor consequences, and portrait turn-based tactical encounters.
+**First Fire** is a mobile-first Godot 4 / GDScript zombie-apocalypse survivor settlement game combining a living camp-management home screen, extraction-style expeditions, persistent survivor consequences, and portrait real-time extraction raids.
 
-Current milestone: **Beta Candidate — Feature Freeze**.
+Current milestone: **Extraction + Base Sim — Vertical Slice 1**.
 
 Live Web build: `https://dmcexcess-lab.github.io/first-fire/`
 
 The **living camp is the primary game/menu surface**. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. The phone view is intentionally zoomed and pannable instead of shrinking the whole settlement into a minimap; normal management is reached by touching physical camp entities and opening contextual sheets/overlays from them.
 
-Feature-freeze means deepen/unify existing systems rather than add new pillars.
+The October 26, 2026 direction change explicitly reopens the field-combat pillar. Scope remains bounded to a playable solo extraction-shooter slice around the existing camp simulation.
+
+
+## Extraction vertical slice — October 26, 2026
+
+**Prepare a persistent survivor at the gate → enter an authored map → move, aim, fire, search and evade in real time → stand on the far-side exit for three uninterrupted seconds → return on the existing Away timer → use the recovered supplies to sustain and expand camp.**
+
+This is a real-time, grid-based top-down shooter slice on the existing 20×18 maps. Infected act without player input. Movement and weapon recovery use separate clocks so touch movement and firing can happen together. Visible arrows, FIRE, USE, RELOAD/PUMP, SHOVE/MELEE, STEALTH, SPRINT, tool and PAUSE controls support phones; WASD/arrows, Space, F, R, X, C, Shift, L and P/Escape support keyboards. Tap a visible infected to aim/fire; tapping empty map space aims, and FIRE shoots along the facing ray, spending a round even on an empty shot.
+
+Raids begin/resume paused, pause on focus loss, and never catch up suspended browser time. The raid clock is independent of input; settlement time, consumption, work, care, social events and maintenance remain frozen throughout. Loaded/spare ammunition, recovery deadlines, RNG state, raid outcome counters, carried loot and extraction progress join the existing encounter runtime save. Leaving the exit or waiting for a contacted escort resets the hold. Side objectives and kills are optional; physical loot only reaches communal storage after escape and a living returner completes the Away timer. Death permanently loses the survivor, carried loot, and equipped kit.
+
+New games equip the founder with a 6-Shot Revolver (6 loaded + 12 spare). Existing saves retain their survivors/camp/gear; existing guns initialize finite ammunition once, and saved in-progress magazines remain authoritative. Empty guns stay empty across raids and stash swaps. Schema remains **8** because fields are additive; no camp reset or migration framework is required. Existing camp needs, housing, crafting, care, chores/minigames, relationships, politics, attraction and recruitment streak protection are preserved.
+
+This slice does not add PvP, human gunner AI, continuous free-position movement, new map art, a trader/quest economy, vehicles, companions, or conventional levels. Follow-up work is playtest-led combat pacing, loot/loadout UX and map depth within this loop.
 
 ## Design pillars
 
@@ -46,18 +59,18 @@ Backgrounds seed the three current stats rather than six specialist skills. XP/p
 
 Outside-world danger is tactical/physical. Camp social life/politics remains narrative/dialogue.
 
-Tactical encounters use the actual expedition party: one controlled lead plus an optional AI companion. Current encounter types are **Rescue, Explore Location, and Ambush**. Rescue calls can reveal either a stranded survivor or a stranded camp pet (dog/cat); pets use the same physical reach/contact/escort/extract structure. Wounds, deaths, fatigue, stress, magazine/reload state, carried loot, and successful **Bite** exposure results return to camp state; companion HP/condition and companion bite exposure are also persisted. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
+Real-time raids use the actual expedition survivor. Current encounter types are **Rescue, Explore Location, and Ambush**. Rescue calls can reveal either a stranded survivor or a stranded camp pet (dog/cat); pets use the same physical reach/contact/escort/extract structure. Wounds, deaths, fatigue, stress, magazine/reload state, carried loot, and successful **Bite** exposure results return to camp state; companion HP/condition and companion bite exposure are also persisted. Active encounters persist across reloads. Tactical play pauses normal settlement simulation.
 
 The active combat layer is intentionally compact:
 
 - **Melee ladder** — fists 3–5 clean hits; Utility Knife 2–3; ordinary 1H melee 2; ordinary 2H melee 1–2; Sledgehammer 1; Hatchet 1. Hatchet is intentionally the rare/expensive one-hit 1H option.
 - **Crossbow** — craftable Workbench ranged weapon, one shot before reload, 2–3 hits to kill, and a physical 7-tile medium range.
-- **6-Shot Revolver / 12-shot Automatic** — found-only pistols. Both are strongest at short range but may fire at any visible target; hit chance falls off with distance.
+- **6-Shot Revolver / 12-shot Automatic** — found-only pistols, except the founder's starter Revolver. Both are strongest at short range but may fire at any visible target; hit chance falls off with distance.
 - **Double-Barrel Shotgun** — found-only **one-handed** firearm, 2 shells, 3 projectiles per shot, tighter spread, physical 5-tile pellet range.
 - **Pump Shotgun** — found-only, 6 shells, explicit pump action between shots, 5 projectiles per shot, wider spread, physical 4-tile pellet range.
 - **Medium Rifle** — found-only, 20-round magazine, medium optimal range, may fire to any visible target with distance falloff.
 - **Long Rifle** — found-only, 5-round magazine, long optimal range, may fire to any visible target with distance falloff.
-- **Reload model** — there is no camp Ammo resource. Ranged weapons use tactical magazine/chamber state and explicit reload actions; Pump Shotgun additionally requires cycling the pump.
+- **Reload model** — there is finite weapon ammunition and no shared camp Ammo resource. Ranged weapons use tactical magazine/chamber state and explicit reload actions; Pump Shotgun additionally requires cycling the pump.
 - **Stealth** — Agility-driven quieter crouched movement with positional stealth-attack opportunity; its tactical action cost is deliberately and materially slower than walking.
 - **Sprint** — Agility-driven movement with a deliberately and materially lower action cost than walking, louder noise, and improved grab avoidance.
 - **Forward** — dedicated touch movement action in the former Guard control slot.
@@ -69,7 +82,7 @@ The active combat layer is intentionally compact:
 
 Combat and Agility are the only survivor stats that affect tactical fighting/movement. Leadership does not secretly improve attacks. **Weapon tier owns damage/kill count; Combat primarily improves attack reliability rather than scaling raw damage enough to collapse the ladder.** Infected durability is compressed to roughly **7–10 HP** across LIGHT/MED/HEAVY mass classes, with mass affecting shove/attack behavior more than sponge HP.
 
-`FFThreeStatRules.gd` owns the three-stat catalog, weapon classes/profiles, and Agility movement/stealth/sprint math. `FFTacticalBalance.gd` owns tactical tuning using Combat/Agility only. `FFCombatThreeStat.gd` remains the combat-model specialization over the established `FFCombat.gd` board/runtime foundation; active play routes through `FFCombatVirus.gd`, which records successful Bite hits for lead/companion virus exposure without treating Scratch or generic damage as infection events.
+`FFThreeStatRules.gd` owns the three-stat catalog, weapon classes/profiles, and Agility movement/stealth/sprint math. `FFTacticalBalance.gd` owns tactical tuning using Combat/Agility only. `FFCombatThreeStat.gd` remains the combat-model specialization over the established `FFCombat.gd` board/runtime foundation; active play routes through `FFCombatExtraction.gd`, extending `FFCombatVirus.gd`, which records successful Bite hits for lead/companion virus exposure without treating Scratch or generic damage as infection events.
 
 ## Tactical world
 
@@ -81,15 +94,15 @@ Tactical scene lighting uses the actual settlement clock at encounter creation w
 
 ## Expedition logistics
 
-`FFExpeditionRules.gd` owns expedition distance bands, fixed route hours, 1–2 survivor party limits, travel-supply costs, the Very Far vehicle gate, zone caps, and expedition logistics.
+`FFExpeditionRules.gd` owns expedition distance bands, fixed route hours, single-survivor party limits, travel-supply costs, the Very Far vehicle gate, zone caps, and expedition logistics.
 
 **Every gate Send Out is tactical.** A normal outing is most often exploration, sometimes a zombie ambush, and only rarely a stranded survivor or dog/cat rescue. Rescue chance is deliberately distance-scaled so near-camp farming is weak: **Very Short = 5% total rescue chance (3% survivor + 2% pet), Short = 6%, Medium = 8%, Far = 10%, Very Far = 12%**. Both survivor and pet rescues become less rare as the party travels farther from camp, while survivor rescue remains slightly more common than pet rescue. **All non-ambush tactical outings use the same sparse 0–3 infected distribution:** 0 infected is rare (**10%**), 1 is common (**40%**), 2 is common (**40%**), and 3 is rare (**10%**). Distance, quiet exploration, and rescue subtype do not raise that non-ambush population above 3. Ambushes remain the separate high-pressure case at exactly **5 infected**. All tactical outing families still use physical loot containers, and only loot physically recovered before extraction comes home.
 
 The haul rule is literal: **expedition return never rolls or invents resources, components, or gear**. The only things added to camp inventory are items already recovered from tactical containers, harvested infected corpses, or explicit physical on-map pickups such as the marked Explore gear. Legacy text-field reward paths are no longer entered by production expeditions, including old compatibility travel events and post-tactical special-site reward screens. A rescued stranger can still reveal a location or join the camp, but cannot hand over fallback “bonus loot” that was never carried on the tactical board.
 
-The five route bands map onto the existing zones: **Camp Perimeter = Very Short / 3h**, **Nearby Streets = Short / 5h**, **Residential Blocks = Medium / 8h**, **Commercial Fringe = Far / 12h**, and **Industrial Edge = Very Far / 18h**. Very Short and Short have no travel-supply cost. Medium costs **1 Cooked Food + 1 Clean Water per survivor**; Far costs **2 + 2 per survivor**; Very Far costs **3 + 3 per survivor** and additionally requires the additive **Expedition Vehicle** unlock. Costs scale with party size. Medium and Far are reachable from the start; Very Far is the only route band locked by travel infrastructure.
+The five route bands map onto the existing zones: **Camp Perimeter = Very Short / 3h**, **Nearby Streets = Short / 5h**, **Residential Blocks = Medium / 8h**, **Commercial Fringe = Far / 12h**, and **Industrial Edge = Very Far / 18h**. Very Short and Short have no travel-supply cost. Medium costs **1 Cooked Food + 1 Clean Water per survivor**; Far costs **2 + 2 per survivor**; Very Far costs **3 + 3 per survivor** and additionally requires the additive **Expedition Vehicle** unlock. Costs apply to the solo survivor. Medium and Far are reachable from the start; Very Far is the only route band locked by travel infrastructure.
 
-Expedition parties may contain **one lead plus one companion**. The second survivor is a real tactical actor using the existing companion AI: they follow, fight, can be targeted/injured/killed, persist through tactical reload state, and must reach the extraction area with the lead. The gate exposes lead, optional companion, route, total supply cost, and launch in one phone-safe surface.
+New expeditions are **solo raids**. The gate shows the survivor, weapon/pack/condition, ammunition, paid Workbench resupply, route cost, and launch. Inherited companion mechanics remain only for safely resuming existing schema-8 two-person encounters; new standard/special-site launches clamp to one survivor.
 
 Travel supplies are committed at launch, but **route time is not advanced before tactical play**. The tactical map opens immediately at the current camp clock and settlement is hard-paused for the tactical encounter. After the tactical result is acknowledged, the expedition becomes **Away** for its full authored route-duration timer while ordinary camp time resumes. The away survivor(s) remain unavailable until that timer reaches zero; player-facing survivor/camp status shows the **in-game return ETA (Day + settlement clock)** rather than exposing raw real-second countdowns. Medium/Far/Very Far provisions continue covering the away party while that timer runs.
 
@@ -163,9 +176,9 @@ Treatment time does not depend on a removed Medical stat. Craft/build duration d
 
 ## Time / economy
 
-Settlement time has one direct authoritative clock with **no secondary speed multiplier**. `DAY_SECONDS := 300.0` means **12.5 real active seconds = 1 in-game hour** and **300 real active seconds / 5 minutes per in-game day**. Camp need decay, idle fatigue recovery, authored work-fatigue gains, sleep/exhaustion duration, fire decay, camp-condition decay, chatter/event cadence, and daily-life action durations are tuned against that clock. Standard expedition travel uses authored in-game hours directly: 3h = 37.5 settlement seconds, 5h = 62.5s, 8h = 100s, 12h = 150s, and 18h = 225s. Tactical turns are a separate frozen time scale. UI refresh and autosave remain real-time responsiveness concerns.
+Settlement time has one direct authoritative clock with **no secondary speed multiplier**. `DAY_SECONDS := 300.0` means **12.5 real active seconds = 1 in-game hour** and **300 real active seconds / 5 minutes per in-game day**. Camp need decay, idle fatigue recovery, authored work-fatigue gains, sleep/exhaustion duration, fire decay, camp-condition decay, chatter/event cadence, and daily-life action durations are tuned against that clock. Standard expedition travel uses authored in-game hours directly: 3h = 37.5 settlement seconds, 5h = 62.5s, 8h = 100s, 12h = 150s, and 18h = 225s. Real-time raid ticks use a separate clock while settlement time is frozen. UI refresh and autosave remain real-time responsiveness concerns.
 
-New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder carries **exactly one starter loot/gear item: the Utility Knife**. A built Workbench can craft basic gear including the Lock Pick; advanced Workbench recipes such as Crossbow/Hatchet/Sledgehammer are Armory-gated. A built Infirmary can craft Zombie Cure from 2 Zombie Corpses; all firearms plus Flashlight/Firecracker remain found-only. Survivors can carry **4 loot items without a pack**; found-only backpacks raise that individual capacity to **6 or 8**, and a two-survivor expedition pools both capacities on the tactical map. Capacity is pure item count: each recovered resource/component unit, including a Zombie Corpse, uses one slot; weight and item size do not change the 4/6/8 cap. Hatchet remains deliberately expensive and does not enter field loot until Commercial Fringe; Sledgehammer joins the same later melee tier. The former shared Ammo resource is retired; tactical reload/chamber state is the only ranged ammunition constraint.
+New games begin with three Cooked Food and three Clean Water so the founder has roughly three daily rations before shortages. The founder carries **one 6-Shot Revolver, with 6 loaded rounds and 12 spare rounds**. A built Workbench can craft basic gear including the Lock Pick; advanced Workbench recipes such as Crossbow/Hatchet/Sledgehammer are Armory-gated. A built Infirmary can craft Zombie Cure from 2 Zombie Corpses; replacement firearms plus Flashlight/Firecracker remain found-only. Survivors can carry **4 loot items without a pack**; found-only backpacks raise that individual capacity to **6 or 8**, and solo raids use that survivor's own capacity. Capacity is pure item count: each recovered resource/component unit, including a Zombie Corpse, uses one slot; weight and item size do not change the 4/6/8 cap. Hatchet remains deliberately expensive and does not enter field loot until Commercial Fringe; Sledgehammer joins the same later melee tier. The former shared Ammo resource is retired; finite loaded/spare ammunition persists on the equipped weapon across raids; a built Workbench resupplies it for 1 Scrap Metal.
 
 Fire Pit / Tavern conversions:
 - **1 Raw Food → 2 Cooked Food** at the starter fire
@@ -193,7 +206,7 @@ Canonical Godot source lives directly under `game/`; CI builds that directory di
 The active project seams are:
 - `project.godot` autoload → `GameSleepVirus.gd` → `GameThreeStat.gd` → `Game.gd`
 - `main.tscn` → `MainSleepVirus.gd` → `MainThreeStat.gd` → `Main.gd`
-- active tactical runtime → `FFCombatVirus.gd` → `FFCombatThreeStat.gd` → `FFCombat.gd`
+- active raid runtime → `FFCombatExtraction.gd` → `FFCombatVirus.gd` → `FFCombatThreeStat.gd` → `FFCombat.gd`
 - active survivor inspector → `FFInspectorVirus.gd` → `FFInspectorThreeStat.gd`
 - active living camp/menu renderer → `FFCampViewSleepVirus.gd` → `FFCampView.gd`
 - zombie-virus pure rules → `FFVirusRules.gd`
@@ -204,7 +217,7 @@ These wrappers keep the blast radius small while preserving the mature three-sta
 
 ## Frozen scope
 
-Pets, active camp work, authoritative sleep, zombie-virus consequences/treatment, **1–2 survivor tactical expeditions**, and the living camp as the primary menu surface are part of the approved final-system depth. A single Expedition Vehicle unlock exists only to gate Very Far travel; full vehicle driving/fuel simulation, parties larger than two, and 3D camp remain cut. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which play continues indefinitely.
+Pets, active camp work, authoritative sleep, zombie-virus consequences/treatment, **solo real-time extraction raids**, and the living camp as the primary menu surface are part of the approved final-system depth. A single Expedition Vehicle unlock exists only to gate Very Far travel; full vehicle driving/fuel simulation, multi-survivor raids, and 3D camp remain cut. Final population ceiling is **18**. Mature settlement remains **15+ living survivors + every building + an elected leader**, after which play continues indefinitely.
 
 ## Source-of-truth order
 

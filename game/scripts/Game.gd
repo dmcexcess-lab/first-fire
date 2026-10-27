@@ -1,5 +1,7 @@
 extends Node
 
+const ExtractionRules = preload("res://scripts/FFExtractionRules.gd")
+
 signal state_changed
 signal tick
 signal event_changed
@@ -145,7 +147,7 @@ func new_game():
     next_camp_chatter_at = rng.randf_range(CampLifeRules.CAMP_CHATTER_MIN_SECONDS, CampLifeRules.CAMP_CHATTER_MAX_SECONDS)
     sim_paused = false
     var founder = _generate_survivor(true)
-    founder["equipment"] = {"Weapon": "Utility Knife", "Secondary": "", "Clothing": "", "Pack": "", "Tool": ""}
+    founder["equipment"] = {"Weapon": "6-Shot Revolver", "Secondary": "", "Clothing": "", "Pack": "", "Tool": ""}
     founder["history"].append("Day 1 — Established First Fire.")
     survivors.append(founder)
     _add_history("Day 1 — %s established First Fire." % founder["name"])
@@ -857,6 +859,9 @@ func _work_duration(s, base):
 func _default_gear_state(gear_name: String) -> Dictionary:
     if not D.GEAR.has(gear_name):
         return {}
+    var ammo := ExtractionRules.weapon_state(gear_name)
+    if not ammo.is_empty():
+        return ammo
     var data: Dictionary = D.GEAR[gear_name]
     if gear_name == "Flashlight":
         return {"charge": float(data.get("charge_max", 100.0))}
@@ -1299,11 +1304,12 @@ func _begin_tactical_encounter(exp):
     combat_changed.emit()
     state_changed.emit()
 
-func update_combat_runtime(data):
+func update_combat_runtime(data, save_to_disk: bool = true):
     if current_combat.is_empty():
         return
     current_combat["runtime"] = data.duplicate(true)
-    save_game()
+    if save_to_disk:
+        save_game()
 
 func consume_combat_ammo(_amount):
     # Compatibility facade for older tactical code/saves. Current ranged
@@ -1384,7 +1390,7 @@ func _format_tactical_container_loot(value) -> String:
     return ", ".join(bits)
 
 func _commit_tactical_secondary_state(survivor, item_name: String, state_value) -> void:
-    if survivor == null:
+    if survivor == null or str(survivor.get("condition", "Dead")) == "Dead":
         return
     _normalize_survivor_equipment_state(survivor)
     var equipment: Dictionary = survivor.get("equipment", {})

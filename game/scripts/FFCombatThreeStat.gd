@@ -46,9 +46,9 @@ func restore_runtime():
             player_light_on = false
     runtime.erase("guarding")
 
-func persist_runtime():
+func persist_runtime(save_to_disk: bool = true):
     if not player.is_empty(): player["guarding"] = false
-    super.persist_runtime()
+    super.persist_runtime(false)
     runtime.erase("guarding")
     if not player.is_empty():
         runtime["sprinting"] = bool(player.get("sprinting", false))
@@ -56,7 +56,7 @@ func persist_runtime():
         runtime["weapon_needs_pump"] = bool(player.get("needs_pump", false))
         runtime["secondary_item"] = str(player.get("secondary", ""))
         runtime["secondary_state"] = player.get("secondary_state", {}).duplicate(true)
-        Game.update_combat_runtime(runtime)
+        Game.update_combat_runtime(runtime, save_to_disk)
 
 func view_range() -> int:
     # Weapon sightline matters for the ranged ladder. Darkness still contracts

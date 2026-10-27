@@ -5,12 +5,12 @@ func restore_runtime():
     stats["bite_hits"] = int(runtime.get("bite_hits", 0))
     stats["companion_bite_hits"] = int(runtime.get("companion_bite_hits", 0))
 
-func persist_runtime():
-    super.persist_runtime()
+func persist_runtime(save_to_disk: bool = true):
+    super.persist_runtime(false)
     runtime["bite_hits"] = int(stats.get("bite_hits", 0))
     runtime["companion_bite_hits"] = int(stats.get("companion_bite_hits", 0))
     runtime.erase("infected_hits")
-    Game.update_combat_runtime(runtime)
+    Game.update_combat_runtime(runtime, save_to_disk)
 
 func check_objective_and_exit():
     if str(context.get("kind", "")) == "rescue" and exit_cells.has(player.pos) and rescue_contacted and not rescuee.is_empty() and not bool(rescuee.get("dead", false)) and not rescuee_ready_to_extract():

@@ -1,0 +1,4 @@
+game/.godot/
+game/**/*.uid
+build/
+game/**/*.import

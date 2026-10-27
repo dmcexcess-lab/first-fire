@@ -1,6 +1,6 @@
 # First Fire — Architecture
 
-This document records the canonical module boundaries and where feature-freeze work belongs.
+This document records the canonical module boundaries and where extraction/base-sim work belongs.
 
 ## Canonical source
 
@@ -28,7 +28,7 @@ The former Scavenging, Survival, Medical, Technical, and Social stats are no lon
 
 `MainThreeStat.gd` remains the three-stat UI specialization over `Main.gd`. `MainSleepVirus.gd` is the **active main-scene script** and routes the living camp, inspector, and tactical runtime to their sleep/virus-aware wrappers.
 
-`FFCombatThreeStat.gd` remains the active combat-model specialization over `FFCombat.gd`; `FFCombatVirus.gd` is the final active tactical wrapper and records successful Bite hits for lead/companion virus exposure plus rescue-extraction ordering protection. Scratches never enter the virus pipeline.
+`FFCombatThreeStat.gd` remains the active combat-model specialization over `FFCombat.gd`; `FFCombatVirus.gd` is the inherited virus layer and records successful Bite hits for lead/companion virus exposure plus rescue-extraction ordering protection. Scratches never enter the virus pipeline.
 
 `FFInspectorThreeStat.gd` remains the three-stat survivor/item presentation foundation; `FFInspectorVirus.gd` is the active inspector wrapper and adds zombie-virus status, the early amputation decision, Zombie Cure use, forced-rest quarantine, and medical-item explanations.
 
@@ -70,7 +70,19 @@ Legacy concise roster/dashboard implementation retained as an internal reusable 
 Established tactical board/runtime foundation: map state, actors, infected, vision/fog, facing, sound propagation, doors/glass/hazards, **locked door / locked optional-container state**, physical loot-container state, **party-pooled item-slot carry capacity (4 base per survivor; packs raise it to 6 or 8)**, harvestable killed-infected corpses, objectives, survivor/pet rescue escort state, persistence, and rendering integration. Lock picking consumes the equipped persistent Lock Pick state rather than an abstract skill roll.
 
 ### `FFCombatThreeStat.gd`
-Current combat rules: Combat/Agility attack and movement behavior, Stealth, Sprint, Forward, Shove, **magazine/chamber reloads with no camp Ammo resource**, Pump Shotgun cycling, distance-based ranged hit falloff, physical Crossbow/shotgun projectile range, multi-projectile shotgun cones, active off-hand use/Flashlight drain/Firecracker lure, weapon-class handling, and no armor mitigation.
+Current combat rules: Combat/Agility attack and movement behavior, Stealth, Sprint, Forward, Shove, **magazine/chamber reloads with finite weapon ammunition and no shared camp Ammo resource**, Pump Shotgun cycling, distance-based ranged hit falloff, physical Crossbow/shotgun projectile range, multi-projectile shotgun cones, active off-hand use/Flashlight drain/Firecracker lure, weapon-class handling, and no armor mitigation.
+
+### `FFExtractionRules.gd` and `FFCombatExtraction.gd`
+
+`FFExtractionRules` owns pure real-time tick conversion, fixed-step cadence, three-second extraction progress, finite loaded/reserve weapon state and reserve-transfer reload math, plus the shared Scrap Metal resupply cost. It depends on the established weapon catalog.
+
+`FFCombatExtraction` is the production raid runtime over `FFCombatVirus` → `FFCombatThreeStat` → `FFCombat`. It owns the independent infected/escort scheduler, separate movement/action recovery deadlines, held touch/keyboard input, cardinal hitscan fire, finite reloads, explicit pause/focus handling, extraction hold, and raid HUD. It reuses authored geometry, physical containers, visibility, sound propagation, damage, virus tracking and result payloads. Input never advances the world timeline; only the fixed-step clock does. The older `commit_action` turn scheduler remains an inherited implementation detail and is not entered by production raids.
+
+`Game` owns default weapon item state and existing stash transfer/I/O. `GameSleepVirus.rearm_survivor` validates home availability, Workbench, cost and gun state before consuming Scrap Metal. `GameSleepVirus.resolve_combat` removes equipped kit on failed raids; existing expedition code remains the sole owner of wounds, death, pending returns and haul deposition. `MainSleepVirus` selects the raid runtime and presents solo loadout/resupply. `FFExpeditionRules.MAX_PARTY_SIZE` is 1 for all new launches.
+
+Raid snapshots add weapon reserve, action/movement recovery ticks, extraction progress, raid outcome counters and serialized RNG state to existing runtime; persistent gun ammunition uses `equipment_state.Weapon` and follows guns through communal storage. Save schema remains 8. Persistence wrappers build one complete snapshot before one disk write, using the optional `save_to_disk` forwarding argument rather than saving each intermediate inheritance layer. No settlement state advances while an encounter exists.
+
+`ci/FFExtractionSmoke.gd` executes the real autoload, production launch, raid runtime and disk save/load. It checks idle infected actions, input cooldowns, simultaneous movement/fire, physical haul escrow, extraction hold, Away return/deposit-once, paid resupply, empty-gun stash/new-raid persistence and death/kit loss. Pages CI runs it in addition to architecture/startup/export gates.
 
 ### `FFCombatVirus.gd`
 Thin active tactical wrapper. Counts **successful Bite hits only** for the controlled survivor and optional expedition companion, persists/returns those bite counts, and prevents a contacted living rescue from being failed merely because the player reaches the exit before the escort's next scheduled movement. Scratch and generic physical damage never enter virus exposure tracking.
@@ -157,7 +169,7 @@ Detailed survivor/item inspection also pauses settlement simulation while open a
 
 ## Frozen scope
 
-The living 2D camp is the final presentation and primary home/menu surface. Pets, active camp duties, authoritative sleep, zombie-virus consequence/treatment depth, and **1–2 survivor tactical expeditions** are approved gameplay. The second expedition survivor uses the existing on-map companion AI. A single Expedition Vehicle unlock gates Very Far travel, but full vehicle driving/fuel logistics, parties larger than two, and 3D camp rendering remain cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
+The living 2D camp is the final presentation and primary home/menu surface. Pets, active camp duties, authoritative sleep, zombie-virus consequence/treatment depth, and **solo real-time extraction raids** are approved gameplay. New standard and special-site raids are solo; inherited companion support only resumes existing encounters. A single Expedition Vehicle unlock gates Very Far travel, but full vehicle driving/fuel logistics, multi-survivor raids, and 3D camp rendering remain cut. The hard population ceiling is 18; the mature-settlement milestone remains 15+ living survivors + all planned buildings + an elected leader, after which play continues indefinitely.
 
 ## Save boundary
 

@@ -120,7 +120,7 @@ func _advance_settlement_simulation(amount: float, include_expeditions: bool = t
         remaining -= step
 
 func _process(delta):
-    if not initialized or sim_paused or game_over:
+    if not initialized or sim_paused or game_over or not current_combat.is_empty():
         return
     var camp_delta := float(delta)
     _advance_settlement_simulation(camp_delta, true, true)
@@ -1002,6 +1002,13 @@ func resolve_combat(result):
                     if _expose_survivor(companion, "%d infected bite%s while accompanying an expedition" % [companion_bites, "" if companion_bites == 1 else "s"]):
                         companion["stress"] = minf(100.0, float(companion.get("stress", 0.0)) + 10.0)
                         toast_requested.emit("%s was exposed to the zombie virus by a bite." % companion["name"])
+    if str(result.get("outcome", "dead")) != "escaped":
+        for sid in current_combat.get("survivor_ids", []):
+            var lost: Variant = get_survivor(int(sid))
+            if lost != null:
+                for slot in lost.get("equipment", {}).keys():
+                    lost["equipment"][slot] = ""
+                lost["equipment_state"] = {}
     super.resolve_combat(result)
 
 func _resolve_daily_rations() -> void:
@@ -1102,3 +1109,24 @@ func _process_daily_virus() -> void:
                 toast_requested.emit("%s is feverish. Only a Zombie Cure can stop the turn now." % survivor["name"])
             "terminal":
                 _kill_survivor(survivor, "turned after zombie-virus infection")
+
+# Resupply is an explicit camp action. It competes with construction/crafting
+# for recovered Scrap Metal and cannot refill a weapon carried in a raid.
+func rearm_survivor(sid: int) -> bool:
+    var survivor: Variant = get_survivor(sid)
+    if survivor == null or not survivor_can_assign(survivor) or not current_combat.is_empty():
+        return false
+    if not bool(buildings.get("Workbench", false)) or int(resources.get("Scrap Metal", 0)) < ExtractionRules.REARM_SCRAP_COST:
+        return false
+    var weapon_name := str(survivor.get("equipment", {}).get("Weapon", ""))
+    var full := ExtractionRules.weapon_state(weapon_name)
+    if full.is_empty():
+        return false
+    _normalize_survivor_equipment_state(survivor)
+    if ExtractionRules.weapon_state(weapon_name, survivor["equipment_state"].get("Weapon", {})) == full:
+        return false
+    resources["Scrap Metal"] = int(resources["Scrap Metal"]) - ExtractionRules.REARM_SCRAP_COST
+    survivor["equipment_state"]["Weapon"] = full
+    save_game()
+    state_changed.emit()
+    return true

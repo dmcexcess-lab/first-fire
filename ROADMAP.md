@@ -1,10 +1,27 @@
-# First Fire — Beta Candidate Roadmap
+# First Fire — Extraction + Base Sim Roadmap
 
-First Fire is now in **feature freeze** and shelved for Beta testing/release work. The game loop and its final feature set are decided. Work from here to 1.0 is completion, balance, verification, packaging, and bug fixing—not new pillars.
+The October 26, 2026 user direction supersedes the former Beta feature freeze for field combat. First Fire is becoming an extraction-shooter + base-sim hybrid while preserving useful camp simulation. Ship one coherent solo loop before widening scope.
 
-## Final game loop
+## Vertical slice 1 — implemented
 
-**Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare a one- or two-survivor expedition → choose a distance and commit any party-scaled supplies → tactical field situation immediately → escape with physically recovered resources/rescues → advance the authored route hours on return → come back to a visibly changing camp → repeat.**
+- Production solo raids run in real time on the existing authored maps; infected move/attack without input and the camp remains frozen.
+- Touch movement and fire can be held together; tap-to-aim/fire, reload, use/search, melee/shove, stealth, sprint, tools and explicit pause are visible.
+- Founder starts with one finite-ammunition Revolver. Weapon ammo persists through raids, saves and stash swaps; resupply needs the Workbench and recovered Scrap Metal.
+- Extraction requires a three-second exit hold, with optional physical loot/rescue goals. Death loses the persistent survivor and kit; a successful haul remains on the Away journey until actual return.
+- Existing camp housing, work, needs, social/political life, crafting, medicine and recruitment remain the progression backbone. No save wipe.
+- Deterministic production integration smoke joins the permanent Pages gates.
+
+## Next bounded passes
+
+1. Playtest the real-time grid combat on actual phones: touch reach, held-input reliability, gun cadence, infected pursuit and extraction pressure.
+2. Improve route-specific loot/loadout decisions and raid debrief clarity using existing inventories and buildings.
+3. Deepen a small number of authored maps and investigate continuous movement only after this loop's pacing is proven.
+
+PvP, human shooter factions, traders, contracts and a larger metagame are not implemented or prerequisites for this slice. The remaining older content-depth items below apply only where consistent with the solo real-time direction.
+
+## Current game loop
+
+**Watch the living camp → notice needs/shortages → inspect or assign survivors in-world → prepare a single-survivor raid → choose a distance and commit any route supplies → real-time field raid immediately → escape with physically recovered resources/rescues → advance the authored route hours on return → come back to a visibly changing camp → repeat.**
 
 The living camp is the primary home/menu surface. The old CAMP / CRAFT / BUILD / SURVIVORS tab bar is retired from active play rather than preserved as parallel navigation. On phones the camp is zoomed and pannable so structures and people remain readable instead of shrinking the full 18×11 settlement into one strip. Normal management starts by touching the camp itself: survivors open inspection and deliberate assignments, the communal stash opens inventory/resources, the First Fire provides survival crafting, the work board owns camp expansion, built crafting stations expose their recipe sets, and the camp edge/gate owns expedition dispatch. The starter scene is mostly wilderness; future construction locations are not shown as empty placeholders until work begins. Contextual sheets may reuse mature underlying UI logic, but they are entered from physical camp objects and return to the camp.
 
@@ -18,8 +35,8 @@ These are no longer planned for First Fire:
 
 - 3D camp rendering—the living 2D tactical-style camp is the final camp presentation and home/menu surface;
 - full vehicle driving/fuel/maintenance logistics beyond the single Expedition Vehicle unlock used to gate Very Far travel;
-- expedition parties larger than two survivors;
-- additional foundational game modes or feature pillars.
+- expedition multi-survivor raids survivors;
+- unrelated foundational modes beyond the approved extraction/base-sim direction.
 
 Removing these is intentional scope control, not deferred work.
 
@@ -57,7 +74,7 @@ Keep deepening the existing tactical language rather than adding another combat 
 
 **Next tactical overhaul slice:** treat combat/stealth, infected AI, sound, tactical environment scale, and presentation as one cohesive pass. Rework melee/firearm/stealth readability and decision quality; deepen infected perception, investigation, pursuit and mob behavior without making lone infected tanky; upgrade sound propagation and player-facing sound feedback; expand actual tactical geometry by expedition distance so farther routes are physically larger rather than merely denser; then raise visual atmosphere/readability with stronger lighting/effects and evaluate restrained bloom/glow where Godot Web/mobile performance supports it. Preserve portrait touch usability and extraction-first play throughout.
 
-Current encounter-population contract is intentionally sparse across ordinary outings: **every non-ambush tactical encounter uses 0–3 infected with weights 10% / 40% / 40% / 10% for 0 / 1 / 2 / 3**, so one or two infected are normal while empty and three-infected maps are uncommon. **Ambushes remain exactly 5 infected.** Rescue-objective frequency, not infected count, scales with distance: total survivor/pet rescue chance rises **5% / 6% / 8% / 10% / 12%** from Very Short through Very Far, preventing Very Short recruit farming while rewarding deeper travel. Individual infected remain weak; danger scales through mob pressure and higher density instead of sponge HP/damage. Durability is held to roughly **7–10 HP** so the melee ladder stays readable: **fists 3–5 hits → Utility Knife 2–3 → ordinary 1H melee 2 → ordinary 2H melee 1–2 → Sledgehammer 1 → rare/expensive Hatchet 1**. Ranged progression is now magazine/reload based with **no camp Ammo resource**: Crossbow 1-shot reload / 2–3-hit medium range; 6-shot Revolver and 12-shot Automatic with short optimal range but fire-to-vision falloff; **one-handed** 2-shot Double-Barrel Shotgun with 3 tight physical-range projectiles; 6-shot Pump Shotgun with explicit pump action and 5 wider physical-range projectiles; 20-round Medium Rifle; 5-round Long Rifle. Infected attacks split into frequent/high-hit/low-damage **Scratch** and rare/low-hit/high-damage **Bite**. **Only successful Bite can transmit the virus**, with an independent fixed **3% chance per bite** and no stacked/scaling infection percentage. Searchable-container targets are deliberately scarce at **1–2 Very Short / 2–3 Short**, then rise to **3–5 / 4–6 / 5–7** for Medium / Far / Very Far. Maps expose a random subset of their authored search points each visit; searched containers may be empty, and real container families constrain loot (food/water vs salvage vs medical-capable cabinets). Zone depletion now raises physical empty-container odds. Tactical locks also scale upward with distance; the **found-or-crafted Lock Pick has 1–3 uses**.
+Current encounter-population contract is intentionally sparse across ordinary outings: **every non-ambush tactical encounter uses 0–3 infected with weights 10% / 40% / 40% / 10% for 0 / 1 / 2 / 3**, so one or two infected are normal while empty and three-infected maps are uncommon. **Ambushes remain exactly 5 infected.** Rescue-objective frequency, not infected count, scales with distance: total survivor/pet rescue chance rises **5% / 6% / 8% / 10% / 12%** from Very Short through Very Far, preventing Very Short recruit farming while rewarding deeper travel. Individual infected remain weak; danger scales through mob pressure and higher density instead of sponge HP/damage. Durability is held to roughly **7–10 HP** so the melee ladder stays readable: **fists 3–5 hits → Utility Knife 2–3 → ordinary 1H melee 2 → ordinary 2H melee 1–2 → Sledgehammer 1 → rare/expensive Hatchet 1**. Ranged progression is now magazine/reload based with **finite weapon ammunition and no shared camp Ammo resource**: Crossbow 1-shot reload / 2–3-hit medium range; 6-shot Revolver and 12-shot Automatic with short optimal range but fire-to-vision falloff; **one-handed** 2-shot Double-Barrel Shotgun with 3 tight physical-range projectiles; 6-shot Pump Shotgun with explicit pump action and 5 wider physical-range projectiles; 20-round Medium Rifle; 5-round Long Rifle. Infected attacks split into frequent/high-hit/low-damage **Scratch** and rare/low-hit/high-damage **Bite**. **Only successful Bite can transmit the virus**, with an independent fixed **3% chance per bite** and no stacked/scaling infection percentage. Searchable-container targets are deliberately scarce at **1–2 Very Short / 2–3 Short**, then rise to **3–5 / 4–6 / 5–7** for Medium / Far / Very Far. Maps expose a random subset of their authored search points each visit; searched containers may be empty, and real container families constrain loot (food/water vs salvage vs medical-capable cabinets). Zone depletion now raises physical empty-container odds. Tactical locks also scale upward with distance; the **found-or-crafted Lock Pick has 1–3 uses**.
 
 Continue completion work around:
 - recognizable locations;
@@ -70,7 +87,7 @@ Continue completion work around:
 
 ### Items and crafting
 
-Every active `FFData.GEAR` item must be represented in the finished equipment loop. Crafting covers survival gear, the **Crossbow**, and the **Lock Pick**; **all firearms are field-found only**. Flashlight and Firecracker are also field-found only; Lock Pick may be found or crafted and lasts **1–3 unlocks**. Backpacks are **field-found only** and define the carry ladder: **4 loot-item slots with no pack, 6 with common packs, 8 with better packs**; a two-survivor tactical party pools both survivors' capacity. Carry is count-only: one recovered resource/component unit equals one slot, with no weight or item-size calculation. The former Ammo resource is retired; ranged pressure comes from magazine/chamber size, reload time, Pump Shotgun cycling, accuracy falloff, and physical projectile range where authored. Hatchet remains deliberately expensive/late because it is the one-hit 1H melee tier.
+Every active `FFData.GEAR` item must be represented in the finished equipment loop. Crafting covers survival gear, the **Crossbow**, and the **Lock Pick**; **all replacement firearms are field-found only**. Flashlight and Firecracker are also field-found only; Lock Pick may be found or crafted and lasts **1–3 unlocks**. Backpacks are **field-found only** and define the carry ladder: **4 loot-item slots with no pack, 6 with common packs, 8 with better packs**; solo raids use the selected survivor's capacity. Carry is count-only: one recovered resource/component unit equals one slot, with no weight or item-size calculation. The shared Ammo resource remains retired; ranged pressure now includes finite loaded/spare rounds carried persistently on each gun and Workbench resupply for 1 Scrap Metal, alongside reload time, pump cycling and authored range/falloff. Hatchet remains deliberately expensive/late because it is the one-hit 1H melee tier.
 
 **No expedition has an abstract post-run haul.** Standard runs, legacy-compatible runs, and resolved tactical special sites must not roll extra resources/gear after extraction. Camp inventory changes only from tactical container/corpse/on-map pickup results that were physically recovered and carried out. Narrative field events may reveal information or people, not mint scavenged supplies outside the tactical board.
 

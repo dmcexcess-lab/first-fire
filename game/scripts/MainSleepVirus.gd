@@ -1,6 +1,6 @@
 extends "res://scripts/MainThreeStat.gd"
 
-const CombatVirus = preload("res://scripts/FFCombatVirus.gd")
+const CombatVirus = preload("res://scripts/FFCombatExtraction.gd")
 const InspectorVirus = preload("res://scripts/FFInspectorVirus.gd")
 const CampViewSleepVirus = preload("res://scripts/FFCampViewSleepVirus.gd")
 const CampChoreMinigame = preload("res://scripts/FFCampChoreMinigame.gd")
@@ -21,7 +21,7 @@ const CAMP_TUTORIAL_STEPS := [
     },
     {
         "title": "LEAVE THROUGH THE GATE",
-        "body": "Tap the gate to build a one- or two-survivor expedition, choose the distance, review travel supplies, then leave. Outside, tactical movement, darkness, sound, wounds, infection, loot, rescue and extraction determine what comes home."
+        "body": "Tap the gate to prepare a solo raid. Check ammunition, gear and travel supplies. Outside, infected act in real time. Search containers, fire or evade, then hold an exit for 3 seconds. Surviving raids bring supplies home after the return trip."
     },
 ]
 
@@ -384,7 +384,7 @@ func _prepare_gate_context(preferred_id: int = -1) -> void:
     gate_zone_index = 0
 
 func _draw_gate_context() -> void:
-    _draw_context_header("CAMP GATE", "Build a 1–2 survivor expedition. Supplies are committed when you leave, tactical starts immediately, then the party stays Away until its in-game return ETA.")
+    _draw_context_header("CAMP GATE", "Prepare one survivor for a real-time raid. Supplies are committed at launch. Escape with physical loot, then return to camp at the shown in-game ETA.")
     if gate_survivor_ids.is_empty():
         content_box.add_child(_make_label("No survivor is currently free to leave camp.", 13))
         return
@@ -421,32 +421,17 @@ func _draw_gate_context() -> void:
     inspect.pressed.connect(_open_survivor_inspector.bind(survivor_id))
     content_box.add_child(inspect)
 
-    _normalize_gate_companion()
-    var companion_candidates := _gate_companion_candidates()
-    var companion_row := HBoxContainer.new()
-    if companion_candidates.size() > 1:
-        var companion_prev := Button.new()
-        companion_prev.text = "PREV"
-        companion_prev.custom_minimum_size = Vector2(64, 44)
-        companion_prev.pressed.connect(_cycle_gate_companion.bind(-1))
-        companion_row.add_child(companion_prev)
-    var companion_text := "COMPANION — SOLO"
-    if gate_companion_id >= 0:
-        var companion: Variant = Game.get_survivor(gate_companion_id)
-        if companion != null:
-            companion_text = "COMPANION — %s" % str(companion.get("name", "Survivor"))
-    var companion_label := _make_label(companion_text, 12)
-    companion_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    companion_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    companion_row.add_child(companion_label)
-    if companion_candidates.size() > 1:
-        var companion_next := Button.new()
-        companion_next.text = "NEXT"
-        companion_next.custom_minimum_size = Vector2(64, 44)
-        companion_next.pressed.connect(_cycle_gate_companion.bind(1))
-        companion_row.add_child(companion_next)
-    content_box.add_child(companion_row)
-    content_box.add_child(_make_label("Party %d / 2 • The companion follows and fights on the tactical map." % (2 if gate_companion_id >= 0 else 1), 11))
+    gate_companion_id = -1
+    content_box.add_child(_make_label("SOLO RAID • Equipped kit and carried loot are lost on death.", 12))
+    var ammo := Game.ExtractionRules.weapon_state(str(equipment.get("Weapon", "")), survivor.get("equipment_state", {}).get("Weapon", {}))
+    if not ammo.is_empty():
+        content_box.add_child(_make_label("Ammunition: %d loaded + %d spare" % [int(ammo.loaded), int(ammo.reserve)], 12))
+        var rearm := Button.new()
+        rearm.text = "RESUPPLY • 1 Scrap Metal • Workbench"
+        rearm.custom_minimum_size = Vector2(0, 44)
+        rearm.disabled = not bool(Game.buildings.get("Workbench", false)) or int(Game.resources.get("Scrap Metal", 0)) < Game.ExtractionRules.REARM_SCRAP_COST or ammo == Game.ExtractionRules.weapon_state(str(equipment.get("Weapon", "")))
+        rearm.pressed.connect(_rearm_from_gate.bind(survivor_id))
+        content_box.add_child(rearm)
 
     content_box.add_child(_separator())
     if gate_zone_names.is_empty():
@@ -494,9 +479,9 @@ func _draw_gate_context() -> void:
     elif not can_pay:
         content_box.add_child(_make_label("Not enough Cooked Food / Clean Water for this party.", 12))
     else:
-        content_box.add_child(_make_label("Launches directly into an Explore, Ambush, or rare Rescue tactical map.", 11))
+        content_box.add_child(_make_label("Real-time raid. Search physical containers; hold an exit for 3 seconds.", 11))
     var leave := Button.new()
-    leave.text = "ROUTE LOCKED" if not unlocked else ("NEED TRAVEL SUPPLIES" if not can_pay else "PLAY EXPEDITION")
+    leave.text = "ROUTE LOCKED" if not unlocked else ("NEED TRAVEL SUPPLIES" if not can_pay else "PLAY RAID")
     leave.custom_minimum_size = Vector2(0, 48)
     leave.disabled = not unlocked or not can_pay
     leave.pressed.connect(_leave_from_gate)
@@ -524,15 +509,7 @@ func _draw_gate_context() -> void:
         content_box.add_child(site_button)
 
 func _gate_companion_candidates() -> Array:
-    var result: Array = [-1]
-    if gate_survivor_ids.is_empty():
-        return result
-    var lead_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
-    for sid_value in gate_survivor_ids:
-        var sid := int(sid_value)
-        if sid != lead_id:
-            result.append(sid)
-    return result
+    return [-1]
 
 func _normalize_gate_companion() -> void:
     var candidates := _gate_companion_candidates()
@@ -881,3 +858,7 @@ func _assign_daily_chore(chore_id: String) -> void:
     if Game.assign_daily_chore(chore_id, selected_worker_id):
         _open_chore_minigame(chore_id)
 
+
+func _rearm_from_gate(survivor_id: int) -> void:
+    Game.rearm_survivor(survivor_id)
+    _refresh_content()

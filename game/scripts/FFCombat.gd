@@ -745,7 +745,7 @@ func arr_to_v2i(value, fallback: Vector2i) -> Vector2i:
         return Vector2i(int(value[0]), int(value[1]))
     return fallback
 
-func persist_runtime():
+func persist_runtime(save_to_disk: bool = true):
     if not initialized:
         return
     var zsave := []
@@ -811,7 +811,7 @@ func persist_runtime():
         "broken_glass": broken_glass,
         "removed_barrels": removed_barrels
     }
-    Game.update_combat_runtime(runtime)
+    Game.update_combat_runtime(runtime, save_to_disk)
 
 func _input(e):
     if not visible or not initialized:

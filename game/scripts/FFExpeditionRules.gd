@@ -1,7 +1,7 @@
 extends RefCounted
 class_name FFExpeditionRules
 
-const MAX_PARTY_SIZE := 2
+const MAX_PARTY_SIZE := 1
 const VEHICLE_UNLOCK_FLAG := "expedition_vehicle_unlocked"
 const STARTING_ROUTES := ["Camp Perimeter", "Nearby Streets", "Residential Blocks", "Commercial Fringe"]
 const ROUTE_HOURS := {
