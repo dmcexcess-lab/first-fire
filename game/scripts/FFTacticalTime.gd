@@ -34,32 +34,9 @@ static func attack_cost(actor: Dictionary, base_cost: int) -> int:
     multiplier -= minf(0.10, float(combat) * 0.012)
     return clampi(int(round(float(base_cost) * multiplier)), maxi(45, int(float(base_cost) * 0.78)), int(float(base_cost) * 1.55))
 
-static func zombie_profile(rng: RandomNumberGenerator, look: Dictionary) -> Dictionary:
-    var family := str(look.get("family", "civilian"))
-    var pace := 118
-    var mass := "MED"
-    match family:
-        "heavy":
-            pace = 154
-            mass = "HEAVY"
-        "decayed":
-            pace = 132
-            mass = "LIGHT"
-        "worker":
-            pace = 126
-            mass = "HEAVY"
-        "service":
-            pace = 112
-            mass = "LIGHT"
-        "medical":
-            pace = 119
-            mass = "MED"
-        _:
-            pace = 118
-            mass = "MED"
-    pace += rng.randi_range(-12, 13)
-    var attack_cost := pace + rng.randi_range(-8, 22)
-    return {"pace": clampi(pace, 90, 178), "attack_cost": clampi(attack_cost, 100, 195), "mass": mass}
+static func zombie_profile(_rng: RandomNumberGenerator, _look: Dictionary) -> Dictionary:
+    # Appearance is cosmetic. Every infected has the same physical profile.
+    return {"pace": 125, "attack_cost": 135, "mass": "MED"}
 
 static func zombie_move_cost(zombie: Dictionary) -> int:
     return clampi(int(zombie.get("pace", 125)), 90, 185)

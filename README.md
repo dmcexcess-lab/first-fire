@@ -41,7 +41,8 @@ Survivors are persistent individuals. Their skills, gear, health, fatigue, stres
 
 ## Design direction
 
-The current raid is a bounded 60×54 connected neighborhood with three depth bands, four discoverable exits, two-action turns, persistent zombies, stealth, sound-driven investigation and physical loot. Deeper areas have more zombies and richer loot; returning alive remains the objective. It is the first playable implementation of this direction, with further map depth and mobile playtesting planned.
+Each raid generates a new large Country, Suburbs or City map with 4–7 random extraction points. Ordinary fragile zombies are pre-placed at biome-specific density; noise draws crowds, and the zombie phase moves them together in two simultaneous beats. You guide the camp: its needs, morale, housing and elected leaders persist, and even losing every camper leaves a place that a future arrival can resettle. Field supplies remain the five basic resources plus equipment, with other supplies produced in camp.
+
 
 See [`ROADMAP.md`](ROADMAP.md) for the development sequence.
 

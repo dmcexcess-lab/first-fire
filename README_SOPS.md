@@ -64,7 +64,9 @@ Important current owners:
 
 - `FFCombatTurn.gd` — active AP/turn scheduler, world interactions, extraction and touch presentation.
 - `FFTurnRules.gd` — AP and movement-range tuning.
-- `FFTacticalWorld.gd` — connected neighborhood and depth-band geometry.
+- `FFProceduralWorld.gd` — seeded country/suburb/city geography, biome density and random exfils.
+- `FFHordeTurn.gd` — pure simultaneous movement/collision resolution.
+- `FFTacticalWorld.gd` — geometry for already-open legacy neighborhood saves.
 - `FFCombatExtraction.gd` — inherited ammunition/equipment seam.
 - `FFExtractionRules.gd` — finite weapon ammunition, reload transfer and resupply tuning.
 - `FFCombat.gd` — shared map/physical tactical mechanics.
@@ -212,7 +214,7 @@ A change may be called CI-good only when the exact target SHA passes:
 3. **Import and parse Godot project**;
 4. **Architecture smoke test** (`FIRST_FIRE_ARCHITECTURE_SMOKE_OK`);
 5. **Startup smoke test** of the real main project;
-6. **Extraction raid integration smoke test** (`FIRST_FIRE_EXTRACTION_SMOKE_OK`);
+6. **Extraction raid integration smoke test** (`FIRST_FIRE_EXTRACTION_SMOKE_OK`) plus **Procedural world/horde/empty-camp smoke** (`FIRST_FIRE_WORLD_HORDE_SMOKE_OK`);
 7. **Web export**;
 8. log rejection for `SCRIPT ERROR`, `Parse Error`, or `Failed to load script`;
 9. Pages artifact upload;
@@ -234,7 +236,7 @@ Important bugs should leave behind a cheaper future check when practical.
 ## 13. Product rules to preserve unless explicitly changed
 
 - simulation-first zombie survival/extraction feel;
-- infected weapon ladder is authored around fragile 7–10 HP bodies: fists 3–5 hits, Utility Knife 2–3, standard 1H melee 2, standard 2H melee 1–2, Sledgehammer 1, rare/expensive Hatchet 1; Crossbow is a one-shot/reload 2–3-hit medium-range weapon; firearms are found-only except the founder's starter Revolver and use magazines/reloads with finite weapon ammunition and no shared camp Ammo resource—6-shot Revolver / 12-shot Automatic (short optimum), **one-handed 2-shot Double-Barrel** / 6-shot Pump Shotgun (physical pellet range; 3 tight vs 5 wide projectiles, Pump requires cycling), 20-round Medium Rifle, and 5-round Long Rifle; all non-shotgun firearms may fire to any visible target with accuracy falloff by distance;
+- infected weapon ladder is authored around identical fragile 8-HP bodies: fists 3–4 hits, Utility Knife 2, standard 1H melee 2, standard 2H melee 1–2, Sledgehammer 1, rare/expensive Hatchet 1; Crossbow is a one-shot/reload 2-hit medium-range weapon; firearms are found-only except the founder's starter Revolver and use magazines/reloads with finite weapon ammunition and no shared camp Ammo resource—6-shot Revolver / 12-shot Automatic (short optimum), **one-handed 2-shot Double-Barrel** / 6-shot Pump Shotgun (physical pellet range; 3 tight vs 5 wide projectiles, Pump requires cycling), 20-round Medium Rifle, and 5-round Long Rifle; all non-shotgun firearms may fire to any visible target with accuracy falloff by distance;
 - individual infected stay weak and mob density creates pressure;
 - active off-hand items are Flashlight, Lock Pick, and Firecracker: Flashlight and Firecracker are found-only; Lock Pick can be found or crafted and breaks after **1–3 uses**; Flashlight charge depletes and Firecracker is single-use; tactical maps may contain locked doors and optional locked containers;
 - survivors have **4 tactical loot slots by default**; found-only backpacks raise that per-survivor capacity to **6 or 8**, with one survivor carrying their own capacity; each recovered resource unit or equipment item uses one slot, with no weight/size calculation;
@@ -244,13 +246,16 @@ Important bugs should leave behind a cheaper future check when practical.
 - fatigue rises from productive camp work and expeditions, falls naturally while survivors are idle in camp, and at **100 fatigue** forces a **3–5 in-game-hour** bed rest that returns fatigue to 0;
 - new raid containers yield **Wood, Scrap Metal, Plastic, Raw Food and Dirty Water**; other supplies are made in camp, while equipment can be found physically; the Workbench makes Cloth, Hardware, Seeds and First Aid Kits, and the Infirmary crafts Zombie Cure from camp supplies;
 - infected attacks split into high-hit/low-damage Scratch and low-hit/high-damage Bite; only successful Bite can roll a fixed small per-bite virus exposure chance;
-- no AI director spawning threats simply to manufacture drama; **authored camp pressure events are allowed** as a bounded settlement system: zombie breaches/weather/spoilage/social crises use the existing narrative event queue, include RP/resource choices, and may have persistent destructive consequences; zombie-breach fate is a stored luck roll modified by built security infrastructure, never survivor stats or player tactical skill;
+- no AI director spawning threats simply to manufacture drama; **authored camp pressure events are allowed** as a bounded settlement system: zombie breaches/weather/spoilage/social crises use the existing narrative event queue, include RP/resource choices, and may have persistent destructive consequences; zombie-breach fate is a stored luck roll modified by built security infrastructure, never survivor stats or player tactical skill; an elected Watchful leader adds 10 to the safety roll;
+- the player is the camp; an empty roster does not end the settlement, and arrivals still respect housing/the 18-person ceiling;
+- new raids generate independent large Country/Suburbs/City maps with random exfils; old fixed routes apply only to existing saved raids;
+- zombies resolve from shared occupancy snapshots and animate their movement together; positions/outcomes are saved before presentation;
 - persistent consequences;
 - no conventional player-level power ladder;
 - use-based skills, equipment, condition, camp infrastructure;
 - outside-world physical events are moving entirely to tactical encounters;
 - camp story/politics events remain narrative/dialogue;
-- tactical encounters pause settlement simulation; after tactical resolution the expedition remains **Away** and its authored route-duration timer counts down in normal resumed camp time; recovered loot/recruits/pets do not enter camp until actual return; camp events and fresh maintenance incidents require at least one living survivor physically home;
+- tactical encounters pause settlement simulation; after tactical resolution the expedition remains **Away** and its authored route-duration timer counts down in normal resumed camp time; recovered loot/recruits/pets do not enter camp until actual return; resident camp events and fresh maintenance incidents require someone home; an empty camp continues and can receive an arrival offer based on condition/fire/infrastructure;
 - survivor social behavior is autonomous rather than conversation micromanagement;
 - new standard/special-site expeditions support a **single-survivor turn-based raid**; inherited companion mechanics exist only for resuming existing encounters;
 - a single **Expedition Vehicle** unlock may gate Very Far travel, but a broader vehicle-driving/fuel system and 3D camp remain cut;

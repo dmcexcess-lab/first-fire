@@ -17,8 +17,8 @@ const INFO_H := 145.0
 const MAP_TOP := 152.0
 const CONTROL_TOP := 648.0
 const TILE := 26
-const W := 60
-const H := 54
+var W := 60
+var H := 54
 const DIRS := [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]
 const DIR_NAMES := ["N", "E", "S", "W"]
 
@@ -301,6 +301,9 @@ func tactical_layout(location: String, variant: int) -> Dictionary:
 func build_map(new_environment_id: String, variant: int):
     environment_id = new_environment_id
     walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); indoor_cells.clear(); opaque_obstacles.clear(); exit_cells.clear(); light_sources.clear(); light_levels.clear(); light_tints.clear(); loot_containers.clear(); looted_containers.clear(); container_contents.clear()
+    var spec: Dictionary = tactical_layout(environment_id, variant)
+    W = int(spec.get("width", 60))
+    H = int(spec.get("height", 54))
     for x in range(W):
         walls[Vector2i(x, 0)] = true
         walls[Vector2i(x, H - 1)] = true
@@ -308,7 +311,6 @@ func build_map(new_environment_id: String, variant: int):
         walls[Vector2i(0, y)] = true
         walls[Vector2i(W - 1, y)] = true
 
-    var spec: Dictionary = tactical_layout(environment_id, variant)
     player_spawn = spec.get("player_spawn", Vector2i(2, H - 2))
     ally_spawn = spec.get("ally_spawn", Vector2i(2, H - 3))
     exit_cells = spec.get("exit_cells", [Vector2i(1, H - 2)]).duplicate()
@@ -2053,6 +2055,9 @@ func draw_escape_markers():
 func draw_environment_prop(p: Vector2i, kind: String):
     TacticalTiles.draw_prop(self, Rect2(p.x*TILE,p.y*TILE,TILE,TILE), kind)
 
+func zombie_draw_center(index: int) -> Vector2:
+    return cell_center(zombies[index].pos)
+
 func draw_units():
     for key in last_seen.keys():
         var i := int(key)
@@ -2066,14 +2071,14 @@ func draw_units():
         var z: Dictionary = zombies[i]
         if z.dead:
             if visible_cells.has(z.pos):
-                TacticalVisuals.draw_zombie_corpse(self, cell_center(z.pos), z)
+                TacticalVisuals.draw_zombie_corpse(self, zombie_draw_center(i), z)
                 if not bool(z.get("harvested", false)):
-                    draw_string(font, cell_center(z.pos) + Vector2(-24, -13), "CORPSE", HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color(.88,.76,.42))
+                    draw_string(font, zombie_draw_center(i) + Vector2(-24, -13), "CORPSE", HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color(.88,.76,.42))
             continue
         if not visible_cells.has(z.pos):
             continue
-        TacticalVisuals.draw_zombie(self, cell_center(z.pos), z)
-        var c := cell_center(z.pos)
+        TacticalVisuals.draw_zombie(self, zombie_draw_center(i), z)
+        var c := zombie_draw_center(i)
         if zombie_sees_actor(z, player):
             draw_circle(c, 12, Color(1, .17, .12, .92), false, 2)
         else:

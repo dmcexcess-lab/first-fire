@@ -5,6 +5,7 @@ const InspectorVirus = preload("res://scripts/FFInspectorVirus.gd")
 const CampViewSleepVirus = preload("res://scripts/FFCampViewSleepVirus.gd")
 const CampChoreMinigame = preload("res://scripts/FFCampChoreMinigame.gd")
 const CampData = preload("res://scripts/FFData.gd")
+const RaidWorld = preload("res://scripts/FFProceduralWorld.gd")
 
 const CAMP_TUTORIAL_STEPS := [
     {
@@ -21,7 +22,7 @@ const CAMP_TUTORIAL_STEPS := [
     },
     {
         "title": "LEAVE THROUGH THE GATE",
-        "body": "Tap the gate to prepare a solo raid. Check ammunition, gear and travel supplies. Outside, spend two actions each turn to move, search or fight. Make noise and zombies investigate. Spend both actions to extract and survive their turn. Surviving raids bring supplies home after the return trip."
+        "body": "You guide First Fire, not one survivor. Campers can become leaders with camp bonuses. Tap the gate to prepare a solo raid. Check ammunition, gear and travel supplies. Outside, spend two actions each turn to move, search or fight. Make noise and zombies investigate. Spend both actions to extract and survive their turn. Surviving raids bring supplies home after the return trip."
     },
 ]
 
@@ -32,7 +33,7 @@ var gate_survivor_index := 0
 var gate_companion_id := -1
 var gate_zone_names: Array = []
 var gate_zone_index := 0
-var gate_entry_index := 0
+var gate_map_index := 1
 var expedition_return_notice: Button
 var chore_minigame: Control
 
@@ -383,7 +384,7 @@ func _prepare_gate_context(preferred_id: int = -1) -> void:
     for zone_value in CampData.ZONE_ORDER:
         gate_zone_names.append(str(zone_value))
     gate_zone_index = 0
-    gate_entry_index = 0
+    gate_map_index = 1
 
 func _draw_gate_context() -> void:
     _draw_context_header("CAMP GATE", "Prepare one survivor for a turn-based raid. Supplies are committed at launch. Escape with physical loot, then return to camp at the shown in-game ETA.")
@@ -436,15 +437,15 @@ func _draw_gate_context() -> void:
         content_box.add_child(rearm)
 
     content_box.add_child(_separator())
-    var entries: Array = Game.known_raid_routes()
-    gate_entry_index = clampi(gate_entry_index, 0, entries.size() - 1)
+    var entries: Array = RaidWorld.TYPES
+    gate_map_index = clampi(gate_map_index, 0, entries.size() - 1)
     var entry_row := HBoxContainer.new()
     var entry_prev := Button.new()
     entry_prev.text = "PREV"
     entry_prev.custom_minimum_size = Vector2(64, 44)
-    entry_prev.pressed.connect(_cycle_gate_entry.bind(-1))
+    entry_prev.pressed.connect(_cycle_gate_map.bind(-1))
     entry_row.add_child(entry_prev)
-    var entry_label := _make_label("ENTRY: %s" % str(entries[gate_entry_index].name), 13)
+    var entry_label := _make_label("MAP: %s" % str(RaidWorld.profile(str(entries[gate_map_index])).name), 13)
     entry_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     entry_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     entry_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -452,16 +453,15 @@ func _draw_gate_context() -> void:
     var entry_next := Button.new()
     entry_next.text = "NEXT"
     entry_next.custom_minimum_size = Vector2(64, 44)
-    entry_next.pressed.connect(_cycle_gate_entry.bind(1))
+    entry_next.pressed.connect(_cycle_gate_map.bind(1))
     entry_row.add_child(entry_next)
     content_box.add_child(entry_row)
-    content_box.add_child(_make_label("Discover routes in town to use them for future entries and exits.", 11))
+    content_box.add_child(_make_label("Fresh map and 4–7 random exits each raid. Country: sparse; suburbs: mixed; city: crowded.", 11))
     if gate_zone_names.is_empty():
         content_box.add_child(_make_label("No expedition zone is currently unlocked.", 13))
         return
     gate_zone_index = clampi(gate_zone_index, 0, gate_zone_names.size() - 1)
     var zone := str(gate_zone_names[gate_zone_index])
-    var zone_data: Dictionary = CampData.ZONES.get(zone, {})
     var zone_row := HBoxContainer.new()
     if gate_zone_names.size() > 1:
         var zone_prev := Button.new()
@@ -486,7 +486,8 @@ func _draw_gate_context() -> void:
     var band := Game.expedition_route_band(zone)
     var party_size := 2 if gate_companion_id >= 0 else 1
     var can_pay := Game.can_pay_expedition_cost(zone, party_size)
-    var route_line := "%s • %.0fh • %s • %s" % [band, hours, str(zone_data.get("danger", "?")), Game.zone_loot_state(zone)]
+    var density := str(RaidWorld.profile(str(RaidWorld.TYPES[gate_map_index])).density)
+    var route_line := "%s • %.0fh • %s • %s" % [band, hours, density, Game.zone_loot_state(zone)]
     if not unlocked:
         route_line += " • LOCKED"
     content_box.add_child(_make_label(route_line, 12))
@@ -556,10 +557,10 @@ func _cycle_gate_companion(direction: int) -> void:
     gate_companion_id = int(candidates[posmod(current_index + direction, candidates.size())])
     call_deferred("_refresh_content")
 
-func _cycle_gate_entry(direction: int) -> void:
-    var entries: Array = Game.known_raid_routes()
+func _cycle_gate_map(direction: int) -> void:
+    var entries: Array = RaidWorld.TYPES
     if entries.is_empty(): return
-    gate_entry_index = posmod(gate_entry_index + direction, entries.size())
+    gate_map_index = posmod(gate_map_index + direction, entries.size())
     call_deferred("_refresh_content")
 
 func _cycle_gate_zone(direction: int) -> void:
@@ -583,7 +584,7 @@ func _leave_from_gate() -> void:
     var survivor_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
     var zone := str(gate_zone_names[clampi(gate_zone_index, 0, gate_zone_names.size() - 1)])
     selected_survivor_id = survivor_id
-    if Game.start_expedition(survivor_id, zone, gate_companion_id, str(Game.known_raid_routes()[gate_entry_index].id)):
+    if Game.start_expedition(survivor_id, zone, gate_companion_id, str(RaidWorld.TYPES[gate_map_index])):
         _dismiss_return_notice()
         _close_camp_context()
 
@@ -592,7 +593,7 @@ func _leave_special_from_gate(site: String) -> void:
         return
     var survivor_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
     selected_survivor_id = survivor_id
-    if Game.start_special_site(survivor_id, site, gate_companion_id, str(Game.known_raid_routes()[gate_entry_index].id)):
+    if Game.start_special_site(survivor_id, site, gate_companion_id, str(RaidWorld.TYPES[gate_map_index])):
         _close_camp_context()
 
 func _send_survivor_from_panel(id):
@@ -685,6 +686,8 @@ func _refresh_status():
     ]
     pause_button.text = "PAUSE"
     var active: Array = []
+    if Game.population() == 0:
+        active.append("CAMP EMPTY • Waiting for new arrivals")
     for exp in Game.expeditions:
         var names: String = str(Game._party_names(exp["survivor_ids"]))
         var zone := str(exp.get("zone", ""))

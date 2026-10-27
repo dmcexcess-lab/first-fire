@@ -2,7 +2,7 @@ extends SceneTree
 
 const Rules = preload("res://scripts/FFExtractionRules.gd")
 const TurnRules = preload("res://scripts/FFTurnRules.gd")
-const World = preload("res://scripts/FFTacticalWorld.gd")
+const World = preload("res://scripts/FFProceduralWorld.gd")
 const Balance = preload("res://scripts/FFTacticalBalance.gd")
 
 func _initialize():
@@ -30,19 +30,19 @@ func _run():
     root.add_child(raid)
     raid.start_encounter(game.current_combat)
     raid.set_process(false)
-    if not _check(raid.raid_paused and raid.action_points == 2 and raid.player.pos == Vector2i(29, 51) and raid.exit_cells.size() == 6, "paused start, two AP, connected neighborhood and exits"): return
+    if not _check(raid.raid_paused and raid.action_points == 2 and raid.W >= 80 and raid.H >= 72 and raid.exit_cells.size() >= 4 and raid.exit_cells.size() <= 7, "paused start, two AP, connected neighborhood and exits"): return
     if not _check(int(raid.player.loaded) == 6 and raid.weapon_reserve == 12, "starter firearm starts with its loaded and spare ammunition"): return
     var civilian: Dictionary = survivor.duplicate(true)
     civilian.equipment["Weapon"] = ""
     raid.make_actor(civilian, Vector2i(3, 3), false)
     if not _check(raid.weapon_reserve == 12, "unarmed rescue or companion cannot erase lead ammunition"): return
-    if not _check(game.known_raid_routes().size() == 3, "three outskirts routes initially known"): return
-    if not _check(not game._valid_raid_entry("north_road"), "undiscovered inner entry is unavailable"): return
+    if not _check(raid.discovered_exits.size() >= 2, "two random exfils initially identified"): return
+    var first_seed := int(game.current_combat.seed)
     var reachable: Dictionary = raid._reachable_distances(raid.player.pos)
     for cell in raid.exit_cells:
         if not _check(reachable.has(cell), "each exit has a physical route from entry"): return
     var depth_counts := [0, 0, 0]
-    for z in raid.zombies: depth_counts[World.depth(z.pos)] += 1
+    for z in raid.zombies: depth_counts[raid._world_depth(z.pos)] += 1
     if not _check(depth_counts[0] >= 5 and depth_counts[1] >= 10 and depth_counts[2] >= 15, "existing zombie population increases with depth"): return
     var nearby_count := 0
     for enemy in raid.zombies:
@@ -79,6 +79,7 @@ func _run():
     if not _check(raid.turn_number == old_turn + 1 and raid.action_points == 2 and raid.tick == start_tick + 100, "ending turn advances enemies and replenishes AP"): return
     var count: int = raid.zombies.size()
     var z: Dictionary = raid.zombies[0]
+    raid.player.pos = Vector2i(raid.W / 2, raid.H - 4)
     var source: Vector2i = raid.player.pos
     z.pos = source + Vector2i(4, 0)
     z.state = "IDLE"
@@ -149,10 +150,10 @@ func _run():
     raid._complete_swap("Wood")
     var carried: Dictionary = raid.collected_container_loot()
     if not _check(int(carried.get("Wood", 0)) == 3 and int(carried.get("Cloth", 0)) == 1 and int(raid.leftovers[second].Wood) == 1 and raid.action_points == 1, "one-AP swap exchanges a carried item for leftover loot"): return
-    var inner: Vector2i = World.route_by_id("north_road").cell
+    var inner: Vector2i = raid.exit_cells.back()
     raid.visible_cells[inner] = true
     raid._discover_exits()
-    if not _check(game._valid_raid_entry("north_road"), "seeing an inner exit discovers a reusable entry"): return
+    if not _check(raid.discovered_exits.has(inner), "seeing another random exit reveals it for this raid"): return
     raid.weapon_reserve = 1
     raid.persist_runtime()
     game.load_game()
@@ -163,7 +164,7 @@ func _run():
     root.add_child(raid)
     raid.start_encounter(game.current_combat)
     raid.set_process(false)
-    if not _check(raid.raid_paused and raid.action_points == 1 and raid.weapon_reserve == 1 and raid.discovered_exits.size() >= 4 and game._valid_raid_entry("north_road") and int(raid.leftovers[second].Wood) == 1 and raid.collected_container_loot() == carried, "disk load restores AP, ammo, map knowledge, leftover and carried loot"): return
+    if not _check(raid.raid_paused and raid.action_points == 1 and raid.weapon_reserve == 1 and raid.discovered_exits.has(inner) and int(raid.leftovers[second].Wood) == 1 and raid.collected_container_loot() == carried, "disk load restores AP, ammo, map knowledge, leftover and carried loot"): return
     raid.raid_paused = false
     raid.action_points = 2
     raid.exit_cells = [raid.player.pos]
@@ -216,15 +217,15 @@ func _run():
     if not _check(int(survivor.equipment_state.Weapon.loaded) == 0 and int(survivor.equipment_state.Weapon.reserve) == 0, "stash swap cannot refill an empty gun"): return
     survivor.equipment.Secondary = "Flashlight"
     survivor.equipment_state.Secondary = {"charge": 100.0}
-    if not _check(game.start_expedition(sid, "Camp Perimeter", -1, "north_road"), "discovered inner route launches a later raid"): return
+    if not _check(game.start_expedition(sid, "Camp Perimeter", -1, "country"), "next raid launches with a chosen map type"): return
     raid.stop_encounter()
     raid.start_encounter(game.current_combat)
-    if not _check(raid.player.pos == World.route_by_id("north_road").cell and raid.discovered_exits.has(raid.player.pos), "discovered route is the physical entry and exit"): return
+    if not _check(str(game.current_combat.map_type) == "country" and int(game.current_combat.seed) != first_seed, "later raid gets a fresh seed and map type"): return
     if not _check(raid.player.loaded == 0 and raid.weapon_reserve == 0, "empty weapon remains empty on next raid"): return
     raid.player.hp = 0
     raid.raid_paused = false
     raid._end_turn()
-    if not _check(survivor.condition == "Dead" and str(survivor.equipment.get("Weapon", "")) == "" and survivor.equipment_state.is_empty() and game.expeditions.is_empty(), "death permanently loses survivor and equipped kit"): return
+    if not _check(survivor.condition == "Dead" and str(survivor.equipment.get("Weapon", "")) == "" and survivor.equipment_state.is_empty() and game.expeditions.is_empty() and not game.game_over, "death loses survivor and kit but the camp continues"): return
     raid.free()
     # Named Explore gear must occupy one of the same finite carry slots and
     # stay in the container when the pack is full.

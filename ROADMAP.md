@@ -2,20 +2,20 @@
 
 The October 26, 2026 user direction supersedes the former Beta feature freeze for field combat. First Fire is becoming an extraction-shooter + base-sim hybrid while preserving useful camp simulation. Ship one coherent solo loop before widening scope.
 
-## Turn-based neighborhood — implemented
+## Procedural raids and camp continuity — implemented
 
-- Solo raids use two AP per turn in a connected 60×54 neighborhood built from nine authored locations. Near/middle/deep bands contain progressively more pre-existing zombies and richer physical loot.
-- Tap to preview and confirm movement or an attack; pan/zoom, sound/threat previews, crouch/sprint, reload, use, shove, tools, end turn and extraction are available on the portrait interface.
-- Zombies respond after the player turn, investigate sound locations, pursue on sight and can move twice or move once and attack. Noise attracts existing actors; it does not spawn a horde.
-- Three outskirts routes are initially known. Seeing one of three deeper exits permanently unlocks it for future entry and extraction. Extracting costs two AP and a hit during the zombie phase interrupts it.
-- Physical items, including marked gear, use the finite pack capacity. Leftover container items can be swapped with carried items for one AP. Ammo and gear persist; actual return deposits the haul.
-- Camp systems and schema-8 saves remain intact; a legacy real-time encounter can continue on its original map under the turn controller.
+- The player guides the persistent camp. Campers raid, die, join and become elected leaders with camp abilities; housing caps remain 3 → 7 → 12 → 18.
+- Losing everyone leaves an empty camp with its stores/buildings and running clock. Its niceness affects the next arrival chance; no instant replacement or terminal game-over screen.
+- Each raid generates a fresh seeded Country/Suburbs/City map, 80–100 × 72–90 tiles, with biome-specific building/open-lot composition, density and 4–7 random exfils. Two initial exfil locations are known; the others require discovery in that raid. Permanent routes are retired for new raids.
+- Ordinary identical 8-HP infected are pre-placed locally and in distant groups. Country/suburbs/city populations scale by plot count. Sound attracts existing zombies; none is created for drama.
+- Two-AP player turns alternate with two simultaneous zombie movement beats. Convoys, collision contention, attacks and one shared animation produce crowd pressure while keeping player controls locked until the phase completes.
+- State is saved before shared animation. A reload cannot reroll the phase or replay extraction. Physical raw supplies/equipment, crafting, ammo, Away returns, camp needs/morale/recruitment remain intact. Schema-8 camp saves and active legacy raids continue.
 
 ## Next bounded passes
 
-1. Playtest actual phone and mobile Safari controls, sound readability, zombie pacing and extraction difficulty; tune with player evidence.
-2. Deepen the connected neighborhood with more authored paths, meaningful obstacles and route/exit variation while preserving reachable fallback exits.
-3. Investigate world streaming and cross-raid location persistence before scaling substantially beyond the current bounded grid.
+1. Playtest actual phone/mobile Safari input, shared horde animation, density and extraction distances.
+2. Add authored plot variety and biome landmarks based on raid navigation/readability evidence.
+3. Tune noise, discovery and loot density using the three generated biome profiles.
 
 Human hostile factions, PvP, vehicles, companions and conventional character levels are outside this slice.
 
@@ -74,7 +74,7 @@ Deepen the implemented turn-based tactical language rather than adding another c
 
 **Next tactical pass:** playtest turn cadence, readable noise/threat feedback and navigation on mobile; then expand authored route and exit variety without compromising the settlement pause or extraction-first design.
 
-Current neighborhood population is initialized once with three nearby infected and 5/10/15 regular infected in groups across near/middle/deep depth bands, plus the inherited scenario seed. Distant unseen infected use a cheaper sound-directed simulation until close or visible. Noise attracts existing zombies; it does not create new ones. Individual infected remain weak and crowding creates pressure. The weapon ladder, finite ammunition, bite-only virus exposure, physical loot families, zone depletion and Lock Pick durability remain owned by their existing systems. Up to 5/8/12 searchable authored containers are retained across the three bands, with richer loot tables deeper in the neighborhood.
+New raid populations are initialized from biome and generated plot count, plus three nearby infected. Distant unseen actors move cheaply toward heard sounds; local actors use shared perception/movement beats. All new infected have the same fragile combat profile. Noise attracts existing actors and never creates new enemies. Up to 8/12/18 searchable containers are retained across near/middle/deep bands, with richer raw-supply rolls deeper in the raid.
 
 Continue completion work around:
 - recognizable locations;
@@ -91,7 +91,7 @@ Every active `FFData.GEAR` item must be represented in the finished equipment lo
 
 **No expedition has an abstract post-run haul.** Standard runs, legacy-compatible runs, and resolved tactical special sites must not roll extra resources/gear after extraction. Camp inventory changes only from tactical container/on-map pickup results that were physically recovered and carried out. Narrative field events may reveal information or people, not mint scavenged supplies outside the tactical board.
 
-Tactical encounters open immediately and **pause settlement time**. Once tactical resolves, the party does not teleport home or fast-forward the camp: it remains **Away** for the route's 3h/5h/8h/12h/18h timer while normal camp simulation resumes. Physically recovered haul remains attached to that expedition and only enters communal storage on actual return. Camp pressure events/fresh maintenance require someone home to receive them.
+Tactical encounters open immediately and **pause settlement time**. Once tactical resolves, the party does not teleport home or fast-forward the camp: it remains **Away** for the route's 3h/5h/8h/12h/18h timer while normal camp simulation resumes. Physically recovered haul remains attached to that expedition and only enters communal storage on actual return. Resident pressure events/fresh maintenance require someone home; empty camps remain eligible for arrival offers.
 
 The tactical HUD exposes all five equipment slots: Weapon, Secondary, Tool, Clothing and Pack. Container searches produce immediate floating feedback over the searched object (**+resource**, **EMPTY**, or **CARRY FULL**) in addition to the message log. Explore objectives can place a real named gear pickup on the board, but this is intentionally uncommon near camp: Camp Perimeter has a 30% special-gear opportunity and Nearby Streets 50%, while Medium and farther currently guarantee one. No-gear Explore runs are pure scavenging objectives. Any named gear is only retained after physical recovery and successful escape. Every current gear catalog entry belongs to a zone-tiered field-loot pool.
 

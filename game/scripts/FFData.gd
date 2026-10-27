@@ -267,10 +267,10 @@ const BUILD_ORDER := [
 
 const LEADER_ABILITIES := {
     "Organizer": "Crafting and building are 10% faster.",
-    "Provider": "Routine scavenging sometimes yields one extra resource.",
+    "Provider": "Searched field containers sometimes hold an extra basic resource.",
     "Mediator": "Relationship damage from camp disputes is reduced.",
     "Caretaker": "Rest and medical recovery are improved.",
-    "Watchful": "Camp surprise events are less dangerous.",
+    "Watchful": "Adds 10 to the camp zombie-breach safety roll.",
     "Pragmatist": "The first shortage penalty each day is reduced.",
 }
 

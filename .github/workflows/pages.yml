@@ -40,9 +40,12 @@ jobs:
           test -f game/scripts/FFCombatTurn.gd
           test -f game/scripts/FFTurnRules.gd
           test -f game/scripts/FFTacticalWorld.gd
+          test -f game/scripts/FFProceduralWorld.gd
+          test -f game/scripts/FFHordeTurn.gd
           test -f game/scripts/FFCombatExtraction.gd
           test -f game/scripts/FFExtractionRules.gd
           test -f game/scripts/ci/FFExtractionSmoke.gd
+          test -f game/scripts/ci/FFWorldHordeSmoke.gd
           test -f game/scripts/FFCombatVirus.gd
           test -f game/scripts/FFTacticalVisuals.gd
           test -f game/scripts/FFTacticalEnvironments.gd
@@ -100,7 +103,7 @@ jobs:
           grep -q 'const SAVE_SCHEMA_VERSION := 8' game/scripts/Game.gd
           grep -q 'const DAY_SECONDS := 300.0' game/scripts/Game.gd
           grep -q 'const MAX_POPULATION := 18' game/scripts/Game.gd
-          grep -Fq 'func start_expedition(primary_id, zone, companion_id = -1, entry_route_id: String =' game/scripts/Game.gd
+          grep -Fq 'func start_expedition(primary_id, zone, companion_id = -1, map_type: String =' game/scripts/Game.gd
           grep -Fq 'ally = make_actor(companion, ally_spawn, false)' game/scripts/FFCombat.gd
           grep -Fq 'founder["equipment"] = {"Weapon": "6-Shot Revolver", "Secondary": "", "Clothing": "", "Pack": "", "Tool": ""}' game/scripts/Game.gd
           if grep -q 'func _settle_expedition_time_cost' game/scripts/Game.gd; then exit 1; fi
@@ -115,7 +118,7 @@ jobs:
           if grep -Fq '_queue_event(_build_field_event(exp["event_key"], exp))' game/scripts/Game.gd; then exit 1; fi
           if grep -Fq '_queue_event(_build_special_site_event(exp["special_site"], exp))' game/scripts/Game.gd; then exit 1; fi
           grep -Fq 'nothing new is added to the haul' game/scripts/Game.gd
-          grep -Fq 'if _camp_present_survivors().is_empty():' game/scripts/Game.gd
+          grep -Fq 'population() > 0 and _camp_present_survivors().is_empty()' game/scripts/Game.gd
           grep -Fq 'not _camp_present_survivors().is_empty()' game/scripts/GameSleepVirus.gd
           if grep -q '_advance_settlement_time_for_departure' game/scripts/Game.gd game/scripts/GameSleepVirus.gd; then exit 1; fi
           grep -q 'TACTICAL_GEAR_UNLOCKS_BY_ZONE' game/scripts/FFData.gd
@@ -149,7 +152,7 @@ jobs:
           grep -q 'func _ruin_random_camp_supplies' game/scripts/Game.gd
           grep -q 'func _build_solo_night_event' game/scripts/Game.gd
           grep -q 'func _build_crowd_night_event' game/scripts/Game.gd
-          grep -Fq 'population() < 1' game/scripts/Game.gd
+          grep -Fq 'if population() == 0: return' game/scripts/Game.gd
           grep -q 'func _draw_wilderness' game/scripts/FFCampViewSleepVirus.gd
           if grep -q 'build_plot_pressed.emit' game/scripts/FFCampViewSleepVirus.gd; then exit 1; fi
           grep -q 'func _start_training' game/scripts/FFInspectorThreeStat.gd
@@ -372,6 +375,20 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/extraction-smoke.log"
           grep -q 'FIRST_FIRE_EXTRACTION_SMOKE_OK' "$RUNNER_TEMP/extraction-smoke.log"
           if grep -Eqi 'SCRIPT ERROR|Parse Error|Failed to load script' "$RUNNER_TEMP/extraction-smoke.log"; then exit 1; fi
+
+      - name: Procedural world, simultaneous horde and empty camp smoke test
+        shell: bash
+        env:
+          XDG_DATA_HOME: ${{ runner.temp }}/first-fire-world-horde-test
+        run: |
+          set -euxo pipefail
+          ./Godot_v4.7.1-stable_linux.x86_64 \
+            --headless \
+            --path "$GITHUB_WORKSPACE/game" \
+            --script res://scripts/ci/FFWorldHordeSmoke.gd \
+            2>&1 | tee "$RUNNER_TEMP/world-horde-smoke.log"
+          grep -q 'FIRST_FIRE_WORLD_HORDE_SMOKE_OK' "$RUNNER_TEMP/world-horde-smoke.log"
+          if grep -Eqi 'SCRIPT ERROR|Parse Error|Failed to load script' "$RUNNER_TEMP/world-horde-smoke.log"; then exit 1; fi
 
       - name: Startup smoke test
         shell: bash

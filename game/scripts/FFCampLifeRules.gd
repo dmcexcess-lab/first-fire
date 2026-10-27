@@ -171,6 +171,14 @@ static func camp_attraction_score(
         100.0
     )
 
+static func empty_camp_attraction(maintenance: float, fire_level: float, developed_buildings: int) -> float:
+    return clampf(maintenance * 0.5 + fire_level * 0.1 + float(developed_buildings) * 4.0, 0.0, 100.0)
+
+static func empty_camp_arrival_chance(score: float) -> float:
+    # Even a neglected site can eventually be resettled. A nicer camp is found
+    # and chosen sooner; this remains an arrival event, never an instant refill.
+    return 0.12 + clampf(score, 0.0, 100.0) * 0.0033
+
 static func camp_arrival_chance(attraction_score: float) -> float:
     if attraction_score < CAMP_ATTRACTION_MIN_SCORE:
         return 0.0

@@ -1,5 +1,14 @@
 ## Turn-Based Extraction Neighborhood — 2026-10-26
 
+## 2026-10-27 — Procedural raids, simultaneous hordes and an enduring camp
+
+- First Fire is the player's persistent camp. Losing the final resident leaves buildings/stores intact and time running; a nicer empty camp attracts replacement arrival offers faster. Existing shelter/population limits and leadership elections remain.
+- Choose Country, Suburbs or City at the gate. Every launch generates a fresh seeded 80–100 × 72–90 raid with biome-specific buildings/open lots, zombie density and 4–7 random reachable exfils. Two exfils are initially identified; others are discovered during that raid.
+- All new zombies share one fragile 8-HP physical profile. Local infected and distant groups exist from raid start; noise attracts those actors, with lighter simulation for distant unseen groups.
+- The enemy phase plans two movement beats from shared snapshots, resolves convoys and competing tiles, and animates the crowd together. Players wait for the short shared movement phase; focus loss pauses it. Saving/reloading cannot reroll enemy actions or replay a completed extraction.
+- Provider leadership improves physical container contents, and Watchful adds a breach safety bonus. Camp needs/morale, crafting, finite ammo, Away returns, schema-8 camps and active legacy raids remain supported.
+- Permanent regression coverage includes generated map reachability, biome density, simultaneous collision rules, visible shared movement, interrupted/reloaded phase outcomes and empty-camp resettlement.
+
 ## 2026-10-26 — Discoverable town routes and camp supply production
 
 - Start with three known outskirts entry/extraction routes. Spotting three deeper exits permanently adds them to the gate's entry choices and future raid maps, even if that raid is lost.

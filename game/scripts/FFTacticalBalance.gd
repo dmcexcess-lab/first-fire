@@ -117,12 +117,8 @@ static func explore_reward_rolls(searches: int, unused_skill: int = 0) -> int:
     if searches >= 5: rolls += 1
     return clampi(rolls, 1, 3)
 
-static func zombie_hp_range(mass: String) -> Vector2i:
-    # All infected stay fragile enough for the authored weapon kill ladder.
-    # Mass changes shove/attack behavior more than raw durability.
-    if mass == "LIGHT": return Vector2i(7, 9)
-    if mass == "HEAVY": return Vector2i(9, 10)
-    return Vector2i(8, 10)
+static func zombie_hp_range(_mass: String) -> Vector2i:
+    return Vector2i(8, 8)
 
 static func container_label(container_kind: String) -> String:
     match container_kind:

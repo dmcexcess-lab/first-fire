@@ -1,6 +1,8 @@
 extends "res://scripts/FFCombatExtraction.gd"
 
 const World = preload("res://scripts/FFTacticalWorld.gd")
+const Procedural = preload("res://scripts/FFProceduralWorld.gd")
+const HordeTurn = preload("res://scripts/FFHordeTurn.gd")
 const TURN_RULES = preload("res://scripts/FFTurnRules.gd")
 const BTN_WALK := Rect2(8, 652, 118, 50)
 const BTN_CROUCH := Rect2(136, 652, 118, 50)
@@ -36,10 +38,23 @@ var map_zoom := 1.0
 var leftovers := {}
 var swap_cell := Vector2i(-1, -1)
 var swap_take := ""
+var generated_world := {}
+var horde_frames: Array = []
+var horde_attacks := {}
+var horde_visual_time := 0.0
+var phase_outcome := ""
+var animate_horde := true
+var horde_flow_cache := {}
 
 func start_encounter(data: Dictionary):
     var old_runtime: Dictionary = data.get("runtime", {})
     legacy_raid = str(old_runtime.get("raid_model", "")) == "extraction-v1" or str(old_runtime.get("world_layout", "")) == "legacy"
+    animate_horde = DisplayServer.get_name() != "headless"
+    generated_world.clear()
+    horde_frames.clear()
+    horde_attacks.clear()
+    horde_visual_time = 0.0
+    phase_outcome = ""
     action_points = 2
     turn_number = 1
     move_mode = "walk"
@@ -57,16 +72,31 @@ func start_encounter(data: Dictionary):
     raid_paused = true
     if legacy_raid:
         for cell in exit_cells: discovered_exits[cell] = true
+    elif _is_procedural():
+        # Initial intel identifies two random exits nearest the insertion.
+        var by_distance: Array = exit_cells.duplicate()
+        by_distance.sort_custom(func(a, b): return manhattan(a, player_spawn) < manhattan(b, player_spawn))
+        for cell in by_distance.slice(0, 2): discovered_exits[cell] = true
     elif str(context.get("entry_route_id", "")) != "":
-        for route in Game.known_raid_routes():
+        for route in World.known_routes(Game.flags.get("discovered_raid_routes", [])):
             if exit_cells.has(route.cell): discovered_exits[route.cell] = true
     elif not exit_cells.is_empty():
         discovered_exits[exit_cells[0]] = true
     _discover_exits()
-    msg = "Tap a destination or target twice. END TURN lets zombies move."
+    turn_processing = phase_outcome != ""
+    msg = "Tap a destination or target twice. END TURN moves the horde."
     persist_runtime()
 
+func _is_procedural() -> bool:
+    return not legacy_raid and str(context.get("world_model", "")) == "procedural-v1"
+
+func _world_depth(cell: Vector2i) -> int:
+    return Procedural.depth(cell, player_spawn, W, H) if _is_procedural() else World.depth(cell)
+
 func tactical_layout(location: String, variant: int) -> Dictionary:
+    if _is_procedural():
+        generated_world = Procedural.build(int(context.get("seed", 1)), str(context.get("map_type", "suburbs")))
+        return generated_world
     if legacy_raid:
         return TacticalEnvironments.build_layout(location, variant)
     return World.build(int(context.get("seed", 1)), str(context.get("entry_route_id", "")))
@@ -86,8 +116,8 @@ func supplement_distance_loot_containers() -> void:
     for depth in range(3):
         var cells: Array = []
         for cell in loot_containers.keys():
-            if World.depth(cell) == depth: cells.append(cell)
-        var wanted := mini(cells.size(), [5, 8, 12][depth])
+            if _world_depth(cell) == depth: cells.append(cell)
+        var wanted := mini(cells.size(), ([8, 12, 18] if _is_procedural() else [5, 8, 12])[depth])
         while cells.size() > wanted:
             var index := rng.randi_range(0, cells.size() - 1)
             var removed: Vector2i = cells.pop_at(index)
@@ -97,8 +127,14 @@ func supplement_distance_loot_containers() -> void:
         var zones := ["Camp Perimeter", "Residential Blocks", "Industrial Edge"]
         for cell in cells:
             container_contents[cell] = TacticalBalance.roll_container_loot(zones[depth], str(loot_containers[cell]), rng, int(context.get("zone_pressure", 0)))
+            if _is_procedural() and bool(context.get("provider_bonus", false)) and not container_contents[cell].is_empty() and rng.randf() < 0.15:
+                var item: String = str(container_contents[cell].keys()[0])
+                container_contents[cell][item] += 1
 
 func spawn_zombies():
+    if _is_procedural():
+        _spawn_procedural_zombies()
+        return
     super.spawn_zombies()
     var saved: Array = runtime.get("zombies", [])
     var desired := saved.size() if legacy_raid and runtime.has("zombies") else -1
@@ -141,6 +177,37 @@ func spawn_zombies():
         while zombies.size() > saved.size(): zombies.pop_back()
         while zombies.size() < saved.size(): _append_zombie(player_spawn + Vector2i(2, 0))
 
+func _spawn_procedural_zombies() -> void:
+    zombies.clear()
+    var bands: Array = [[], [], []]
+    var local: Array = []
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            var cell := Vector2i(x, y)
+            if blocked(cell) or exit_cells.has(cell) or rescuee_at(cell): continue
+            var distance := manhattan(player_spawn, cell)
+            if distance >= 6 and distance <= 9: local.append(cell)
+            elif distance >= 10: bands[_world_depth(cell)].append(cell)
+    for _i in range(mini(3, local.size())):
+        _append_zombie(local.pop_at(rng.randi_range(0, local.size() - 1)))
+    var target := int(generated_world.get("population", 64))
+    for depth in range(3):
+        var candidates: Array = bands[depth]
+        var count := int(float(target) * [0.2, 0.3, 0.5][depth])
+        var anchor := Vector2i.ZERO
+        for i in range(mini(count, candidates.size())):
+            if i % 5 == 0: anchor = candidates[rng.randi_range(0, candidates.size() - 1)]
+            var cluster: Array = []
+            for cell in candidates:
+                if manhattan(cell, anchor) <= 4: cluster.append(cell)
+            var chosen: Vector2i = cluster[rng.randi_range(0, cluster.size() - 1)] if not cluster.is_empty() else candidates[rng.randi_range(0, candidates.size() - 1)]
+            candidates.erase(chosen)
+            _append_zombie(chosen)
+    if runtime.has("zombies"):
+        var saved: Array = runtime.zombies
+        while zombies.size() > saved.size(): zombies.pop_back()
+        while zombies.size() < saved.size(): _append_zombie(player_spawn + Vector2i.UP)
+
 func _append_zombie(cell: Vector2i) -> void:
     var look: Dictionary = TacticalVisuals.zombie_appearance(rng, str(context.get("zone", "Nearby Streets")))
     var timing: Dictionary = TacticalTime.zombie_profile(rng, look)
@@ -154,6 +221,7 @@ func restore_runtime():
     turn_number = maxi(1, int(runtime.get("turn_number", 1)))
     move_mode = str(runtime.get("move_mode", "walk"))
     pending_extract = bool(runtime.get("pending_extract", false))
+    phase_outcome = str(runtime.get("phase_outcome", ""))
     field_gear_carried = bool(runtime.get("field_gear_carried", bool(runtime.get("objective_done", false)) and str(context.get("field_gear", "")) != "" and str(context.get("kind", "")) == "explore"))
     memory.clear()
     for pair in runtime.get("known_cells", []):
@@ -172,7 +240,8 @@ func persist_runtime(save_to_disk: bool = true):
     super.persist_runtime(false)
     if not initialized: return
     runtime["raid_model"] = "turn-neighborhood-v1"
-    runtime["world_layout"] = "legacy" if legacy_raid else "neighborhood"
+    runtime["world_layout"] = "legacy" if legacy_raid else ("procedural-v1" if _is_procedural() else "neighborhood")
+    runtime["phase_outcome"] = phase_outcome
     runtime["action_points"] = action_points
     runtime["turn_number"] = turn_number
     runtime["move_mode"] = move_mode
@@ -189,9 +258,38 @@ func persist_runtime(save_to_disk: bool = true):
     runtime["leftovers"] = left_state
     Game.update_combat_runtime(runtime, save_to_disk)
 
-func _process(_delta):
-    # Tactical time advances only after the player spends AP or ends a turn.
-    pass
+func _process(delta):
+    # Only presentation advances between actions. The entire phase was already
+    # resolved and saved; a suspended/reloaded browser cannot reroll the turn.
+    if not initialized or game_over or raid_paused: return
+    if not horde_frames.is_empty():
+        horde_visual_time += minf(float(delta), 0.05)
+        if horde_visual_time >= 0.64: _finish_horde_presentation()
+        queue_redraw()
+    elif phase_outcome != "":
+        _finish_horde_presentation()
+
+func zombie_draw_center(index: int) -> Vector2:
+    if horde_frames.size() < 3: return super.zombie_draw_center(index)
+    var beat := mini(1, int(horde_visual_time / 0.32))
+    var fraction := clampf(fmod(horde_visual_time, 0.32) / 0.26, 0.0, 1.0)
+    var from: Vector2i = horde_frames[beat].get(index, zombies[index].pos)
+    var to: Vector2i = horde_frames[beat + 1].get(index, zombies[index].pos)
+    var center := cell_center(from).lerp(cell_center(to), smoothstep(0.0, 1.0, fraction))
+    if horde_attacks.get(index, -1) == beat:
+        var direction := Vector2(player.pos - to).normalized()
+        center += direction * sin(fraction * PI) * 7.0
+    return center
+
+func _finish_horde_presentation() -> void:
+    horde_frames.clear()
+    horde_attacks.clear()
+    turn_processing = false
+    var outcome := phase_outcome
+    phase_outcome = ""
+    if outcome != "": finish_encounter(outcome)
+    else: persist_runtime()
+    queue_redraw()
 
 func commit_action(_cost: int):
     if moving_path:
@@ -218,65 +316,135 @@ func _spend_action(cost: int) -> void:
 func _end_turn() -> void:
     if game_over or turn_processing: return
     turn_processing = true
+    _clear_preview()
     var start_hp := int(player.hp)
     var start_pos: Vector2i = player.pos
     tick += 100
     recalc_lighting()
+    horde_flow_cache.clear()
+    horde_frames = [_horde_positions()]
+    horde_attacks.clear()
+    var eligible := {}
+    var attacked := {}
     for i in range(zombies.size()):
-        if zombies[i].dead or int(zombies[i].next) > tick + 50: continue
-        # Far infected remain persistent actors but use a cheap coarse update.
-        # They switch seamlessly to detailed sight, movement and attacks nearby.
-        if not legacy_raid and manhattan(zombies[i].pos, player.pos) > 12 and not visible_cells.has(zombies[i].pos):
-            _simulate_distant_zombie(i)
-            continue
-        var before: Vector2i = zombies[i].pos
-        zombie_act(i)
-        # A zombie can move twice, or move once then attack. It cannot attack
-        # twice in one phase. Large shove stagger can defer its next action.
-        if not zombies[i].dead and zombies[i].pos != before:
-            zombie_act(i)
+        if not zombies[i].dead and int(zombies[i].next) <= tick + 50: eligible[i] = true
+    for beat in range(2):
+        _resolve_horde_beat(eligible, attacked, beat)
+        horde_frames.append(_horde_positions())
     if not ally.is_empty() and not ally.dead: companion_act()
     if not rescuee.is_empty() and rescue_contacted and not rescuee.dead: rescuee_act()
     _drain_flashlight(100)
+    phase_outcome = ""
     if int(player.hp) <= 0:
         player.hp = 0
         player.dead = true
-        turn_processing = false
-        finish_encounter("dead")
-        return
-    if pending_extract:
-        pending_extract = false
+        phase_outcome = "dead"
+    elif pending_extract:
         if int(player.hp) == start_hp and player.pos == start_pos and exit_cells.has(player.pos) and ally_ready_to_extract() and (not rescue_contacted or rescuee.is_empty() or bool(rescuee.get("dead", false)) or rescuee_ready_to_extract()):
             if str(context.get("kind", "")) == "rescue": objective_done = rescuee_ready_to_extract()
-            turn_processing = false
-            finish_encounter("escaped")
-            return
-        msg = "Extraction interrupted. Clear a path and try again."
+            phase_outcome = "escaped"
+        else:
+            msg = "Extraction interrupted. Clear a path and try again."
+    pending_extract = false
     turn_number += 1
     action_points = 2
-    turn_processing = false
     recalc_visibility()
     _discover_exits()
     refresh_intents()
     persist_runtime()
+    horde_visual_time = 0.0
+    if not animate_horde: _finish_horde_presentation()
     queue_redraw()
 
-func _simulate_distant_zombie(index: int) -> void:
-    var z: Dictionary = zombies[index]
-    var goal: Vector2i = z.get("heard", Vector2i(-1, -1))
-    if goal != Vector2i(-1, -1):
-        if z.pos == goal:
+func _horde_positions() -> Dictionary:
+    var positions := {}
+    for i in range(zombies.size()):
+        if not zombies[i].dead: positions[i] = zombies[i].pos
+    return positions
+
+func _resolve_horde_beat(eligible: Dictionary, attacked: Dictionary, beat: int) -> void:
+    var positions := _horde_positions()
+    var proposals := {}
+    var attacks := {}
+    var alerts: Array = []
+    # Every intent reads the same positions. No zombie gets a free tile or an
+    # extra sight check because it happened to occur earlier in an array.
+    for i in positions:
+        if not eligible.has(i) or attacked.has(i): continue
+        var z: Dictionary = zombies[i]
+        var nearby := manhattan(z.pos, player.pos) <= 12 or visible_cells.has(z.pos)
+        if not nearby and beat == 1: continue
+        var target_actor: Dictionary = choose_zombie_target(z) if nearby else {}
+        if not target_actor.is_empty():
+            z.state = "CHASE"
+            z.target = target_actor.pos
+            z.heard = target_actor.pos
+            alerts.append([i, target_actor.pos])
+            if manhattan(z.pos, target_actor.pos) == 1:
+                z.facing = target_actor.pos - z.pos
+                attacks[i] = target_actor
+                continue
+        elif z.state == "CHASE":
+            z.state = "INVESTIGATE"
+            z.target = z.heard
+        var goal: Vector2i = z.get("heard", Vector2i(-1, -1))
+        if goal == z.pos:
             z.heard = Vector2i(-1, -1)
             z.target = Vector2i(-1, -1)
             z.state = "IDLE"
-        else:
-            var step := best_step_toward(z.pos, goal, false)
-            if step != Vector2i.ZERO:
-                z.pos += step
-                z.facing = step
-        zombies[index] = z
+        elif goal != Vector2i(-1, -1):
+            var step := _horde_step(z.pos, goal, nearby)
+            if step != Vector2i.ZERO: proposals[i] = z.pos + step
+        elif nearby and rng.randf() < 0.30:
+            var destination: Vector2i = z.pos + DIRS[rng.randi_range(0, 3)]
+            if _horde_open(destination): proposals[i] = destination
+    var moves: Dictionary = HordeTurn.resolve_moves(positions, proposals, turn_number + beat)
+    for i in moves:
+        zombies[i].facing = moves[i] - zombies[i].pos
+        zombies[i].pos = moves[i]
+    for alert in alerts:
+        alert_zombie_group(int(alert[0]), alert[1], 4, false)
+    for i in attacks:
+        attacked[i] = true
+        horde_attacks[i] = beat
+        zombie_attack(i, attacks[i])
+    for i in eligible:
+        if not attacked.has(i): zombies[i].next = tick + 125
+
+func _horde_open(cell: Vector2i) -> bool:
+    return not blocked(cell) and cell != player.pos and not ally_at(cell) and not rescuee_at(cell)
+
+func _horde_step(from: Vector2i, goal: Vector2i, detailed: bool) -> Vector2i:
+    var field := {}
+    if detailed:
+        if not horde_flow_cache.has(goal):
+            field = {goal: 0}
+            var frontier: Array = [goal]
+            var cursor := 0
+            while cursor < frontier.size():
+                var cell: Vector2i = frontier[cursor]
+                cursor += 1
+                if int(field[cell]) >= 22: continue
+                for direction in DIRS:
+                    var next: Vector2i = cell + direction
+                    if blocked(next) or field.has(next): continue
+                    field[next] = int(field[cell]) + 1
+                    frontier.append(next)
+            horde_flow_cache[goal] = field
+        field = horde_flow_cache[goal]
+    var best := Vector2i.ZERO
+    var distance := int(field.get(from, 9999)) if detailed else manhattan(from, goal)
+    for direction in DIRS:
+        var cell: Vector2i = from + direction
+        if not _horde_open(cell): continue
+        var candidate := int(field.get(cell, 9999)) if detailed else manhattan(cell, goal)
+        if candidate < distance:
+            distance = candidate
+            best = direction
+    return best
 
 func _begin_extract() -> void:
+    if turn_processing: return
     if not exit_cells.has(player.pos):
         msg = "Stand on a discovered exit to extract."
     elif action_points < 2:
@@ -290,14 +458,12 @@ func _discover_exits() -> void:
     for cell in exit_cells:
         if visible_cells.has(cell) or memory.has(cell):
             discovered_exits[cell] = true
-            if str(context.get("entry_route_id", "")) != "":
-                for route in World.ROUTES:
-                    if route.cell == cell: Game.discover_raid_route(str(route.id))
+
 
 # Old in-progress raids retain their harvestable corpses. New raids bring only
 # basic supplies and physical equipment home.
 func harvestable_corpse_at(p: Vector2i) -> int:
-    if not legacy_raid and str(context.get("entry_route_id", "")) != "": return -1
+    if _is_procedural() or (not legacy_raid and str(context.get("entry_route_id", "")) != ""): return -1
     return super.harvestable_corpse_at(p)
 
 func check_objective_and_exit():
@@ -350,6 +516,7 @@ func _path_to(destination: Vector2i) -> Array:
     return path
 
 func _preview_cell(cell: Vector2i) -> void:
+    if turn_processing: return
     if not inside(cell) or action_points <= 0: return
     if cell == pending_cell:
         _confirm_preview()
@@ -397,7 +564,7 @@ func _preview_cell(cell: Vector2i) -> void:
     queue_redraw()
 
 func _confirm_preview() -> void:
-    if action_points <= 0: return
+    if turn_processing or action_points <= 0: return
     var cell := pending_cell
     var kind := pending_kind
     if kind == "move":
@@ -439,6 +606,10 @@ func _confirm_preview() -> void:
 
 func _input(event):
     if not visible or not initialized or game_over: return
+    if turn_processing and event is InputEventKey:
+        if event.pressed and event.keycode in [KEY_ESCAPE, KEY_P]: _set_pause()
+        get_viewport().set_input_as_handled()
+        return
     if event is InputEventScreenTouch:
         get_viewport().set_input_as_handled()
         if event.pressed: _press(event.position)
@@ -492,7 +663,7 @@ func _release(pos: Vector2) -> void:
     pointer_down = false
     if dragging: return
     if RAID_PAUSE.has_point(pos): _set_pause(); return
-    if raid_paused: return
+    if raid_paused or turn_processing: return
     if swap_cell != Vector2i(-1, -1): _swap_touch(pos); return
     if BTN_ZOOM.has_point(pos): map_zoom = 0.75 if is_equal_approx(map_zoom, 1.0) else 1.0; _clear_preview(); queue_redraw(); return
     if BTN_CENTER.has_point(pos): camera_offset = Vector2.ZERO; _clear_preview(); queue_redraw(); return
@@ -614,7 +785,7 @@ func draw_hud():
     draw_button(RAID_PAUSE, "RESUME" if raid_paused else "PAUSE", raid_paused, 12)
     draw_string(font, Vector2(10, 47), "%s  HP %d/%d  •  CARRY %d/%d" % [player.name, int(player.hp), int(player.max_hp), carried_loot_count(), party_carry_capacity()], HORIZONTAL_ALIGNMENT_LEFT, 370, 12, Color("afd9f5"))
     draw_string(font, Vector2(10, 68), "%s • %d loaded / %d spare" % [player.weapon.name, int(player.get("loaded", 0)), weapon_reserve], HORIZONTAL_ALIGNMENT_LEFT, 370, 11, Color.WHITE)
-    var depth: String = "NEAR" if legacy_raid else str(["NEAR", "MIDDLE", "DEEP"][World.depth(player.pos)])
+    var depth: String = "NEAR" if legacy_raid else str(["NEAR", "MIDDLE", "DEEP"][_world_depth(player.pos)])
     var nearest := 9999
     var bearing := ""
     for exit_cell in discovered_exits.keys():
@@ -625,7 +796,7 @@ func draw_hud():
             bearing = "HERE" if distance == 0 else ("E" if offset.x > 0 else "W") if abs(offset.x) >= abs(offset.y) else ("S" if offset.y > 0 else "N")
     var exit_status := "EXIT HERE" if nearest == 0 else ("EXIT ~%d %s (straight line)" % [nearest, bearing] if nearest < 9999 else "NO KNOWN EXIT")
     draw_string(font, Vector2(10, 87), "%s • %s • %d known" % [depth, exit_status, discovered_exits.size()], HORIZONTAL_ALIGNMENT_LEFT, 370, 11, Color("edce75"))
-    draw_string(font, Vector2(10, 113), msg, HORIZONTAL_ALIGNMENT_LEFT, 270, 10, Color.WHITE)
+    draw_string(font, Vector2(10, 113), "THE HORDE MOVES" if turn_processing else msg, HORIZONTAL_ALIGNMENT_LEFT, 270, 10, Color.WHITE)
     draw_button(BTN_CENTER, "HOME", false, 11)
     draw_button(BTN_ZOOM, "ZOOM", false, 11)
     draw_rect(Rect2(0, CONTROL_TOP, SCREEN_W, SCREEN_H - CONTROL_TOP), Color("0b120e"))

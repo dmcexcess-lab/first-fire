@@ -1,6 +1,6 @@
 extends Node
 
-const TacticalWorld = preload("res://scripts/FFTacticalWorld.gd")
+const ProceduralWorld = preload("res://scripts/FFProceduralWorld.gd")
 const ExtractionRules = preload("res://scripts/FFExtractionRules.gd")
 
 signal state_changed
@@ -391,6 +391,7 @@ func _add_recruit(preferred_background = "", rescuer_ids = []) -> Variant:
             rescuer["relationships"][str(s["id"])] = rng.randi_range(5, 15)
             _change_reputation(rescuer, 5)
     survivors.append(s)
+    flags.erase("camp_empty_since")
     s["history"].append("Day %d — Joined First Fire." % day)
     _add_history("Day %d — %s joined First Fire." % [day, s["name"]])
     eligible_expeditions_since_recruit = 0
@@ -1054,26 +1055,12 @@ func _expedition_party_ids(primary_id: int, companion_id: int = -1) -> Array:
             return []
     return ids
 
-func known_raid_routes() -> Array:
-    var found = flags.get("discovered_raid_routes", [])
-    return TacticalWorld.known_routes(found if found is Array else [])
+func active_leader_ability() -> String:
+    var leader: Variant = get_survivor(leader_id)
+    return str(leader.get("leader_ability", "")) if leader != null and str(leader.get("condition", "Dead")) != "Dead" else ""
 
-func discover_raid_route(route_id: String) -> void:
-    var route := TacticalWorld.route_by_id(route_id)
-    if route.is_empty() or bool(route.starting): return
-    var found = flags.get("discovered_raid_routes", [])
-    if not (found is Array): found = []
-    if not found.has(route_id):
-        found.append(route_id)
-        flags["discovered_raid_routes"] = found
-
-func _valid_raid_entry(route_id: String) -> bool:
-    for route in known_raid_routes():
-        if str(route.id) == route_id: return true
-    return false
-
-func start_expedition(primary_id, zone, companion_id = -1, entry_route_id: String = "camp_road"):
-    if not _valid_raid_entry(entry_route_id): return false
+func start_expedition(primary_id, zone, companion_id = -1, map_type: String = "suburbs"):
+    if not ProceduralWorld.TYPES.has(map_type): return false
     zone = str(zone)
     if not expedition_route_unlocked(zone):
         toast_requested.emit("%s is locked — %s." % [zone, expedition_route_lock_text(zone)])
@@ -1102,7 +1089,8 @@ func start_expedition(primary_id, zone, companion_id = -1, entry_route_id: Strin
         "id": next_expedition_id,
         "survivor_ids": party_ids.duplicate(),
         "zone": zone,
-        "entry_route_id": entry_route_id,
+        "map_type": map_type,
+        "world_model": "procedural-v1",
         "duration": duration,
         "remaining": duration,
         "state": "departing",
@@ -1171,8 +1159,8 @@ func _commit_expedition_return_payload(exp) -> String:
     exp["time_cost_paid"] = true
     return ", ".join(bits)
 
-func start_special_site(primary_id, site, companion_id = -1, entry_route_id: String = "camp_road"):
-    if not _valid_raid_entry(entry_route_id): return false
+func start_special_site(primary_id, site, companion_id = -1, map_type: String = "suburbs"):
+    if not ProceduralWorld.TYPES.has(map_type): return false
     if not special_sites.has(site) or not bool(special_sites[site].get("discovered", false)) or bool(special_sites[site].get("cleared", false)):
         return false
     if not current_combat.is_empty():
@@ -1193,7 +1181,8 @@ func start_special_site(primary_id, site, companion_id = -1, entry_route_id: Str
         "id": next_expedition_id,
         "survivor_ids": party_ids.duplicate(),
         "zone": zone,
-        "entry_route_id": entry_route_id,
+        "map_type": map_type,
+        "world_model": "procedural-v1",
         "duration": duration,
         "remaining": duration,
         "state": "departing",
@@ -1302,6 +1291,9 @@ func _begin_tactical_encounter(exp):
         "survivor_ids": ids.duplicate(true),
         "zone": str(exp["zone"]),
         "entry_route_id": str(exp.get("entry_route_id", "")),
+        "map_type": str(exp.get("map_type", "suburbs")),
+        "world_model": str(exp.get("world_model", "")),
+        "provider_bonus": active_leader_ability() == "Provider",
         "zone_pressure": int(zone_pressure.get(str(exp["zone"]), 0)),
         "kind": combat_kind,
         "outing": str(exp.get("outing", combat_kind)),
@@ -1312,7 +1304,7 @@ func _begin_tactical_encounter(exp):
         "environment_variant": environment_variant,
         "time_of_day": str(scene_state.get("time_of_day", "day")),
         "power_on": bool(scene_state.get("power_on", false)),
-        "location_name": TacticalScenarios.environment_name(environment_id),
+        "location_name": str(ProceduralWorld.profile(str(exp.get("map_type", "suburbs"))).name) if str(exp.get("world_model", "")) == "procedural-v1" else TacticalScenarios.environment_name(environment_id),
         "field_gear": _pick_tactical_gear(str(exp["zone"])) if combat_kind == "explore" else "",
         "seed": rng.randi_range(1, 2147483000),
         "runtime": {
@@ -1768,9 +1760,13 @@ func _kill_survivor(s, reason):
         elif rel >= 25:
             other["stress"] = min(100.0, float(other["stress"]) + 15.0)
     if coordinator_id == int(s["id"]):
+        flags["coordinator_event_queued"] = false
+        flags["formal_election_queued"] = false
         coordinator_id = -1
         if leadership_form == "Coordinator": leadership_form = "None"
     if leader_id == int(s["id"]):
+        flags["coordinator_event_queued"] = false
+        flags["formal_election_queued"] = false
         leader_id = -1
         leadership_form = "None"
     _check_game_over()
@@ -3083,7 +3079,7 @@ func _build_camp_zombie_attack_event() -> Dictionary:
 func _resolve_camp_zombie_attack(event: Dictionary, approach: String) -> void:
     var context: Dictionary = event.get("context", {})
     var target: Variant = _lead_from_event(event)
-    var raw_roll := int(context.get("attack_roll", 50))
+    var raw_roll := int(context.get("attack_roll", 50)) + (10 if active_leader_ability() == "Watchful" else 0)
     var outcome := CampLifeRules.camp_attack_outcome(raw_roll, approach, bool(buildings.get("Noise Line", false)), bool(buildings.get("Watch Post", false)))
     var body := ""
     _adjust_camp_mood(6.0, -4.0, -10.0)
@@ -3267,7 +3263,9 @@ func _camp_story_arrival_ready() -> bool:
 func _camp_attraction_snapshot() -> Dictionary:
     var present := _camp_present_survivors()
     if present.is_empty():
-        return {"score":0.0, "chance":0.0}
+        if population() > 0: return {"score":0.0, "chance":0.0}
+        var empty_score := CampLifeRules.empty_camp_attraction(camp_maintenance, fire_level, _developed_camp_building_count())
+        return {"score":empty_score, "chance":CampLifeRules.empty_camp_arrival_chance(empty_score)}
     var stress_total := 0.0
     var positive_total := 0
     for survivor_value in present:
@@ -3293,6 +3291,8 @@ func _build_camp_arrival_event(attraction_score: float) -> Dictionary:
         story = "A lone survivor follows the smoke to First Fire. They have heard unusually specific stories: regular meals, people laughing after dark, a camp that repairs what breaks, and beds that stay dry."
     elif attraction_score >= 70.0:
         story = "A lone survivor reaches the edge of First Fire and waits to be noticed. They say word is spreading about a camp where people look after the place and each other."
+    if population() == 0:
+        story = "A wanderer finds First Fire empty. The shelter, stores and signs that people cared for this place make them consider staying. The camp can begin again with someone new."
     return _event_base("camp_arrival", "Someone Followed the Stories", story, [
         _choice("Offer them a place at First Fire", "camp_arrival_accept", not _has_room_for_recruit(), "NO SHELTER SPACE"),
         _choice("Trade news, but not a bed", "camp_arrival_info"),
@@ -3300,9 +3300,9 @@ func _build_camp_arrival_event(attraction_score: float) -> Dictionary:
     ], {"attraction_score":attraction_score})
 
 func _consider_camp_event():
-    if camp_event_cooldown > 0.0 or population() < 1 or game_over or not current_event.is_empty() or not event_queue.is_empty():
+    if camp_event_cooldown > 0.0 or game_over or not current_event.is_empty() or not event_queue.is_empty():
         return
-    if _camp_present_survivors().is_empty():
+    if population() > 0 and _camp_present_survivors().is_empty():
         return
 
     # Recruitment stories are a positive camp-success loop, separate from the
@@ -3313,6 +3313,7 @@ func _consider_camp_event():
             _queue_event(_build_camp_arrival_event(float(attraction.get("score", 0.0))))
             camp_event_cooldown = 60.0
             return
+    if population() == 0: return
 
     var avg_stress := 0.0
     var living := 0
@@ -3686,13 +3687,28 @@ func _check_settlement_mature():
             {"text": "Keep the fire going", "action": "mature_continue"}
         ]))
 
+func _event_needs_residents(event: Dictionary) -> bool:
+    var key := str(event.get("key", ""))
+    return key.begins_with("politics_") or (key.begins_with("camp_") and key != "camp_arrival")
+
 func _check_game_over():
+    # The player is First Fire. Losing the roster leaves a persistent empty camp.
+    game_over = false
     if population() <= 0:
-        game_over = true
-        sim_paused = true
-        _queue_event(_event_base("game_over", "FIRST FIRE IS GONE", "No one remains to keep the fire burning.", [
-            {"text": "Close", "action": "close"}
-        ]))
+        if not flags.has("camp_empty_since"):
+            flags["camp_empty_since"] = _settlement_absolute_seconds()
+            flags["coordinator_event_queued"] = false
+            flags["formal_election_queued"] = false
+            flags.erase("next_confidence_check_day")
+            _add_history("Day %d — First Fire is empty. Its shelter and supplies remain for the next arrival." % day)
+        # A resident can die while an unrelated camp/politics offer is open.
+        # Those participant-dependent choices must not strand an empty camp.
+        event_queue = event_queue.filter(func(event): return not _event_needs_residents(event))
+        if _event_needs_residents(current_event):
+            current_event = event_queue.pop_front() if not event_queue.is_empty() else {}
+            event_changed.emit()
+    else:
+        flags.erase("camp_empty_since")
 
 func _add_history(line):
     history.append(line)
@@ -3812,7 +3828,10 @@ func load_game():
     food_shortage_days = int(parsed.get("food_shortage_days", 0))
     water_shortage_days = int(parsed.get("water_shortage_days", 0))
     garden_tended_day = int(parsed.get("garden_tended_day", -1))
-    game_over = bool(parsed.get("game_over", false))
+    game_over = false
+    # A formerly terminal schema-8 empty camp can continue without a save reset.
+    if str(current_event.get("key", "")) == "game_over": current_event = {}
+    event_queue = event_queue.filter(func(event): return str(event.get("key", "")) != "game_over")
     settlement_mature = bool(parsed.get("settlement_mature", false))
     settlement_mature_shown = bool(parsed.get("settlement_mature_shown", false))
     recent_expedition_ids = parsed.get("recent_expedition_ids", [])
@@ -3824,6 +3843,7 @@ func load_game():
     for s in survivors:
         s["needs"]=CampLifeRules.normalize_needs(s.get("needs",{}))
         if not s.has("camp_activity"): s["camp_activity"]={}
+    _check_game_over()
     # Returning to a saved game is always paused until the player explicitly resumes.
     sim_paused = true
     state_changed.emit()
