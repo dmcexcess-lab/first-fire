@@ -171,7 +171,7 @@ static func container_empty_chance(zone: String, container_kind: String, zone_pr
 
 static func container_allows_item(container_kind: String, item_name: String) -> bool:
     var pool: Array = CONTAINER_POOLS.get(container_kind, [])
-    return pool.has(item_name)
+    return D.BASIC_RESOURCES.has(item_name) and pool.has(item_name)
 
 static func roll_container_loot(zone: String, container_kind: String, rng: RandomNumberGenerator, zone_pressure: int = 0) -> Dictionary:
     if rng.randf() < container_empty_chance(zone, container_kind, zone_pressure):
@@ -184,6 +184,7 @@ static func roll_container_loot(zone: String, container_kind: String, rng: Rando
     var weights: Dictionary = {}
     for item_value in allowed:
         var item_name := str(item_value)
+        if not D.BASIC_RESOURCES.has(item_name): continue
         var zone_weight := maxi(0, int(zone_weights.get(item_name, 0)))
         if zone_weight <= 0:
             continue

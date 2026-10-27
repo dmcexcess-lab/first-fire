@@ -30,18 +30,24 @@ func _run():
     root.add_child(raid)
     raid.start_encounter(game.current_combat)
     raid.set_process(false)
-    if not _check(raid.raid_paused and raid.action_points == 2 and raid.player.pos == Vector2i(29, 51) and raid.exit_cells.size() == 4, "paused start, two AP, connected neighborhood and exits"): return
+    if not _check(raid.raid_paused and raid.action_points == 2 and raid.player.pos == Vector2i(29, 51) and raid.exit_cells.size() == 6, "paused start, two AP, connected neighborhood and exits"): return
     if not _check(int(raid.player.loaded) == 6 and raid.weapon_reserve == 12, "starter firearm starts with its loaded and spare ammunition"): return
     var civilian: Dictionary = survivor.duplicate(true)
     civilian.equipment["Weapon"] = ""
     raid.make_actor(civilian, Vector2i(3, 3), false)
     if not _check(raid.weapon_reserve == 12, "unarmed rescue or companion cannot erase lead ammunition"): return
+    if not _check(game.known_raid_routes().size() == 3, "three outskirts routes initially known"): return
+    if not _check(not game._valid_raid_entry("north_road"), "undiscovered inner entry is unavailable"): return
     var reachable: Dictionary = raid._reachable_distances(raid.player.pos)
     for cell in raid.exit_cells:
         if not _check(reachable.has(cell), "each exit has a physical route from entry"): return
     var depth_counts := [0, 0, 0]
     for z in raid.zombies: depth_counts[World.depth(z.pos)] += 1
     if not _check(depth_counts[0] >= 5 and depth_counts[1] >= 10 and depth_counts[2] >= 15, "existing zombie population increases with depth"): return
+    var nearby_count := 0
+    for enemy in raid.zombies:
+        if raid.manhattan(enemy.pos, raid.player.pos) <= 9: nearby_count += 1
+    if not _check(nearby_count >= 3, "pre-placed nearby enemies support stealth"): return
     var start_tick := int(raid.tick)
     var camp_time := float(game.day_elapsed)
     var camp_resources: Dictionary = game.resources.duplicate(true)
@@ -94,6 +100,24 @@ func _run():
     var zombie_before: Vector2i = z.pos
     raid._end_turn()
     if not _check(z.pos != zombie_before and raid.zombies.size() == count, "an alerted existing zombie actually moves on the zombie phase"): return
+    # A loud sound also reaches a distant simulated actor, which advances
+    # from its saved world position without creating an enemy.
+    var distant: Vector2i = source + Vector2i(-14, 0)
+    z.pos = distant
+    z.dead = false
+    z.state = "IDLE"
+    z.heard = Vector2i(-1, -1)
+    z.next = 0
+    for x in range(distant.x, source.x + 1):
+        var lane := Vector2i(x, source.y)
+        raid.walls.erase(lane)
+        raid.obstacles.erase(lane)
+        raid.doors.erase(lane)
+        raid.glass.erase(lane)
+    raid.emit_noise(source, 110, "gunshot", true)
+    if not _check(z.state == "INVESTIGATE", "loud sound reaches a distant simulated zombie"): return
+    raid._end_turn()
+    if not _check(z.pos != distant and raid.zombies.size() == count, "distant infected advance toward sound without spawning"): return
     z.dead = true
     # Unlocking consumes one action; opening is a separate action.
     var lock_cell: Vector2i = raid.player.pos + Vector2i.UP
@@ -125,7 +149,10 @@ func _run():
     raid._complete_swap("Wood")
     var carried: Dictionary = raid.collected_container_loot()
     if not _check(int(carried.get("Wood", 0)) == 3 and int(carried.get("Cloth", 0)) == 1 and int(raid.leftovers[second].Wood) == 1 and raid.action_points == 1, "one-AP swap exchanges a carried item for leftover loot"): return
-    raid.discovered_exits[raid.exit_cells[1]] = true
+    var inner: Vector2i = World.route_by_id("north_road").cell
+    raid.visible_cells[inner] = true
+    raid._discover_exits()
+    if not _check(game._valid_raid_entry("north_road"), "seeing an inner exit discovers a reusable entry"): return
     raid.weapon_reserve = 1
     raid.persist_runtime()
     game.load_game()
@@ -136,7 +163,7 @@ func _run():
     root.add_child(raid)
     raid.start_encounter(game.current_combat)
     raid.set_process(false)
-    if not _check(raid.raid_paused and raid.action_points == 1 and raid.weapon_reserve == 1 and raid.discovered_exits.size() >= 2 and int(raid.leftovers[second].Wood) == 1 and raid.collected_container_loot() == carried, "disk load restores AP, ammo, map knowledge, leftover and carried loot"): return
+    if not _check(raid.raid_paused and raid.action_points == 1 and raid.weapon_reserve == 1 and raid.discovered_exits.size() >= 4 and game._valid_raid_entry("north_road") and int(raid.leftovers[second].Wood) == 1 and raid.collected_container_loot() == carried, "disk load restores AP, ammo, map knowledge, leftover and carried loot"): return
     raid.raid_paused = false
     raid.action_points = 2
     raid.exit_cells = [raid.player.pos]
@@ -189,9 +216,10 @@ func _run():
     if not _check(int(survivor.equipment_state.Weapon.loaded) == 0 and int(survivor.equipment_state.Weapon.reserve) == 0, "stash swap cannot refill an empty gun"): return
     survivor.equipment.Secondary = "Flashlight"
     survivor.equipment_state.Secondary = {"charge": 100.0}
-    if not _check(game.start_expedition(sid, "Camp Perimeter"), "second raid launches"): return
+    if not _check(game.start_expedition(sid, "Camp Perimeter", -1, "north_road"), "discovered inner route launches a later raid"): return
     raid.stop_encounter()
     raid.start_encounter(game.current_combat)
+    if not _check(raid.player.pos == World.route_by_id("north_road").cell and raid.discovered_exits.has(raid.player.pos), "discovered route is the physical entry and exit"): return
     if not _check(raid.player.loaded == 0 and raid.weapon_reserve == 0, "empty weapon remains empty on next raid"): return
     raid.player.hp = 0
     raid.raid_paused = false

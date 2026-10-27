@@ -1,6 +1,8 @@
 extends RefCounted
 class_name FFData
 
+const BASIC_RESOURCES := ["Wood", "Scrap Metal", "Plastic", "Raw Food", "Dirty Water"]
+
 const RESOURCE_ORDER := [
     "Raw Food", "Cooked Food", "Dirty Water", "Clean Water", "Beer",
     "Wood", "Scrap Metal", "Cloth", "Plastic", "Hardware",
@@ -96,47 +98,27 @@ const ZONES := {
     "Camp Perimeter": {
         "duration": 37.5, "danger": "Minimal", "fatigue": 4, "loot_rolls": 1,
         "pressure": 10, "event_chance": 0.02,
-        "loot": {
-            "Dirty Water": 30, "Raw Food": 24,
-            "Wood": 12, "Plastic": 9, "Cloth": 8, "Scrap Metal": 7, "Hardware": 4,
-            "Clean Water": 5, "Cooked Food": 2
-        }
+        "loot": {"Dirty Water": 30, "Raw Food": 24, "Wood": 12, "Plastic": 9, "Scrap Metal": 7}
     },
     "Nearby Streets": {
         "duration": 62.5, "danger": "Low", "fatigue": 6, "loot_rolls": 1,
         "pressure": 8, "event_chance": 0.08,
-        "loot": {
-            "Dirty Water": 28, "Raw Food": 22,
-            "Wood": 11, "Plastic": 9, "Cloth": 8, "Scrap Metal": 8, "Hardware": 6,
-            "Clean Water": 5, "Cooked Food": 2, "Seeds": 2, "First Aid Kit": 1
-        }
+        "loot": {"Dirty Water": 28, "Raw Food": 22, "Wood": 11, "Plastic": 9, "Scrap Metal": 8}
     },
     "Residential Blocks": {
         "duration": 100.0, "danger": "Moderate", "fatigue": 10, "loot_rolls": 1,
         "pressure": 6, "event_chance": 0.18,
-        "loot": {
-            "Dirty Water": 25, "Raw Food": 20,
-            "Cloth": 10, "Wood": 9, "Plastic": 9, "Hardware": 8, "Scrap Metal": 7,
-            "Clean Water": 5, "Cooked Food": 2, "First Aid Kit": 3, "Zombie Cure": 1, "Seeds": 3
-        }
+        "loot": {"Dirty Water": 25, "Raw Food": 20, "Wood": 9, "Plastic": 9, "Scrap Metal": 7}
     },
     "Commercial Fringe": {
         "duration": 150.0, "danger": "High", "fatigue": 16, "loot_rolls": 1,
         "pressure": 5, "event_chance": 0.28,
-        "loot": {
-            "Dirty Water": 22, "Raw Food": 18,
-            "Hardware": 12, "Scrap Metal": 11, "Plastic": 10, "Cloth": 9, "Wood": 7,
-            "Clean Water": 5, "Cooked Food": 2, "First Aid Kit": 4, "Zombie Cure": 1, "Seeds": 3
-        }
+        "loot": {"Dirty Water": 22, "Raw Food": 18, "Wood": 7, "Plastic": 10, "Scrap Metal": 11}
     },
     "Industrial Edge": {
         "duration": 225.0, "danger": "Severe", "fatigue": 22, "loot_rolls": 1,
         "pressure": 4, "event_chance": 0.35,
-        "loot": {
-            "Dirty Water": 20, "Raw Food": 16,
-            "Scrap Metal": 14, "Hardware": 12, "Plastic": 10, "Wood": 8, "Cloth": 7,
-            "Clean Water": 5, "Cooked Food": 2, "First Aid Kit": 3, "Zombie Cure": 1, "Seeds": 2
-        }
+        "loot": {"Dirty Water": 20, "Raw Food": 16, "Wood": 8, "Plastic": 10, "Scrap Metal": 14}
     }
 }
 
@@ -225,6 +207,10 @@ const RECIPES := {
         {"id": "Brew Beer", "time": 20.0, "cost": {"Raw Food": 2, "Clean Water": 2}, "requires": ["Tavern Brewery"], "gives_resource": {"Beer": 4}},
     ],
     "Workbench": [
+        {"id": "Make Cloth", "time": 5.0, "cost": {"Plastic": 1}, "gives_resource": {"Cloth": 2}},
+        {"id": "Make Hardware", "time": 5.0, "cost": {"Scrap Metal": 1}, "gives_resource": {"Hardware": 2}},
+        {"id": "Save Seeds", "time": 5.0, "cost": {"Raw Food": 1}, "gives_resource": {"Seeds": 1}},
+        {"id": "First Aid Kit", "time": 8.0, "cost": {"Cloth": 1, "Plastic": 1, "Clean Water": 1}, "gives_component": {"First Aid Kit": 1}},
         {"id": "Utility Knife", "time": 6.0, "cost": {"Scrap Metal": 1, "Cloth": 1}, "gives_gear": "Utility Knife"},
         {"id": "Kitchen Knife", "time": 6.0, "cost": {"Scrap Metal": 1, "Plastic": 1}, "gives_gear": "Kitchen Knife"},
         {"id": "Wooden Club", "time": 6.0, "cost": {"Wood": 2}, "gives_gear": "Wooden Club"},
@@ -251,7 +237,7 @@ const RECIPES := {
         {"id": "Weatherproofing Roll", "time": 8.0, "cost": {"Cloth": 2, "Plastic": 1}, "gives_component": {"Weatherproofing Roll": 1}},
     ],
     "Infirmary": [
-        {"id": "Zombie Cure", "time": 20.0, "cost": {"Zombie Corpse": 2}, "gives_component": {"Zombie Cure": 1}},
+        {"id": "Zombie Cure", "time": 20.0, "cost": {"Raw Food": 2, "Clean Water": 2, "Plastic": 1}, "gives_component": {"Zombie Cure": 1}},
     ]
 }
 
@@ -267,7 +253,7 @@ const BUILDINGS := {
     "Garden Plot": {"time": 20.0, "cost": {"Wood": 3, "Seeds": 1}, "requires": ["Workbench"], "description": "Produces 2 Raw Food on days it is tended."},
     "Water Tank": {"time": 24.0, "cost": {"Scrap Metal": 5, "Plastic": 4, "Hardware": 2}, "requires": ["Rain Catcher", "Workbench"], "description": "Doubles the daily Rain Catcher output and provides a visible camp water reserve."},
     "Barracks": {"time": 46.0, "cost": {"Wood": 10, "Cloth": 5, "Plastic": 3, "Hardware": 2}, "component_cost": {"Framing Kit": 3, "Weatherproofing Roll": 2}, "requires": ["Large Tarp", "Workbench", "Sewing Table"], "description": "Permanent twelve-person sleeping quarters. Strongly improves sleep recovery, mood recovery, and camp safety."},
-    "Infirmary": {"time": 38.0, "cost": {"Wood": 8, "Cloth": 4, "Plastic": 5, "Hardware": 4}, "component_cost": {"Bandage": 2}, "requires": ["Barracks", "Workbench", "Water Tank"], "description": "Late medical infrastructure. Speeds treatment and wound recovery, reduces untreated critical decline, and crafts Zombie Cure from recovered corpses."},
+    "Infirmary": {"time": 38.0, "cost": {"Wood": 8, "Cloth": 4, "Plastic": 5, "Hardware": 4}, "component_cost": {"Bandage": 2}, "requires": ["Barracks", "Workbench", "Water Tank"], "description": "Late medical infrastructure. Speeds treatment and wound recovery, reduces untreated critical decline, and crafts Zombie Cure from camp supplies."},
     "Watch Post": {"time": 32.0, "cost": {"Wood": 6, "Scrap Metal": 3, "Hardware": 3}, "requires": ["Noise Line", "Workbench"], "description": "Strong perimeter overwatch that further raises safety and reduces outside-event danger."},
     "Armory": {"time": 46.0, "cost": {"Wood": 10, "Scrap Metal": 10, "Hardware": 8, "Plastic": 3}, "requires": ["Barracks", "Workbench", "Watch Post"], "description": "Late secure fabrication area. Requires established housing and perimeter tech, then unlocks advanced Workbench weapons and tools."},
     "Dormitory": {"time": 62.0, "cost": {"Wood": 16, "Scrap Metal": 8, "Cloth": 6, "Hardware": 6}, "component_cost": {"Framing Kit": 5, "Weatherproofing Roll": 3}, "requires": ["Barracks", "Tavern Kitchen", "Infirmary", "Sewing Table", "Water Tank"], "description": "Final eighteen-person housing tier. Requires a mature support network and provides the camp's best sleep and mood recovery."},

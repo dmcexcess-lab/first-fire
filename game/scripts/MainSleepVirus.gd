@@ -32,6 +32,7 @@ var gate_survivor_index := 0
 var gate_companion_id := -1
 var gate_zone_names: Array = []
 var gate_zone_index := 0
+var gate_entry_index := 0
 var expedition_return_notice: Button
 var chore_minigame: Control
 
@@ -382,6 +383,7 @@ func _prepare_gate_context(preferred_id: int = -1) -> void:
     for zone_value in CampData.ZONE_ORDER:
         gate_zone_names.append(str(zone_value))
     gate_zone_index = 0
+    gate_entry_index = 0
 
 func _draw_gate_context() -> void:
     _draw_context_header("CAMP GATE", "Prepare one survivor for a turn-based raid. Supplies are committed at launch. Escape with physical loot, then return to camp at the shown in-game ETA.")
@@ -434,6 +436,26 @@ func _draw_gate_context() -> void:
         content_box.add_child(rearm)
 
     content_box.add_child(_separator())
+    var entries: Array = Game.known_raid_routes()
+    gate_entry_index = clampi(gate_entry_index, 0, entries.size() - 1)
+    var entry_row := HBoxContainer.new()
+    var entry_prev := Button.new()
+    entry_prev.text = "PREV"
+    entry_prev.custom_minimum_size = Vector2(64, 44)
+    entry_prev.pressed.connect(_cycle_gate_entry.bind(-1))
+    entry_row.add_child(entry_prev)
+    var entry_label := _make_label("ENTRY: %s" % str(entries[gate_entry_index].name), 13)
+    entry_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    entry_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    entry_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    entry_row.add_child(entry_label)
+    var entry_next := Button.new()
+    entry_next.text = "NEXT"
+    entry_next.custom_minimum_size = Vector2(64, 44)
+    entry_next.pressed.connect(_cycle_gate_entry.bind(1))
+    entry_row.add_child(entry_next)
+    content_box.add_child(entry_row)
+    content_box.add_child(_make_label("Discover routes in town to use them for future entries and exits.", 11))
     if gate_zone_names.is_empty():
         content_box.add_child(_make_label("No expedition zone is currently unlocked.", 13))
         return
@@ -534,6 +556,12 @@ func _cycle_gate_companion(direction: int) -> void:
     gate_companion_id = int(candidates[posmod(current_index + direction, candidates.size())])
     call_deferred("_refresh_content")
 
+func _cycle_gate_entry(direction: int) -> void:
+    var entries: Array = Game.known_raid_routes()
+    if entries.is_empty(): return
+    gate_entry_index = posmod(gate_entry_index + direction, entries.size())
+    call_deferred("_refresh_content")
+
 func _cycle_gate_zone(direction: int) -> void:
     if gate_zone_names.size() <= 1:
         return
@@ -544,9 +572,9 @@ func _zone_focus_text(zone: String) -> String:
     match zone:
         "Camp Perimeter": return "food, water, wood"
         "Nearby Streets": return "food, water, mixed materials"
-        "Residential Blocks": return "food, cloth, rare first aid"
-        "Commercial Fringe": return "hardware, scrap, medical finds"
-        "Industrial Edge": return "scrap, hardware, rare medical finds"
+        "Residential Blocks": return "food, water, plastic"
+        "Commercial Fringe": return "scrap, plastic, wood"
+        "Industrial Edge": return "scrap, plastic, wood"
     return "mixed supplies"
 
 func _leave_from_gate() -> void:
@@ -555,7 +583,7 @@ func _leave_from_gate() -> void:
     var survivor_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
     var zone := str(gate_zone_names[clampi(gate_zone_index, 0, gate_zone_names.size() - 1)])
     selected_survivor_id = survivor_id
-    if Game.start_expedition(survivor_id, zone, gate_companion_id):
+    if Game.start_expedition(survivor_id, zone, gate_companion_id, str(Game.known_raid_routes()[gate_entry_index].id)):
         _dismiss_return_notice()
         _close_camp_context()
 
@@ -564,7 +592,7 @@ func _leave_special_from_gate(site: String) -> void:
         return
     var survivor_id := int(gate_survivor_ids[clampi(gate_survivor_index, 0, gate_survivor_ids.size() - 1)])
     selected_survivor_id = survivor_id
-    if Game.start_special_site(survivor_id, site, gate_companion_id):
+    if Game.start_special_site(survivor_id, site, gate_companion_id, str(Game.known_raid_routes()[gate_entry_index].id)):
         _close_camp_context()
 
 func _send_survivor_from_panel(id):

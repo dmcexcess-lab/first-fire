@@ -8,14 +8,42 @@ const HEIGHT := 54
 const CELL_W := 20
 const CELL_H := 18
 const EXIT_CELLS := [Vector2i(29, 52), Vector2i(2, 36), Vector2i(57, 19), Vector2i(2, 1)]
+# Route IDs and cells are stable across generated town variants and saves.
+const ROUTES := [
+    {"id": "camp_road", "name": "Camp Road", "cell": Vector2i(29, 52), "starting": true},
+    {"id": "west_outskirts", "name": "West Outskirts", "cell": Vector2i(1, 50), "starting": true},
+    {"id": "east_outskirts", "name": "East Outskirts", "cell": Vector2i(58, 50), "starting": true},
+    {"id": "west_street", "name": "West Street", "cell": Vector2i(2, 36), "starting": false},
+    {"id": "east_industrial", "name": "East Industrial", "cell": Vector2i(57, 19), "starting": false},
+    {"id": "north_road", "name": "North Road", "cell": Vector2i(2, 1), "starting": false},
+]
+
+static func route_by_id(id: String) -> Dictionary:
+    for route in ROUTES:
+        if route.id == id: return route
+    return {}
+
+static func known_routes(discovered: Array) -> Array:
+    var known: Array = []
+    for route in ROUTES:
+        if bool(route.starting) or discovered.has(route.id): known.append(route)
+    return known
+
 const LOCATIONS := [
     ["house", "apartment", "warehouse_yard"],
     ["corner_store", "gas_station", "house"],
     ["drainage_wash", "back_alley", "house"],
 ]
 
-static func build(seed_value: int) -> Dictionary:
+static func build(seed_value: int, entry_id: String = "") -> Dictionary:
     var spec := {"default_ground": "road", "ground_rects": [], "indoor_rects": [], "walls": [], "obstacles": [], "glass": [], "doors": [], "barrels": [], "props": [], "lights": [], "loot_containers": [], "player_spawn": Vector2i(29, 51), "ally_spawn": Vector2i(28, 51), "exit_cells": EXIT_CELLS.duplicate()}
+    if entry_id != "":
+        var entry := route_by_id(entry_id)
+        if not entry.is_empty():
+            spec.player_spawn = Vector2i(29, 51) if entry_id == "camp_road" else entry.cell
+            spec.ally_spawn = spec.player_spawn + Vector2i(-1, 0)
+        spec.exit_cells = []
+        for route in ROUTES: spec.exit_cells.append(route.cell)
     for row in range(3):
         for col in range(3):
             var offset := Vector2i(col * CELL_W, row * CELL_H)

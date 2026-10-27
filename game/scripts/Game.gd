@@ -1,5 +1,6 @@
 extends Node
 
+const TacticalWorld = preload("res://scripts/FFTacticalWorld.gd")
 const ExtractionRules = preload("res://scripts/FFExtractionRules.gd")
 
 signal state_changed
@@ -1053,7 +1054,26 @@ func _expedition_party_ids(primary_id: int, companion_id: int = -1) -> Array:
             return []
     return ids
 
-func start_expedition(primary_id, zone, companion_id = -1):
+func known_raid_routes() -> Array:
+    var found = flags.get("discovered_raid_routes", [])
+    return TacticalWorld.known_routes(found if found is Array else [])
+
+func discover_raid_route(route_id: String) -> void:
+    var route := TacticalWorld.route_by_id(route_id)
+    if route.is_empty() or bool(route.starting): return
+    var found = flags.get("discovered_raid_routes", [])
+    if not (found is Array): found = []
+    if not found.has(route_id):
+        found.append(route_id)
+        flags["discovered_raid_routes"] = found
+
+func _valid_raid_entry(route_id: String) -> bool:
+    for route in known_raid_routes():
+        if str(route.id) == route_id: return true
+    return false
+
+func start_expedition(primary_id, zone, companion_id = -1, entry_route_id: String = "camp_road"):
+    if not _valid_raid_entry(entry_route_id): return false
     zone = str(zone)
     if not expedition_route_unlocked(zone):
         toast_requested.emit("%s is locked — %s." % [zone, expedition_route_lock_text(zone)])
@@ -1082,6 +1102,7 @@ func start_expedition(primary_id, zone, companion_id = -1):
         "id": next_expedition_id,
         "survivor_ids": party_ids.duplicate(),
         "zone": zone,
+        "entry_route_id": entry_route_id,
         "duration": duration,
         "remaining": duration,
         "state": "departing",
@@ -1150,7 +1171,8 @@ func _commit_expedition_return_payload(exp) -> String:
     exp["time_cost_paid"] = true
     return ", ".join(bits)
 
-func start_special_site(primary_id, site, companion_id = -1):
+func start_special_site(primary_id, site, companion_id = -1, entry_route_id: String = "camp_road"):
+    if not _valid_raid_entry(entry_route_id): return false
     if not special_sites.has(site) or not bool(special_sites[site].get("discovered", false)) or bool(special_sites[site].get("cleared", false)):
         return false
     if not current_combat.is_empty():
@@ -1171,6 +1193,7 @@ func start_special_site(primary_id, site, companion_id = -1):
         "id": next_expedition_id,
         "survivor_ids": party_ids.duplicate(),
         "zone": zone,
+        "entry_route_id": entry_route_id,
         "duration": duration,
         "remaining": duration,
         "state": "departing",
@@ -1278,6 +1301,7 @@ func _begin_tactical_encounter(exp):
         "expedition_id": int(exp["id"]),
         "survivor_ids": ids.duplicate(true),
         "zone": str(exp["zone"]),
+        "entry_route_id": str(exp.get("entry_route_id", "")),
         "zone_pressure": int(zone_pressure.get(str(exp["zone"]), 0)),
         "kind": combat_kind,
         "outing": str(exp.get("outing", combat_kind)),

@@ -57,6 +57,9 @@ func start_encounter(data: Dictionary):
     raid_paused = true
     if legacy_raid:
         for cell in exit_cells: discovered_exits[cell] = true
+    elif str(context.get("entry_route_id", "")) != "":
+        for route in Game.known_raid_routes():
+            if exit_cells.has(route.cell): discovered_exits[route.cell] = true
     elif not exit_cells.is_empty():
         discovered_exits[exit_cells[0]] = true
     _discover_exits()
@@ -66,7 +69,7 @@ func start_encounter(data: Dictionary):
 func tactical_layout(location: String, variant: int) -> Dictionary:
     if legacy_raid:
         return TacticalEnvironments.build_layout(location, variant)
-    return World.build(int(context.get("seed", 1)))
+    return World.build(int(context.get("seed", 1)), str(context.get("entry_route_id", "")))
 
 func build_map(location: String, variant: int):
     super.build_map(location, variant)
@@ -103,18 +106,40 @@ func spawn_zombies():
         while zombies.size() > desired: zombies.pop_back()
         while zombies.size() < desired: _append_zombie(player_spawn + Vector2i(2, 0))
         return
+    # Place a few local infected for stealth, plus small pre-existing groups
+    # across each depth. Groups are never spawned by the noise director.
+    var nearby: Array = []
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            var cell := Vector2i(x, y)
+            var distance := manhattan(cell, player_spawn)
+            if distance < 6 or distance > 9 or blocked(cell) or zombie_at(cell) >= 0 or rescuee_at(cell) or exit_cells.has(cell): continue
+            nearby.append(cell)
+    for i in range(mini(3, nearby.size())):
+        var index := rng.randi_range(0, nearby.size() - 1)
+        _append_zombie(nearby.pop_at(index))
     for depth in range(3):
         var candidates: Array = []
         for y in range(1, H - 1):
             for x in range(1, W - 1):
                 var cell := Vector2i(x, y)
-                if World.depth(cell) != depth or blocked(cell) or manhattan(cell, player_spawn) < 9 or zombie_at(cell) >= 0 or rescuee_at(cell) or exit_cells.has(cell): continue
+                if World.depth(cell) != depth or blocked(cell) or manhattan(cell, player_spawn) < 10 or zombie_at(cell) >= 0 or rescuee_at(cell) or exit_cells.has(cell): continue
                 candidates.append(cell)
         var count: int = [5, 10, 15][depth]
+        var anchor := Vector2i(-1, -1)
         for i in range(mini(count, candidates.size())):
-            var index := rng.randi_range(0, candidates.size() - 1)
-            var cell: Vector2i = candidates.pop_at(index)
+            if i % 5 == 0:
+                anchor = candidates[rng.randi_range(0, candidates.size() - 1)]
+            var cluster: Array = []
+            for candidate in candidates:
+                if manhattan(candidate, anchor) <= 4: cluster.append(candidate)
+            var cell: Vector2i = cluster[rng.randi_range(0, cluster.size() - 1)] if not cluster.is_empty() else candidates[rng.randi_range(0, candidates.size() - 1)]
+            candidates.erase(cell)
             _append_zombie(cell)
+    # Existing raids may have been saved before the population tuning changed.
+    if runtime.has("zombies"):
+        while zombies.size() > saved.size(): zombies.pop_back()
+        while zombies.size() < saved.size(): _append_zombie(player_spawn + Vector2i(2, 0))
 
 func _append_zombie(cell: Vector2i) -> void:
     var look: Dictionary = TacticalVisuals.zombie_appearance(rng, str(context.get("zone", "Nearby Streets")))
@@ -199,6 +224,11 @@ func _end_turn() -> void:
     recalc_lighting()
     for i in range(zombies.size()):
         if zombies[i].dead or int(zombies[i].next) > tick + 50: continue
+        # Far infected remain persistent actors but use a cheap coarse update.
+        # They switch seamlessly to detailed sight, movement and attacks nearby.
+        if not legacy_raid and manhattan(zombies[i].pos, player.pos) > 12 and not visible_cells.has(zombies[i].pos):
+            _simulate_distant_zombie(i)
+            continue
         var before: Vector2i = zombies[i].pos
         zombie_act(i)
         # A zombie can move twice, or move once then attack. It cannot attack
@@ -231,6 +261,21 @@ func _end_turn() -> void:
     persist_runtime()
     queue_redraw()
 
+func _simulate_distant_zombie(index: int) -> void:
+    var z: Dictionary = zombies[index]
+    var goal: Vector2i = z.get("heard", Vector2i(-1, -1))
+    if goal != Vector2i(-1, -1):
+        if z.pos == goal:
+            z.heard = Vector2i(-1, -1)
+            z.target = Vector2i(-1, -1)
+            z.state = "IDLE"
+        else:
+            var step := best_step_toward(z.pos, goal, false)
+            if step != Vector2i.ZERO:
+                z.pos += step
+                z.facing = step
+        zombies[index] = z
+
 func _begin_extract() -> void:
     if not exit_cells.has(player.pos):
         msg = "Stand on a discovered exit to extract."
@@ -243,7 +288,17 @@ func _begin_extract() -> void:
 
 func _discover_exits() -> void:
     for cell in exit_cells:
-        if visible_cells.has(cell) or memory.has(cell): discovered_exits[cell] = true
+        if visible_cells.has(cell) or memory.has(cell):
+            discovered_exits[cell] = true
+            if str(context.get("entry_route_id", "")) != "":
+                for route in World.ROUTES:
+                    if route.cell == cell: Game.discover_raid_route(str(route.id))
+
+# Old in-progress raids retain their harvestable corpses. New raids bring only
+# basic supplies and physical equipment home.
+func harvestable_corpse_at(p: Vector2i) -> int:
+    if not legacy_raid and str(context.get("entry_route_id", "")) != "": return -1
+    return super.harvestable_corpse_at(p)
 
 func check_objective_and_exit():
     if not exit_cells.has(player.pos): pending_extract = false

@@ -607,8 +607,8 @@ static func pet_should_leave(needs:Dictionary)->bool:
     return float(normalize_pet_needs(needs)["affection"])<=PET_LEAVE_AFFECTION
 
 static func pet_forage_resource(species:String,rng:RandomNumberGenerator)->String:
-    var dog_pool:Array=["Wood","Scrap Metal","Hardware","Cloth","Plastic","Raw Food"]
-    var cat_pool:Array=["Cloth","Plastic","Hardware","Wood","Raw Food","Raw Food"]
+    var dog_pool:Array=["Wood","Scrap Metal","Plastic","Raw Food","Dirty Water"]
+    var cat_pool:Array=["Plastic","Scrap Metal","Wood","Raw Food","Raw Food","Dirty Water"]
     var pool:Array=dog_pool if species=="Dog" else cat_pool
     return str(pool[rng.randi_range(0,pool.size()-1)])
 

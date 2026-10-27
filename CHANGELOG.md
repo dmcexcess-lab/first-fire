@@ -1,5 +1,12 @@
 ## Turn-Based Extraction Neighborhood — 2026-10-26
 
+## 2026-10-26 — Discoverable town routes and camp supply production
+
+- Start with three known outskirts entry/extraction routes. Spotting three deeper exits permanently adds them to the gate's entry choices and future raid maps, even if that raid is lost.
+- Nearby infected and groups are placed at raid start; distant unseen infected use a lightweight sound-directed simulation, switching to full tactical behavior nearby. Loud actions attract existing infected without creating enemies.
+- Field containers and pet foraging now yield Wood, Scrap Metal, Plastic, Raw Food and Dirty Water. Equipment remains a physical field find. Make Cloth, Hardware, Seeds and First Aid Kits at the Workbench, and Zombie Cure at the Infirmary; old save inventories remain intact.
+- Preserved camp needs, morale, recruitment, Away returns and the tactical pause. Existing saved raids retain their original map, population and carried items.
+
 - Replaced production real-time raid combat with two-action turns. Walk up to five tiles or crouch up to three for 1 AP; sprint up to eight for 2 AP. Search, attack, reload/pump, shove, interact and tools use 1 AP; End Turn allows an early zombie phase.
 - Built a connected 60×54 neighborhood from nine authored places, with three loot/danger bands, connected street corridors, one known entry-side exit and three discoverable exits. Added seeded existing zombie populations that increase with depth; noise attracts those actors rather than creating a horde.
 - Added tap-to-preview/confirm movement and attacks, sound and selected-zombie movement overlays, camera pan/zoom, an exit bearing, and portrait controls. Zombies may move twice or move once and attack during their phase. An extraction costs both AP and is interrupted by a hit or displacement.

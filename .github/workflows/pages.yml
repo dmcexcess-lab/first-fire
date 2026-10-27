@@ -100,7 +100,7 @@ jobs:
           grep -q 'const SAVE_SCHEMA_VERSION := 8' game/scripts/Game.gd
           grep -q 'const DAY_SECONDS := 300.0' game/scripts/Game.gd
           grep -q 'const MAX_POPULATION := 18' game/scripts/Game.gd
-          grep -Fq 'func start_expedition(primary_id, zone, companion_id = -1):' game/scripts/Game.gd
+          grep -Fq 'func start_expedition(primary_id, zone, companion_id = -1, entry_route_id: String =' game/scripts/Game.gd
           grep -Fq 'ally = make_actor(companion, ally_spawn, false)' game/scripts/FFCombat.gd
           grep -Fq 'founder["equipment"] = {"Weapon": "6-Shot Revolver", "Secondary": "", "Clothing": "", "Pack": "", "Tool": ""}' game/scripts/Game.gd
           if grep -q 'func _settle_expedition_time_cost' game/scripts/Game.gd; then exit 1; fi
