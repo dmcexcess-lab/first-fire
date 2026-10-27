@@ -37,6 +37,9 @@ jobs:
           test -f game/scripts/FFData.gd
           test -f game/scripts/FFCombat.gd
           test -f game/scripts/FFCombatThreeStat.gd
+          test -f game/scripts/FFCombatTurn.gd
+          test -f game/scripts/FFTurnRules.gd
+          test -f game/scripts/FFTacticalWorld.gd
           test -f game/scripts/FFCombatExtraction.gd
           test -f game/scripts/FFExtractionRules.gd
           test -f game/scripts/ci/FFExtractionSmoke.gd

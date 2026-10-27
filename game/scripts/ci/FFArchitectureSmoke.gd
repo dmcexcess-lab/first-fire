@@ -162,7 +162,7 @@ func _init() -> void:
     if not _check(project_source.contains("Game=\"*res://scripts/GameSleepVirus.gd\""), "sleep-virus game autoload active"): return
     if not _check(scene_source.contains("res://scripts/MainSleepVirus.gd"), "sleep-virus main active"): return
     if not _check(main_source.contains("FFCombatThreeStat.gd") and main_source.contains("FFInspectorThreeStat.gd"), "three-stat UI base routing"): return
-    if not _check(active_main_source.contains("FFCombatExtraction.gd") and active_main_source.contains("FFInspectorVirus.gd") and active_main_source.contains("FFCampViewSleepVirus.gd"), "sleep-virus UI routing"): return
+    if not _check(active_main_source.contains("FFCombatTurn.gd") and active_main_source.contains("FFInspectorVirus.gd") and active_main_source.contains("FFCampViewSleepVirus.gd"), "sleep-virus UI routing"): return
     if not _check(active_game_source.count("func _resolve_daily_rations()") == 1 and active_game_source.contains("finalize_daily_activity") and active_game_source.contains("ate_normally") and active_game_source.contains("drank_normally"), "active camp life has one visible-consumption ration owner instead of hidden midnight rations"): return
     if not _check(base_camp_source.contains("\"eat_meal\": return \"EATING\"") and base_camp_source.contains("\"drink_water\": return \"DRINKING\""), "living camp visibly labels autonomous eating and drinking"): return
     if not _check(inspector_source.contains("ThreeStatRules.STAT_NAMES") and not inspector_source.contains("Scavenging\", \"Survival"), "inspector exposes three stats"): return

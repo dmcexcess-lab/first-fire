@@ -17,8 +17,8 @@ const INFO_H := 145.0
 const MAP_TOP := 152.0
 const CONTROL_TOP := 648.0
 const TILE := 26
-const W := TacticalEnvironments.BOARD_W
-const H := TacticalEnvironments.BOARD_H
+const W := 60
+const H := 54
 const DIRS := [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]
 const DIR_NAMES := ["N", "E", "S", "W"]
 
@@ -295,6 +295,9 @@ func weapon_profile(name: String) -> Dictionary:
             return {"name": name, "dmin": 4, "dmax": 7, "time": 115, "noise": 9, "push": 1, "stealth": 1, "accuracy": -0.02, "reach": 1, "gun": true, "ammo": 2, "gmin": 13, "gmax": 20, "gtime": 155, "gnoise": 96, "gaccuracy": -0.02}
         _:
             return {"name": "Bare Hands", "dmin": 2, "dmax": 4, "time": 108, "noise": 5, "push": 0, "stealth": 0, "accuracy": -0.08, "reach": 1, "gun": false, "ammo": 0}
+func tactical_layout(location: String, variant: int) -> Dictionary:
+    return TacticalEnvironments.build_layout(location, variant)
+
 func build_map(new_environment_id: String, variant: int):
     environment_id = new_environment_id
     walls.clear(); obstacles.clear(); glass.clear(); doors.clear(); barrels.clear(); props.clear(); ground.clear(); indoor_cells.clear(); opaque_obstacles.clear(); exit_cells.clear(); light_sources.clear(); light_levels.clear(); light_tints.clear(); loot_containers.clear(); looted_containers.clear(); container_contents.clear()
@@ -305,7 +308,7 @@ func build_map(new_environment_id: String, variant: int):
         walls[Vector2i(0, y)] = true
         walls[Vector2i(W - 1, y)] = true
 
-    var spec: Dictionary = TacticalEnvironments.build_layout(environment_id, variant)
+    var spec: Dictionary = tactical_layout(environment_id, variant)
     player_spawn = spec.get("player_spawn", Vector2i(2, H - 2))
     ally_spawn = spec.get("ally_spawn", Vector2i(2, H - 3))
     exit_cells = spec.get("exit_cells", [Vector2i(1, H - 2)]).duplicate()
@@ -1705,8 +1708,9 @@ func sound_map(source: Vector2i, intensity: int) -> Dictionary:
         var base := int(cost[p])
         for d in DIRS:
             var n = p + d
-            if not inside(n) or walls.has(n): continue
+            if not inside(n): continue
             var step_cost := 6
+            if walls.has(n): step_cost += 18
             if doors.has(n) and not doors[n]: step_cost += 10
             if glass.has(n): step_cost += 5
             var nc := base + step_cost
@@ -1721,8 +1725,8 @@ func recalc_lighting():
     var theme := TacticalEnvironments.theme_name(environment_id)
     var player_light := str(player.get("secondary", ""))
     var ally_light := str(ally.get("secondary", "")) if not ally.is_empty() and not bool(ally.get("dead", false)) else ""
-    for y in range(H):
-        for x in range(W):
+    for y in range(maxi(0, player.pos.y - 12), mini(H, player.pos.y + 13)):
+        for x in range(maxi(0, player.pos.x - 12), mini(W, player.pos.x + 13)):
             var cell := Vector2i(x, y)
             var indoors := indoor_cells.has(cell)
             var level := TacticalLighting.ambient_level(theme, scene_time, indoors)
@@ -1732,7 +1736,7 @@ func recalc_lighting():
                 var source: Dictionary = source_value
                 if not TacticalLighting.source_active(source, power_on): continue
                 var source_pos: Vector2i = source.get("pos", Vector2i(-99, -99))
-                if not line_clear(source_pos, cell): continue
+                if Vector2(cell - source_pos).length() > float(source.get("radius", 4.0)) or not line_clear(source_pos, cell): continue
                 var contribution := TacticalLighting.radial_contribution(cell, source)
                 level = maxf(level, contribution)
                 if contribution > strongest:
@@ -1740,7 +1744,7 @@ func recalc_lighting():
                     tint_hex = str(source.get("color", "ffffff"))
             if TacticalLighting.daylight_available(scene_time) and indoors:
                 for window_pos in glass.keys():
-                    if not line_clear(window_pos, cell): continue
+                    if Vector2(cell - window_pos).length() > 4.5 or not line_clear(window_pos, cell): continue
                     var daylight := TacticalLighting.window_daylight_contribution(window_pos, cell, TacticalLighting.daylight_strength(scene_time))
                     level = maxf(level, daylight)
                     if daylight > strongest:
@@ -1944,6 +1948,14 @@ func map_origin() -> Vector2:
     var x: float = clampf(ideal_x, SCREEN_W - map_width, 0.0)
     return Vector2(x, MAP_TOP)
 
+func visible_columns() -> Array:
+    var origin := map_origin()
+    return range(maxi(0, int(floor(-origin.x / TILE)) - 1), mini(W, int(ceil((SCREEN_W - origin.x) / TILE)) + 1))
+
+func visible_rows() -> Array:
+    var origin := map_origin()
+    return range(maxi(0, int(floor((MAP_TOP - origin.y) / TILE)) - 1), mini(H, int(ceil((CONTROL_TOP - origin.y) / TILE)) + 1))
+
 func screen_to_cell(pos: Vector2) -> Vector2i:
     var local = pos - map_origin()
     return Vector2i(int(floor(local.x / TILE)), int(floor(local.y / TILE)))
@@ -1972,8 +1984,8 @@ func _draw():
 func draw_map():
     var theme := TacticalEnvironments.theme_name(environment_id)
     var grid_color := TacticalEnvironments.grid_color(environment_id)
-    for y in range(H):
-        for x in range(W):
+    for y in visible_rows():
+        for x in visible_columns():
             var p := Vector2i(x,y)
             var r := Rect2(x*TILE,y*TILE,TILE,TILE)
             var ground_kind := str(ground.get(p, TacticalEnvironments.default_ground(environment_id)))
@@ -2112,8 +2124,8 @@ func draw_character_fx():
 func draw_lighting():
     var theme := TacticalEnvironments.theme_name(environment_id)
     var dark_tint := TacticalLighting.ambient_tint(theme, scene_time)
-    for y in range(H):
-        for x in range(W):
+    for y in visible_rows():
+        for x in visible_columns():
             var cell := Vector2i(x, y)
             var r := Rect2(x * TILE, y * TILE, TILE, TILE)
             var ambient := TacticalLighting.ambient_level(theme, scene_time, indoor_cells.has(cell))
@@ -2140,8 +2152,8 @@ func draw_light_source_glows():
         draw_circle(c, 3.0, Color(source_color.r, source_color.g, source_color.b, 0.72 * strength))
 
 func draw_fog():
-    for y in range(H):
-        for x in range(W):
+    for y in visible_rows():
+        for x in visible_columns():
             var p := Vector2i(x,y)
             if visible_cells.has(p): continue
             var alpha := .62 if memory.has(p) else .96

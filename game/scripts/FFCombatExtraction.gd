@@ -46,7 +46,7 @@ func make_actor(s, pos: Vector2i, controlled: bool) -> Dictionary:
         actor.needs_pump = bool(ammo.needs_pump)
         if controlled:
             weapon_reserve = int(ammo.reserve)
-    else:
+    elif controlled:
         weapon_reserve = 0
     return actor
 

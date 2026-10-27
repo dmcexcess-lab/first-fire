@@ -1,3 +1,13 @@
+## Turn-Based Extraction Neighborhood — 2026-10-26
+
+- Replaced production real-time raid combat with two-action turns. Walk up to five tiles or crouch up to three for 1 AP; sprint up to eight for 2 AP. Search, attack, reload/pump, shove, interact and tools use 1 AP; End Turn allows an early zombie phase.
+- Built a connected 60×54 neighborhood from nine authored places, with three loot/danger bands, connected street corridors, one known entry-side exit and three discoverable exits. Added seeded existing zombie populations that increase with depth; noise attracts those actors rather than creating a horde.
+- Added tap-to-preview/confirm movement and attacks, sound and selected-zombie movement overlays, camera pan/zoom, an exit bearing, and portrait controls. Zombies may move twice or move once and attack during their phase. An extraction costs both AP and is interrupted by a hit or displacement.
+- Full packs leave excess physical items in containers for a one-AP swap. Marked Explore gear now consumes a carry slot and stays behind if the pack is full.
+- Preserved finite ammunition, gear resupply, camp pause, survivor consequences, loot escrow and Away return. Fixed an unarmed rescue/companion actor erasing the lead's reserve ammunition.
+- Persisted AP, discovered map/exits, leftover loot and world identity in schema 8. Existing real-time encounters resume under turn rules on their original layout, including through subsequent saves.
+- Updated production integration smoke for connected-route reachability, population, turn/AP behavior, sound, loot swaps, extraction interruption, actual return, death and legacy save/resume.
+
 ## Extraction + Base Sim — Vertical Slice 1 — 2026-10-26
 
 - Replaced production turn-driven encounters with solo real-time grid-based extraction raids on the existing authored maps. Infected act continuously while the settlement remains frozen.

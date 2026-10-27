@@ -1,6 +1,6 @@
 extends "res://scripts/MainThreeStat.gd"
 
-const CombatVirus = preload("res://scripts/FFCombatExtraction.gd")
+const CombatVirus = preload("res://scripts/FFCombatTurn.gd")
 const InspectorVirus = preload("res://scripts/FFInspectorVirus.gd")
 const CampViewSleepVirus = preload("res://scripts/FFCampViewSleepVirus.gd")
 const CampChoreMinigame = preload("res://scripts/FFCampChoreMinigame.gd")
@@ -21,7 +21,7 @@ const CAMP_TUTORIAL_STEPS := [
     },
     {
         "title": "LEAVE THROUGH THE GATE",
-        "body": "Tap the gate to prepare a solo raid. Check ammunition, gear and travel supplies. Outside, infected act in real time. Search containers, fire or evade, then hold an exit for 3 seconds. Surviving raids bring supplies home after the return trip."
+        "body": "Tap the gate to prepare a solo raid. Check ammunition, gear and travel supplies. Outside, spend two actions each turn to move, search or fight. Make noise and zombies investigate. Spend both actions to extract and survive their turn. Surviving raids bring supplies home after the return trip."
     },
 ]
 
@@ -384,7 +384,7 @@ func _prepare_gate_context(preferred_id: int = -1) -> void:
     gate_zone_index = 0
 
 func _draw_gate_context() -> void:
-    _draw_context_header("CAMP GATE", "Prepare one survivor for a real-time raid. Supplies are committed at launch. Escape with physical loot, then return to camp at the shown in-game ETA.")
+    _draw_context_header("CAMP GATE", "Prepare one survivor for a turn-based raid. Supplies are committed at launch. Escape with physical loot, then return to camp at the shown in-game ETA.")
     if gate_survivor_ids.is_empty():
         content_box.add_child(_make_label("No survivor is currently free to leave camp.", 13))
         return
@@ -479,7 +479,7 @@ func _draw_gate_context() -> void:
     elif not can_pay:
         content_box.add_child(_make_label("Not enough Cooked Food / Clean Water for this party.", 12))
     else:
-        content_box.add_child(_make_label("Real-time raid. Search physical containers; hold an exit for 3 seconds.", 11))
+        content_box.add_child(_make_label("Turn-based raid. Search, stay quiet, and survive a full extraction turn.", 11))
     var leave := Button.new()
     leave.text = "ROUTE LOCKED" if not unlocked else ("NEED TRAVEL SUPPLIES" if not can_pay else "PLAY RAID")
     leave.custom_minimum_size = Vector2(0, 48)

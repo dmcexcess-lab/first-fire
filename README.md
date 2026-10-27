@@ -1,6 +1,6 @@
 # First Fire
 
-**First Fire** is an early playable zombie-apocalypse survivor settlement game built in Godot 4. It combines a living camp/base simulation with solo real-time extraction raids and persistent survivor consequences.
+**First Fire** is an early playable zombie-apocalypse survivor settlement game built in Godot 4. It combines a living camp/base simulation with solo turn-based extraction raids and persistent survivor consequences.
 
 Created by DMC and AI.
 
@@ -8,7 +8,7 @@ Created by DMC and AI.
 
 **Web build:** https://dmcexcess-lab.github.io/first-fire/
 
-The current playable milestone is **Extraction + Base Sim — Vertical Slice 1**. Phone/Web remains the primary target; actual mobile Safari playtesting is still required for the new real-time controls.
+The current playable milestone is **Turn-Based Extraction Neighborhood**. Phone/Web remains the primary target; actual mobile Safari playtesting is still required for the new turn-based controls.
 
 > Alpha saves may be intentionally invalidated when major systems or save structures change. This is deliberate while the game is still in active development.
 
@@ -16,7 +16,7 @@ The founder starts with a Revolver and finite ammunition. Equip at the gate, loo
 
 ## What you do
 
-Build a fragile survivor camp, keep people fed and supplied, craft and build infrastructure, send real survivors into the outside world, loot and fight in real time, hold an exit for three seconds, and bring the consequences home.
+Build a fragile survivor camp, keep people fed and supplied, craft and build infrastructure, send real survivors into the outside world, loot and fight in turn-based raids, then survive a full extraction turn, and bring the consequences home.
 
 The field game is about **survival, looting, rescue, investigation, and escape** rather than clearing every enemy from a map.
 
@@ -25,14 +25,14 @@ Survivors are persistent individuals. Their skills, gear, health, fatigue, stres
 ## Current Alpha features
 
 - Persistent camp and survivor state
-- **Camp / Craft / Build / Survivors** mobile navigation
+- Living-camp touch navigation to survivors, stations, storage, work and the gate
 - Use-based survivor skills rather than character levels
 - Food/water processing and survival economy
 - Crafting and settlement construction
 - Expeditions, scavenging, discovered sites, and branching encounters
 - Recruitment decisions and survivor relationships
 - Automatic idle recovery rather than manual rest micromanagement
-- Tactical expedition encounters using the actual expedition survivor and companion
+- Tactical expedition encounters using the actual solo expedition survivor
 - Directional vision, fog of war, facing, sound information, doors, glass, hazards, stealth, melee, and firearms
 - Survivor Rescue, Explore Location, and Ambush tactical objectives
 - Tactical wounds, deaths, fatigue, stress, ammunition use, and Combat XP feeding back into camp
@@ -41,19 +41,9 @@ Survivors are persistent individuals. Their skills, gear, health, fatigue, stres
 
 ## Design direction
 
-First Fire is **feature-complete at the pillar level**. Development now focuses on deepening and unifying the existing loop rather than adding another major mode.
+The current raid is a bounded 60×54 connected neighborhood with three depth bands, four discoverable exits, two-action turns, persistent zombies, stealth, sound-driven investigation and physical loot. Deeper areas have more zombies and richer loot; returning alive remains the objective. It is the first playable implementation of this direction, with further map depth and mobile playtesting planned.
 
-The roadmap moves toward:
-
-- every outside-world event becoming a physical tactical event;
-- camp text events focusing on survivor stories and politics;
-- richer tactical locations/maps/graphics;
-- autonomous survivor social behavior;
-- pets with lightweight persistent needs and autonomous survivor care;
-- vehicles as expedition/logistics equipment and tactical entry/exit anchors;
-- a living 3D camp background that visualizes the simulation without becoming a second control mode.
-
-See [`ROADMAP.md`](ROADMAP.md) for the full sequence.
+See [`ROADMAP.md`](ROADMAP.md) for the development sequence.
 
 ## Development architecture
 

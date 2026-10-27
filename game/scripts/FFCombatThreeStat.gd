@@ -74,8 +74,8 @@ func recalc_visibility():
     recalc_lighting()
     visible_cells.clear()
     var max_range := view_range()
-    for y in range(H):
-        for x in range(W):
+    for y in range(maxi(0, player.pos.y - max_range), mini(H, player.pos.y + max_range + 1)):
+        for x in range(maxi(0, player.pos.x - max_range), mini(W, player.pos.x + max_range + 1)):
             var cell := Vector2i(x, y)
             var distance := manhattan(player.pos, cell)
             if cell == player.pos or distance <= 1:

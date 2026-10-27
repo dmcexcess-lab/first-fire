@@ -62,8 +62,11 @@ Preferred dependency direction:
 
 Important current owners:
 
-- `FFCombatExtraction.gd` — active real-time raid scheduler/input/extraction over the inherited combat layers.
-- `FFExtractionRules.gd` — finite weapon ammunition, reload transfer, real-time cadence and extraction tuning.
+- `FFCombatTurn.gd` — active AP/turn scheduler, world interactions, extraction and touch presentation.
+- `FFTurnRules.gd` — AP and movement-range tuning.
+- `FFTacticalWorld.gd` — connected neighborhood and depth-band geometry.
+- `FFCombatExtraction.gd` — inherited ammunition/equipment seam.
+- `FFExtractionRules.gd` — finite weapon ammunition, reload transfer and resupply tuning.
 - `FFCombat.gd` — shared map/physical tactical mechanics.
 - `FFTacticalVisuals.gd` — tactical character appearance, zombie variation, weapon silhouettes, and character drawing; presentation only.
 - `FFTacticalLighting.gd` — tactical day/night/power light profiles, Secondary light-item math, window daylight, and light-dependent sight thresholds.
@@ -99,7 +102,7 @@ A small forwarding method in `Game.gd` may remain if deleting it would require u
 - Camp relationships, political standing, and autonomous chatter → `FFCampSocial`.
 - Camp recovery/cadence/building effects → `FFCampLifeRules`.
 - Living 2D camp/menu visualization → `FFCampView`, reading `Game` state only.
-- Pets, active camp duties, and solo real-time extraction raids are explicitly approved. Only the single Expedition Vehicle unlock seam is in scope for vehicles; full vehicle simulation and 3D camp remain cut.
+- Pets, active camp duties, and solo turn-based extraction raids are explicitly approved. Only the single Expedition Vehicle unlock seam is in scope for vehicles; full vehicle simulation and 3D camp remain cut.
 
 The remaining field text-event selector is deliberately legacy. Do not deepen that path; convert events into tactical scenarios instead.
 
@@ -132,7 +135,7 @@ Do not build desktop-only behavior and bolt mobile support on afterward when req
 
 ## 7. Tactical pause boundary
 
-Tactical field encounters pause normal settlement simulation. Real-time raid time and settlement time are separate scales.
+Tactical field encounters pause normal settlement simulation. Raid turns and settlement time are separate scales.
 
 While a tactical encounter is active, do not advance unrelated food consumption, construction, survivor recovery, or camp events. Keep this boundary explicit in Game orchestration rather than relying on UI behavior.
 
@@ -235,7 +238,7 @@ Important bugs should leave behind a cheaper future check when practical.
 - individual infected stay weak and mob density creates pressure;
 - active off-hand items are Flashlight, Lock Pick, and Firecracker: Flashlight and Firecracker are found-only; Lock Pick can be found or crafted and breaks after **1–3 uses**; Flashlight charge depletes and Firecracker is single-use; tactical maps may contain locked doors and optional locked containers;
 - survivors have **4 tactical loot slots by default**; found-only backpacks raise that per-survivor capacity to **6 or 8**, with one survivor carrying their own capacity; each recovered resource/component unit—including a Zombie Corpse—uses one slot, with no weight/size calculation;
-- tactical scavenging is intentionally scarce near camp: **Very Short exposes 1–2 searchable containers and Short 2–3**, rising with distance; authored maps expose a random route-sized subset on each visit, containers may be empty, container type constrains its loot family, zone depletion increases physical empty-container odds, searches give floating **+loot / EMPTY / CARRY FULL** feedback, and named Explore gear is only a 30% Camp Perimeter / 50% Nearby Streets opportunity rather than guaranteed;
+- tactical scavenging uses randomized physical containers across the connected near/middle/deep bands; zone depletion influences emptiness, deeper bands use richer loot tables, and a full pack leaves excess for a one-AP swap;
 - **no abstract expedition loot**: expedition resolution must never roll or grant a post-run haul; only tactical container loot, harvested corpses, and explicit physical on-map pickups recovered before extraction may enter camp inventory, and those recovered items remain on the Away expedition until the return timer completes; at least one human returner must still be alive for that carried payload/rescued pet to reach camp; legacy text-field reward paths stay unreachable from production expedition flow;
 - camp chore minigames **do not pause settlement time**; maintenance is an irregular one-at-a-time timed problem rather than a forced daily quota, the work board shows its deadline/consequence, and the assigned survivor continues the chore in the living camp while the player performs the touch interaction;
 - fatigue rises from productive camp work and expeditions, falls naturally while survivors are idle in camp, and at **100 fatigue** forces a **3–5 in-game-hour** bed rest that returns fatigue to 0;
@@ -249,7 +252,7 @@ Important bugs should leave behind a cheaper future check when practical.
 - camp story/politics events remain narrative/dialogue;
 - tactical encounters pause settlement simulation; after tactical resolution the expedition remains **Away** and its authored route-duration timer counts down in normal resumed camp time; recovered loot/recruits/pets do not enter camp until actual return; camp events and fresh maintenance incidents require at least one living survivor physically home;
 - survivor social behavior is autonomous rather than conversation micromanagement;
-- new standard/special-site expeditions support a **single-survivor real-time raid**; inherited companion mechanics exist only for resuming existing encounters;
+- new standard/special-site expeditions support a **single-survivor turn-based raid**; inherited companion mechanics exist only for resuming existing encounters;
 - a single **Expedition Vehicle** unlock may gate Very Far travel, but a broader vehicle-driving/fuel system and 3D camp remain cut;
 - camp expansion is physical and work-board driven: starter camp is First Fire + shelter capacity for 3 + communal storage; **visible beds equal current living residents**, not shelter capacity, while hard population caps remain **3 → 7 → 12 → 18** through Large Tarp → Barracks → Dormitory; better shelter improves 8-hour sleep/mood recovery; a full-camp recruit is turned away and not retained; Hearth progresses **First Fire → Tavern → Tavern Kitchen → Tavern Brewery**, with progressively stronger social recovery, improved raw-to-cooked recipes, and Beer at the final stage; the first Workbench is a light **2 Wood + 1 Scrap Metal** direct build, while late infrastructure is costly/dependency-heavy and Armory gates advanced Workbench recipes;
 - hard population cap is 18; mature settlement is 15+ survivors plus all buildings and elected leadership, with endless continuation;
